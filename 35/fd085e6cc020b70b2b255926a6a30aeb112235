@@ -1,0 +1,25 @@
+AGENTS.md
+  s_b7f30c572db9a8::t_8d127c9a5ea6b8 58-64
+  s_b7f30c572db9a8::t_9ad01aaaef9461 66
+  s_b7f30c572db9a8::t_ffd8ea5e3af273 65
+src/hook/map.ts
+  s_b7f30c572db9a8::t_519b5d239a0ca1 84-85
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_4d2b5272c28e32 149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35fd085e6cc020b70b2b255926a6a30aeb112235",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
