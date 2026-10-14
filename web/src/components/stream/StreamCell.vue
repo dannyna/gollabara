@@ -143,6 +143,9 @@ const state = computed(() => props.face ?? loaded.value)
   border: 2px solid transparent;
   border-radius: 12px;
   background: var(--surface);
+  /* Keep the surface out from under the transparent border, or dark screenshots get a
+     light 2px frame in the default state */
+  background-clip: padding-box;
   box-shadow: 0 10px 24px oklch(0 0 0 / 0.2);
 }
 .hit:hover:not(:disabled),
