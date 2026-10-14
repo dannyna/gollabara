@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-labelledby="title desc">
+<title id="title">gollabara 시스템 구조도 — 라이트</title>
+<desc id="desc">gollabara는 UX 엔지니어가 Open Design, Claude Code, Codex, Claude Design의 산출물을 관찰하는 도구입니다. Claude Code 플러그인 hook은 현재 지원하며 Open Design MCP 결과 속 이미지도 포함합니다. Open Design 자체 실행의 직접 수집과 Codex, Claude Design 연동은 예정입니다. POST /api/events로 golla serve에 수집하고 SQLite 메시지와 로컬 이미지 파일로 저장합니다. WebSocket /ws로 데스크톱 웹과 폰에 전달하며 폰은 Tailscale tailnet 안에서만 접속합니다. PWA 설치와 사용자 개입은 예정입니다.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#5B626A" stroke-width="1.5"/></marker></defs>
+<style>text{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;fill:#22262A;font-size:16px} .display{font-family:'Space Grotesk','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif} .mono{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace} .muted{fill:#5B626A} .small{font-size:14px} .label{font-size:13px} .heading{font-size:22px;font-weight:700} .wire{fill:none;stroke:#5B626A;stroke-width:1.8;marker-end:url(#arrow)} .future{stroke-dasharray:6 6}</style>
+<rect width="1200" height="850" fill="#F5F6F7"/>
+<g data-od-id="brand-symbol" transform="translate(40 40)"><rect width="56" height="56" rx="14" fill="#F4D34F"/><svg x="7" y="7" width="42" height="42" viewBox="0 0 512 512"><path d="M198 120h-78v272h78m116-272h78v272h-78" stroke="#22262A" stroke-width="40" fill="none"/><circle cx="256" cy="256" r="42" fill="#22262A"/></svg></g>
+<text x="112" y="65" class="display" font-size="28" font-weight="700" data-od-id="brand-title">gollabara</text>
+<text x="112" y="91" class="muted">골라 골라, 구경은 공짜</text>
+<text x="1160" y="65" text-anchor="end" class="small muted">시스템 구조도</text>
+<text x="40" y="158" class="display" style="font-size:32px;font-weight:700" data-od-id="principle">관찰자이지 중재자가 아니다</text>
+<text x="40" y="188" class="muted">세션이 아니라 산출물을 봅니다. 여러 도구의 스크린샷 · 시안 · 리캡 · 질문을 한곳에서 구경합니다.</text>
+
+<text x="40" y="234" class="mono small muted" >01</text>
+<text x="71" y="234" class="small muted" >여러 도구의 산출물</text>
+<text x="440" y="234" class="mono small muted" >02</text>
+<text x="471" y="234" class="small muted" >로컬에서 수집·저장</text>
+<text x="860" y="234" class="mono small muted" >03</text>
+<text x="891" y="234" class="small muted" >화면에서 구경</text>
+<g data-od-id="tool-claude-code"><rect x="40" y="254" width="300" height="218" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="56" y="281" class="display" style="font-size:20px;font-weight:700">Claude Code</text>
+<text x="324" y="280" class="label muted" text-anchor="end">현재 지원</text>
+<text x="56" y="306" class="label" >gollabara 플러그인 hook · bin/hook.js</text>
+<text x="56" y="330" class="mono small" >PostToolUse</text>
+<text x="56" y="350" class="small muted" >도구 결과 속 이미지 · MCP 결과 포함</text>
+<text x="56" y="374" class="mono small" >Stop</text>
+<text x="103" y="374" class="small muted" >턴 끝 한 줄 리캡</text>
+<text x="56" y="398" class="mono small" >PreToolUse: AskUserQuestion</text>
+<text x="56" y="418" class="small muted" >세션이 원래 하던 질문 비추기</text>
+<text x="56" y="443" class="label muted" >1.5초 타임아웃 · 오류 무시</text>
+<text x="56" y="461" class="label" font-weight="700">세션을 절대 막지 않음</text>
+</g>
+<g data-od-id="tool-open-design"><rect x="40" y="484" width="300" height="116" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="56" y="512" class="display" style="font-size:20px;font-weight:700">Open Design</text>
+<text x="324" y="511" class="label muted" text-anchor="end">일부 지원</text>
+<text x="56" y="538" class="small" >현재: Claude Code가 부르는</text>
+<text x="56" y="558" class="small" >Open Design MCP 결과의 이미지</text>
+<text x="56" y="584" class="small muted" >예정: 자체 실행에서 직접 수집</text>
+</g>
+<g data-od-id="tool-codex"><rect x="40" y="612" width="300" height="44" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="56" y="640" class="display" style="font-size:18px;font-weight:700">Codex</text><text x="324" y="639" class="label muted" text-anchor="end">예정</text>
+</g>
+<g data-od-id="tool-claude-design"><rect x="40" y="668" width="300" height="44" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="56" y="696" class="display" style="font-size:18px;font-weight:700">Claude Design</text><text x="324" y="695" class="label muted" text-anchor="end">예정</text>
+</g>
+<g data-od-id="tool-integration-paths">
+<path d="M190 484V474" class="wire"/>
+<path d="M340 578H364V554H382M340 634H382V554M340 690H382V634" class="wire future" style="marker-end:none"/>
+<path d="M382 554H432" class="wire future"/>
+<text x="390" y="535" class="small muted" text-anchor="middle">예정</text>
+</g>
+<g data-od-id="local-server">
+<rect x="440" y="254" width="320" height="332" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<rect x="460" y="274" width="139" height="34" rx="7" fill="#F4D34F"/>
+<text x="474" y="297" class="mono" style="fill:#22262A;font-weight:600">golla serve</text>
+<text x="460" y="338" class="heading" >Bun 로컬 서버</text>
+<text x="460" y="365" class="mono small muted" >기본 포트 4747</text>
+<rect x="460" y="391" width="280" height="74" rx="8" fill="#F5F6F7" stroke="#D3D7DC"/>
+<text x="478" y="419" class="mono" font-weight="600">SQLite</text>
+<text x="478" y="446" class="small muted" >메시지 저장</text>
+<rect x="460" y="477" width="280" height="74" rx="8" fill="#F5F6F7" stroke="#D3D7DC"/>
+<text x="478" y="505" class="" font-weight="600">해시 이름 이미지 파일</text>
+<text x="478" y="532" class="mono small muted" >~/.gollabara/data</text>
+<text x="460" y="574" class="small muted" >외부 스토리지 없음</text>
+</g>
+<g data-od-id="viewer-screens">
+<rect x="860" y="254" width="300" height="154" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="880" y="288" class="heading" >데스크톱 웹</text>
+<text x="880" y="320" class="small muted" >이미지 가로 스트림</text>
+<text x="880" y="345" class="small muted" >채팅 세로 스트림</text>
+<rect x="880" y="366" width="42" height="20" rx="3" fill="#D3D7DC"/>
+<rect x="930" y="366" width="57" height="20" rx="3" fill="#D3D7DC"/>
+<rect x="995" y="366" width="39" height="20" rx="3" fill="#D3D7DC"/>
+<path d="M1051 370h85m-85 7h63m-63 7h75" stroke="#5B626A" stroke-width="2"/>
+<rect x="860" y="424" width="300" height="162" rx="12" fill="#FFFFFF" stroke="#D3D7DC"/>
+<text x="880" y="459" class="heading" >폰</text>
+<text x="1138" y="459" class="small muted" text-anchor="end">PWA 설치 예정</text>
+<text x="880" y="491" class="" >채팅만</text>
+<text x="880" y="535" class="mono small" >Tailscale tailnet</text>
+<text x="880" y="559" class="small muted" >안에서만 접속</text>
+</g>
+<text x="390" y="353" class="mono label" text-anchor="middle">POST</text>
+<text x="390" y="375" class="mono label" text-anchor="middle">/api/events</text>
+<path d="M348 396H432" class="wire"/>
+<text x="810" y="353" class="mono label" text-anchor="middle">WebSocket</text>
+<text x="810" y="375" class="mono label" text-anchor="middle">/ws</text>
+<path d="M768 396H852" class="wire"/>
+<g data-od-id="planned-intervention">
+<path d="M1010 586V691H618V590" class="wire future"/>
+<path d="M582 586V744H24V454H38" class="wire future"/>
+</g>
+<text x="1024" y="622" class="small" text-anchor="start" font-weight="700">사용자</text>
+<text x="1024" y="648" class="small muted" text-anchor="start">멈춤 · 답장 · @멘션</text>
+<text x="792" y="682" class="small muted" text-anchor="middle">예정 · 화면 → 서버</text>
+<text x="388" y="733" class="small muted" text-anchor="middle">예정 · 서버 → 세션</text>
+<path d="M40 799H80" class="wire"/><path d="M205 799H245" class="wire future"/>
+<text x="92" y="804" class="small muted" >현재 흐름</text>
+<text x="257" y="804" class="small muted" >다음 단계</text>
+<text x="1160" y="804" class="small muted" text-anchor="end">로컬 수집 · 실시간 관찰</text>
+</svg>

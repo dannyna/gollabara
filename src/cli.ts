@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// golla — Gollabara(골라바라) CLI
+// golla — gollabara CLI
 import process from 'node:process'
 import { runHook } from './hook'
 import { startServer } from './server'
