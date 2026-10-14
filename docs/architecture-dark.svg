@@ -6,7 +6,7 @@
 <rect width="1200" height="850" fill="#181B1F"/>
 <g data-od-id="brand-symbol" transform="translate(40 40)"><rect width="56" height="56" rx="14" fill="#F4D34F"/><svg x="7" y="7" width="42" height="42" viewBox="0 0 512 512"><path d="M198 120h-78v272h78m116-272h78v272h-78" stroke="#22262A" stroke-width="40" fill="none"/><circle cx="256" cy="256" r="42" fill="#22262A"/></svg></g>
 <text x="112" y="65" class="display" font-size="28" font-weight="700" data-od-id="brand-title">gollabara</text>
-<text x="112" y="91" class="muted">골라 골라, 구경은 공짜</text>
+<text x="112" y="91" class="muted">세션은 흐르고, 너는 골라 봐라</text>
 <text x="1160" y="65" text-anchor="end" class="small muted">시스템 구조도</text>
 <text x="40" y="158" class="display" style="font-size:32px;font-weight:700" data-od-id="principle">관찰자이지 중재자가 아니다</text>
 <text x="40" y="188" class="muted">세션이 아니라 산출물을 봅니다. 여러 도구의 스크린샷 · 시안 · 리캡 · 질문을 한곳에서 구경합니다.</text>
