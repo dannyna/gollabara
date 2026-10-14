@@ -22,7 +22,7 @@ ignore_patterns:
   - '**/node_modules/**'
   - bun.lock
   - 'web/dist/**'
-  # build:hook 산출물 — src/hook · src/shared 를 리뷰하면 충분하다.
+  # build:hook output — reviewing src/hook and src/shared is enough.
   - plugin/bin/hook.js
   - 'spike/runs/**'
   - 'docs/*.svg'

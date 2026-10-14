@@ -5,7 +5,7 @@ import { useStream } from './useStream'
 
 const { messages, connected } = useStream()
 
-// 세션 필터 — 기본은 전체
+// Session filter — defaults to all
 const filter = ref<string | null>(null)
 const sessions = computed(() => {
   const seen = new Map<string, string>()
@@ -14,7 +14,7 @@ const sessions = computed(() => {
 })
 const visible = computed(() => filter.value ? messages.value.filter(m => m.sessionId === filter.value) : messages.value)
 
-// 콘텐츠 패널: 이미지를 칸 단위로 펼친다
+// Content panel: lays images out as columns
 interface Column { key: string, messageId: number, image: StoredImage, sessionId: string, sessionName: string, at: number, newSession: boolean }
 const columns = computed<Column[]>(() => {
   const out: Column[] = []
@@ -34,10 +34,10 @@ const columns = computed<Column[]>(() => {
   return out
 })
 
-// 크게 보기
+// Enlarged view
 const viewer = ref<StoredImage | null>(null)
 
-// 칸 ↔ 채팅 메시지 연결
+// Link columns ↔ chat messages
 const selected = ref<string | null>(null)
 const selectedMessage = computed(() => columns.value.find(c => c.key === selected.value)?.messageId ?? null)
 const track = ref<HTMLElement>()
@@ -58,10 +58,10 @@ function selectThumb(m: StreamMessage, i: number) {
   track.value?.querySelector(`[data-col="${key}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
 }
 
-// 최신 따라가기: 사용자가 과거로 스크롤해 두면 따라가지 않고 「새 이미지 n」만 띄운다
+// Follow latest: if the user has scrolled back, stop following and only show 「새 이미지 n」
 const following = ref(true)
 const unseen = ref(0)
-// 이미지가 늦게 로드되며 트랙이 넓어지는 스크롤은 사용자 의도가 아니다 — 직접 조작했을 때만 따라가기를 끈다
+// Scrolls from late-loading images widening the track aren't user intent — only stop following on direct interaction
 let userIntentUntil = 0
 function markUserIntent() {
   userIntentUntil = Date.now() + 800
@@ -502,7 +502,7 @@ function hue(id: string) {
   touch-action: pinch-zoom;
 }
 
-/* 모바일: 채팅만. 이미지는 썸네일을 탭해 전체 화면으로 */
+/* Mobile: chat only. Tap a thumbnail to view an image full screen */
 @media (max-width: 767px) {
   .frame {
     grid-template-columns: 1fr;

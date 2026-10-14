@@ -1,6 +1,6 @@
-// 서버 · hook · 화면이 함께 쓰는 스트림 타입
+// Stream types shared by the server, the hook, and the UI
 
-/** hook 이 서버로 보내는 이벤트 */
+/** Event the hook sends to the server */
 export type IncomingEvent
   = | { kind: 'session', session: SessionInfo }
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
@@ -10,13 +10,13 @@ export type IncomingEvent
 export interface SessionInfo {
   /** Claude Code session_id */
   id: string
-  /** 화면에 보일 발신자 이름 (예: piuda · desktop-shell) */
+  /** Sender name shown in the UI (e.g. piuda · desktop-shell) */
   name: string
   cwd: string
 }
 
 export interface IncomingImage {
-  /** base64 (data URL 접두사 없음) */
+  /** base64 (no data URL prefix) */
   data: string
   mime: string
   width?: number
@@ -30,7 +30,7 @@ export interface Question {
   multiSelect?: boolean
 }
 
-/** 서버가 저장하고 화면으로 흘리는 메시지 */
+/** Message the server stores and streams to the UI */
 export interface StreamMessage {
   id: number
   at: number
@@ -50,7 +50,7 @@ export interface StoredImage {
   height: number
 }
 
-/** WebSocket 으로 화면에 보내는 프레임 */
+/** Frame sent to the UI over WebSocket */
 export type ServerFrame
   = | { type: 'hello', messages: StreamMessage[] }
     | { type: 'message', message: StreamMessage }

@@ -2,7 +2,7 @@
 
 **English** | [한국어](README.ko.md)
 
-> Step right up, looking is free.
+> Your sessions stream. You pick, you look.
 
 A local web app that gathers only the **artifacts** your Open Design, Claude Code, Codex, and Claude Design sessions produce (screenshots, design mockups, end-of-turn recaps, and the questions sessions ask) into a single stream. Keep it on a side monitor or your phone, watch it flow, and step in only when you need to.
 
@@ -47,7 +47,7 @@ Artifacts are stored only on your machine and never go to third-party storage. R
 
 ## The name
 
-gollabara spells out, as it sounds, the Gyeongsang-dialect way of saying "go ahead, take your pick," the call of a street-market vendor. Goods flow past, looking is free, and you pick only what catches your eye.
+gollabara spells out the Korean 골라 봐라 as it sounds, and it reads two ways. Said in one breath, it means "go on, pick one." Split apart, it becomes 골라, 봐라: "pick, and look." Both are what the app asks of you: let your sessions stream, watch the artifacts and decisions they produce, check them, and give feedback when something needs you.
 
 ## Where it stands
 

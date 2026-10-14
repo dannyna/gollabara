@@ -1,4 +1,4 @@
-// 메시지는 SQLite, 이미지는 내용 해시 이름의 파일로 저장한다. 서드파티 스토리지 없음.
+// Messages go to SQLite, images to files named by content hash. No third-party storage.
 
 import type { IncomingEvent, StoredImage, StreamMessage } from '../shared/types'
 import { Buffer } from 'node:buffer'
@@ -26,7 +26,7 @@ export class Store {
     )`)
   }
 
-  /** 이벤트를 메시지로 저장한다. 화면에 흘릴 것이 없으면 null */
+  /** Stores an event as a message. null if there is nothing to stream */
   add(event: IncomingEvent): StreamMessage | null {
     if (event.kind === 'session')
       return null

@@ -1,4 +1,4 @@
-// 서버 WebSocket 에 붙어 스트림 메시지를 받는다. 끊기면 다시 붙는다.
+// Connects to the server WebSocket for stream messages. Reconnects when dropped.
 
 import type { ServerFrame, StreamMessage } from '../../src/shared/types'
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
