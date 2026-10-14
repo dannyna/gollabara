@@ -1,0 +1,195 @@
+<script setup lang="ts">
+withDefaults(defineProps<{
+  /** Lost the server after being connected: shows 「다시 연결 중」 */
+  offline?: boolean
+  /** 「전체 세션」 or the selected session's name */
+  scopeLabel?: string
+  /** Hidden on the first-connection setup guide */
+  showSessionButton?: boolean
+  sessionsOpen?: boolean
+}>(), { scopeLabel: '전체 세션', showSessionButton: true })
+
+defineEmits<{ sessions: [], theme: [], settings: [] }>()
+</script>
+
+<template>
+  <header class="app-bar">
+    <div class="identity">
+      <div class="brand">
+        <svg class="symbol" viewBox="0 0 512 512" aria-hidden="true"><path d="M198 120h-78v272h78m116-272h78v272h-78" fill="none" stroke="currentColor" stroke-width="40" /><circle cx="256" cy="256" r="42" fill="currentColor" /></svg>
+        <span class="wordmark">gollabara</span>
+      </div>
+      <span class="offline" role="status">{{ offline ? '다시 연결 중' : '' }}</span>
+    </div>
+    <nav class="dock" aria-label="스트림 도구">
+      <button
+        v-if="showSessionButton" class="session-button" type="button"
+        aria-haspopup="dialog" :aria-expanded="sessionsOpen" @click="$emit('sessions')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="13" rx="3" /><path d="M8 20h10a3 3 0 0 0 3-3V8" /></svg>
+        <span class="session-text">{{ scopeLabel }}</span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </button>
+      <button class="icon-button" type="button" aria-label="테마 전환" @click="$emit('theme')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" /></svg>
+      </button>
+      <button class="icon-button" type="button" aria-label="설정" @click="$emit('settings')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" /><circle cx="15" cy="17" r="3" /></svg>
+      </button>
+    </nav>
+  </header>
+</template>
+
+<style scoped>
+.app-bar {
+  height: 92px;
+  flex: none;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg);
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.symbol {
+  display: block;
+  width: 30px;
+  height: 30px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.wordmark {
+  font: 500 25px/1 var(--display);
+  letter-spacing: -1.3px;
+}
+.offline {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.offline:empty {
+  display: none;
+}
+
+.dock {
+  margin-left: auto;
+  height: 54px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  max-width: 100%;
+  border-radius: 17px;
+  background: var(--surface);
+}
+.dock svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.session-button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 280px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-right: 3px;
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.session-button:hover:not(:disabled),
+.session-button[aria-expanded='true'] {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+.session-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chevron {
+  color: var(--muted);
+}
+.icon-button {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 11px;
+}
+.icon-button:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .app-bar {
+    height: 88px;
+    padding: 0 8px;
+  }
+}
+
+/* Two rows: identity over a full-width dock */
+@media (max-width: 767px) {
+  .app-bar {
+    height: 120px;
+    padding: 0 12px 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 56px 54px;
+    gap: 0;
+  }
+  .identity {
+    gap: 12px;
+    justify-content: space-between;
+  }
+  .symbol {
+    width: 28px;
+    height: 28px;
+  }
+  .wordmark {
+    font-size: 24px;
+    letter-spacing: -1.2px;
+  }
+  .dock {
+    width: 100%;
+    margin: 0;
+    gap: 4px;
+    border-radius: 16px;
+  }
+  .session-button {
+    flex: 1;
+    max-width: none;
+    margin: 0;
+    justify-content: flex-start;
+  }
+  .chevron {
+    margin-left: auto;
+  }
+}
+</style>
