@@ -1,0 +1,31 @@
+README.md
+  s_5842d4fa5b8ccf::t_bfd1d11d9c6954 1,5,7-23,26-27,29,33,35,37,40-41,44,46-50,54-73,75-77,79,81
+LICENSE
+  s_5842d4fa5b8ccf::t_3c58e177a87f9b 1-21
+.claude-plugin/marketplace.json
+  s_5842d4fa5b8ccf::t_4e8286f1fc1ecf 1-11
+package.json
+  s_5842d4fa5b8ccf::t_23f89e38bf4a38 13,15-16
+plugin/bin/hook.js
+  s_5842d4fa5b8ccf::t_605ffcb595bfda 1-135
+plugin/hooks/hooks.json
+  s_5842d4fa5b8ccf::t_25b3f4effc6833 3-6
+src/hook/entry.ts
+  s_5842d4fa5b8ccf::t_cf16e94a271391 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c5da633e3b2bdc38d1d9afd87ef74d93c1e439a",
+  "prompts": {},
+  "sessions": {
+    "s_5842d4fa5b8ccf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84c7e3a5-ed31-4a76-a589-663c9d00d71e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
