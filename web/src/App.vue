@@ -2,21 +2,53 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { toArtifacts } from './artifacts'
 import { resolveNotices } from './components/banner/notices'
+import AppToast from './components/overlay/AppToast.vue'
+import ImageViewer from './components/overlay/ImageViewer.vue'
+import SessionPopover from './components/overlay/SessionPopover.vue'
+import SettingsSheet from './components/overlay/SettingsSheet.vue'
+import { useImageViewer } from './components/overlay/useImageViewer'
+import { useToast } from './components/overlay/useToast'
 import AppBar from './components/shell/AppBar.vue'
 import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
+import { inScope, toSessionRows, useMutedSessions } from './sessions'
+import { useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
 const { messages, sessions, connected, restored } = useStream()
-const { toggleTheme } = useTheme()
+const { preference, setTheme, toggleTheme } = useTheme()
+const { muted, toggleMute } = useMutedSessions()
+const { toast } = useToast()
 
-// Session scope. The session menu that changes it lands with the overlay components (#17).
+// Session scope; muted sessions are hidden in every scope
 const scope = ref<string | null>(null)
+const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value))
 const scopeLabel = computed(() => sessions.value.find(s => s.id === scope.value)?.name ?? '전체 세션')
-const visible = computed(() => scope.value ? messages.value.filter(m => m.sessionId === scope.value) : messages.value)
+const visible = computed(() => inScope(messages.value, scope.value, muted.value))
 const artifacts = computed(() => toArtifacts(visible.value))
+
+const appBar = ref<InstanceType<typeof AppBar>>()
+const sessionsOpen = ref(false)
+function pickScope(id: string | null) {
+  scope.value = id
+  sessionsOpen.value = false
+}
+function mute(id: string) {
+  toggleMute(id)
+  // Never leave the scope on a session just muted
+  if (muted.value.has(id) && scope.value === id)
+    scope.value = null
+}
+
+const settingsOpen = ref(false)
+const { settings, save } = useSettings()
+function saveSettings(next: typeof settings.value) {
+  save(next)
+  settingsOpen.value = false
+  toast('이 브라우저에 설정을 저장했어요')
+}
 
 // 「다시 연결 중」 only after a connection dropped, or when the first one is slow,
 // so a normal page load does not flash it
@@ -34,12 +66,18 @@ const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
 const showEmpty = computed(() => !messages.value.length && (ready.value || graceOver.value))
 
-// One notice per area; the setup guide silences the rest (OD banner guide 08).
-// AppBar still draws only 「다시 연결 중」: 「다시 연결됐어요」 shows once it adopts ConnectionChip.
+// Every session muted: the stream says so and points back to the session menu
+const allMuted = computed(() => sessionRows.value.length > 0 && sessionRows.value.every(s => s.muted))
+
+// One notice per area; the setup guide silences the rest (OD banner guide 08)
 const notices = computed(() => resolveNotices({
   setup: showEmpty.value,
   connection: offline.value ? 'offline' : restored.value ? 'restored' : 'online',
+  streamEmpty: !artifacts.value.length,
 }))
+
+// The viewer opens from anywhere through useImageViewer (stream cells, chat thumbnails)
+const { openKey: viewerKey, open } = useImageViewer()
 
 // Selection links a cell, its chat thumbnail, and its message
 const selected = ref<string | null>(null)
@@ -61,29 +99,39 @@ function onThumb(key: string) {
   selected.value = key
   stream.value?.reveal(key)
 }
-
-// Interim viewer; the full viewer comes with the overlay components (#17)
-const viewer = ref<string | null>(null)
-function open(key: string) {
-  viewer.value = artifacts.value.find(a => a.key === key)?.url ?? null
-}
 </script>
 
 <template>
   <div class="app">
-    <!-- Session menu and settings sheet are stubs until #17 -->
-    <AppBar :offline="notices.chip === 'offline'" :scope-label="scopeLabel" :show-session-button="!showEmpty" @theme="toggleTheme" />
+    <AppBar
+      ref="appBar" :connection="notices.chip" :scope-label="scopeLabel" :show-session-button="!showEmpty"
+      :sessions-open="sessionsOpen" @sessions="sessionsOpen = !sessionsOpen" @theme="toggleTheme"
+      @settings="settingsOpen = true"
+    >
+      <template #sessions>
+        <SessionPopover
+          v-if="sessionsOpen" :sessions="sessionRows" :scope="scope" :anchor="() => appBar?.sessionButton"
+          @close="sessionsOpen = false" @select="pickScope" @mute="mute"
+        />
+      </template>
+    </AppBar>
     <EmptyState v-if="showEmpty" :connected="connected" />
     <main v-else-if="messages.length" class="workspace">
-      <StreamPanel ref="stream" :artifacts="artifacts" :selected="selected" @select="select" @open="open" />
+      <StreamPanel
+        ref="stream" :artifacts="artifacts" :selected="selected" :scoped="scope != null" :all-muted="allMuted"
+        @select="select" @open="open" @sessions="sessionsOpen = true"
+      />
       <ChatPanel
         ref="chat" :messages="visible" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         @thumb="onThumb"
       />
     </main>
-    <div v-if="viewer" class="viewer" @click="viewer = null">
-      <img :src="viewer" alt="">
-    </div>
+    <SettingsSheet
+      v-if="settingsOpen" :settings="settings" :theme="preference"
+      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme"
+    />
+    <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="artifacts" />
+    <AppToast />
   </div>
 </template>
 
@@ -102,24 +150,6 @@ function open(key: string) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 440px;
   gap: 16px;
-}
-
-.viewer {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: oklch(0 0 0 / 0.85);
-  cursor: zoom-out;
-}
-.viewer img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
-  touch-action: pinch-zoom;
 }
 
 /* Tablet: stream on top, chat below */

@@ -1,6 +1,12 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-  /** Lost the server after being connected: shows 「다시 연결 중」 */
+import type { ConnectionStatus } from '../banner/notices'
+import { computed, ref } from 'vue'
+import ConnectionChip from '../banner/ConnectionChip.vue'
+
+const props = withDefaults(defineProps<{
+  /** Connection chip: 「다시 연결 중」, or 「다시 연결됐어요」 for 3 s after it is back */
+  connection?: ConnectionStatus
+  /** Shorthand for `connection="offline"` */
   offline?: boolean
   /** 「전체 세션」 or the selected session's name */
   scopeLabel?: string
@@ -10,6 +16,12 @@ withDefaults(defineProps<{
 }>(), { scopeLabel: '전체 세션', showSessionButton: true })
 
 defineEmits<{ sessions: [], theme: [], settings: [] }>()
+
+const status = computed<ConnectionStatus>(() => props.connection ?? (props.offline ? 'offline' : 'online'))
+
+// The session menu opens from the `sessions` slot, anchored under this button
+const sessionButton = ref<HTMLButtonElement>()
+defineExpose({ sessionButton })
 </script>
 
 <template>
@@ -19,17 +31,20 @@ defineEmits<{ sessions: [], theme: [], settings: [] }>()
         <svg class="symbol" viewBox="0 0 512 512" aria-hidden="true"><path d="M198 120h-78v272h78m116-272h78v272h-78" fill="none" stroke="currentColor" stroke-width="40" /><circle cx="256" cy="256" r="42" fill="currentColor" /></svg>
         <span class="wordmark">gollabara</span>
       </div>
-      <span class="offline" role="status">{{ offline ? '다시 연결 중' : '' }}</span>
+      <ConnectionChip :status="status" />
     </div>
     <nav class="dock" aria-label="스트림 도구">
-      <button
-        v-if="showSessionButton" class="session-button" type="button"
-        aria-haspopup="dialog" :aria-expanded="sessionsOpen" @click="$emit('sessions')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="13" rx="3" /><path d="M8 20h10a3 3 0 0 0 3-3V8" /></svg>
-        <span class="session-text">{{ scopeLabel }}</span>
-        <span class="chevron" aria-hidden="true">⌄</span>
-      </button>
+      <div v-if="showSessionButton" class="session-anchor">
+        <button
+          ref="sessionButton" class="session-button" type="button"
+          aria-haspopup="dialog" :aria-expanded="sessionsOpen" @click="$emit('sessions')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="13" rx="3" /><path d="M8 20h10a3 3 0 0 0 3-3V8" /></svg>
+          <span class="session-text">{{ scopeLabel }}</span>
+          <span class="chevron" aria-hidden="true">⌄</span>
+        </button>
+        <slot name="sessions" />
+      </div>
       <button class="icon-button" type="button" aria-label="테마 전환" @click="$emit('theme')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" /></svg>
       </button>
@@ -75,14 +90,6 @@ defineEmits<{ sessions: [], theme: [], settings: [] }>()
   font: 500 25px/1 var(--display);
   letter-spacing: -1.3px;
 }
-.offline {
-  color: var(--muted);
-  font-size: 10px;
-  white-space: nowrap;
-}
-.offline:empty {
-  display: none;
-}
 
 .dock {
   margin-left: auto;
@@ -107,6 +114,12 @@ defineEmits<{ sessions: [], theme: [], settings: [] }>()
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.session-anchor {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  margin-right: 3px;
+}
 .session-button {
   display: flex;
   align-items: center;
@@ -115,7 +128,6 @@ defineEmits<{ sessions: [], theme: [], settings: [] }>()
   min-width: 0;
   min-height: 44px;
   padding: 0 12px;
-  margin-right: 3px;
   border-radius: 12px;
   background: var(--bg);
   font-size: 12px;
@@ -182,10 +194,18 @@ defineEmits<{ sessions: [], theme: [], settings: [] }>()
     gap: 4px;
     border-radius: 16px;
   }
+  /* The session menu spans the dock here, not just the trigger */
+  .dock {
+    position: relative;
+  }
+  .session-anchor {
+    position: static;
+    flex: 1;
+    margin: 0;
+  }
   .session-button {
     flex: 1;
     max-width: none;
-    margin: 0;
     justify-content: flex-start;
   }
   .chevron {
