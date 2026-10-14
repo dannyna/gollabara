@@ -21,7 +21,7 @@ const artifacts = toArtifacts(SAMPLE_MESSAGES)
       </main>
     </div>
   </GalleryCase>
-  <GalleryCase title="restored · note folded, sending back on">
+  <GalleryCase title="restored · note folded at once">
     <div class="app">
       <AppBar />
       <main class="workspace">
