@@ -1,10 +1,12 @@
 // `golla hook` — Claude Code hook 진입점.
 // 세션 작업을 절대 막지 않는다: 짧은 타임아웃, 모든 오류 삼킴, 항상 exit 0.
+
+import type { SessionInfo } from '../shared/types'
+import type { HookInput } from './map'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { serverUrl } from '../shared/config'
-import type { SessionInfo } from '../shared/types'
-import { mapHook, sessionName, type HookInput } from './map'
+import { mapHook, sessionName } from './map'
 
 const POST_TIMEOUT_MS = 1500
 

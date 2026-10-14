@@ -1,45 +1,56 @@
 /* 브랜드 방향 03 「구경 모드 · Quiet signal」 — gollabara-brand 보드의 토큰 */
 :root {
-  --bg: #F5F6F7;
-  --surface: #FFFFFF;
-  --sunken: #ECEEF0;
-  --line: #D3D7DC;
-  --text: #22262A;
-  --muted: #5B626A;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --sunken: #eceef0;
+  --line: #d3d7dc;
+  --text: #22262a;
+  --muted: #5b626a;
   /* 강조 노랑은 면으로만 쓴다. 밝은 화면에서 글자로 쓸 때는 --accent-ink */
-  --accent: #F4D34F;
-  --accent-ink: #7A6200;
-  --on-accent: #22262A;
-  --ok: #2F7D5B;
-  --me-bg: #22262A;
-  --me-text: #F2F4F6;
-  --font-display: "Space Grotesk", "Noto Sans KR", system-ui, sans-serif;
-  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --accent: #f4d34f;
+  --accent-ink: #7a6200;
+  --on-accent: #22262a;
+  --ok: #2f7d5b;
+  --me-bg: #22262a;
+  --me-text: #f2f4f6;
+  --font-display: 'Space Grotesk', 'Noto Sans KR', system-ui, sans-serif;
+  --font-body: 'Noto Sans KR', 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #181B1F;
-    --surface: #24282D;
-    --sunken: #1F2327;
-    --line: #41474F;
-    --text: #F2F4F6;
-    --muted: #ADB5BF;
-    --accent-ink: #F4D34F;
-    --ok: #5FC495;
-    --me-bg: #F2F4F6;
-    --me-text: #181B1F;
+    --bg: #181b1f;
+    --surface: #24282d;
+    --sunken: #1f2327;
+    --line: #41474f;
+    --text: #f2f4f6;
+    --muted: #adb5bf;
+    --accent-ink: #f4d34f;
+    --ok: #5fc495;
+    --me-bg: #f2f4f6;
+    --me-text: #181b1f;
     color-scheme: dark;
   }
 }
 
-* { box-sizing: border-box; margin: 0; }
-html, body, #app { height: 100%; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+html,
+body,
+#app {
+  height: 100%;
+}
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
-button { font: inherit; color: inherit; cursor: pointer; }
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

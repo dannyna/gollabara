@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+
+  # bun ecosystem 은 bun.lock(텍스트 lockfile)을 함께 갱신한다. npm ecosystem 으로는 bun.lock 이 바뀌지 않는다.
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+    open-pull-requests-limit: 10

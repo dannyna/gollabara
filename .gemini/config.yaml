@@ -1,0 +1,32 @@
+# .gemini/config.yaml
+# Gemini Code Assist repository review settings.
+# Docs: https://docs.cloud.google.com/gemini/docs/code-review/customize-repo-review
+
+have_fun: false
+
+memory_config:
+  disabled: false
+
+code_review:
+  disable: false
+  comment_severity_threshold: MEDIUM
+  max_review_comments: -1
+  pull_request_opened:
+    help: false
+    summary: true
+    code_review: true
+    include_drafts: false
+
+ignore_patterns:
+  - '**/dist/**'
+  - '**/node_modules/**'
+  - bun.lock
+  - 'web/dist/**'
+  # build:hook 산출물 — src/hook · src/shared 를 리뷰하면 충분하다.
+  - plugin/bin/hook.js
+  - 'spike/runs/**'
+  - 'docs/*.svg'
+  - '.impeccable/**'
+  - '**/*.min.js'
+  - '**/*.min.css'
+  - '**/coverage/**'

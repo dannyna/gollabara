@@ -1,8 +1,8 @@
 {
   "name": "gollabara",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "bin": {
     "golla": "src/cli.ts"
   },
@@ -13,19 +13,33 @@
     "build": "bun run build:hook && bun run build:web",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "test": "bun test",
-    "build:hook": "bun build src/hook/entry.ts --target=bun --outfile plugin/bin/hook.js"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.10",
-    "bun-types": "^1.4.3",
-    "typescript": "~5.9",
-    "vite": "^8.3.4",
-    "vue": "^3.5.44",
-    "vue-tsc": "^3.3.13"
+    "build:hook": "bun build src/hook/entry.ts --target=bun --outfile plugin/bin/hook.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/noto-sans-kr": "^5.3.1",
     "@fontsource/space-grotesk": "^5.3.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^8.3.0",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "bun-types": "^1.4.3",
+    "eslint": "^10.12.0",
+    "eslint-plugin-format": "^2.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "typescript": "~5.9",
+    "vite": "^8.3.4",
+    "vue": "^3.5.44",
+    "vue-tsc": "^3.3.13"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,vue,mjs,cjs}": ["eslint --fix"],
+    "*.{json,md,yaml,yml}": ["eslint --fix"]
   }
 }
