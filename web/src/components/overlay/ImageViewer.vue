@@ -4,7 +4,7 @@ import type { ZoomState } from './zoom'
 import { computed, ref, watch } from 'vue'
 import { clock } from '../../artifacts'
 import OverlayIcon from './OverlayIcon.vue'
-import { useFeedbackTarget } from './useFeedbackTarget'
+import { feedbackTargetOf, useFeedbackTarget } from './useFeedbackTarget'
 import { useOverlay } from './useOverlay'
 import { MAX_ZOOM, MIN_ZOOM, setZoom, ZOOM_STEP, zoomLabel } from './zoom'
 
@@ -100,8 +100,7 @@ function onWheel(e: WheelEvent) {
 
 const { setTarget } = useFeedbackTarget()
 function giveFeedback() {
-  const a = item.value!
-  setTarget({ sessionId: a.sessionId, imageUrl: a.url, at: a.at, caption: a.label })
+  setTarget(feedbackTargetOf(item.value!))
   close()
 }
 

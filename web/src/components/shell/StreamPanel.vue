@@ -1,34 +1,38 @@
 <script setup lang="ts">
+// Desktop's left work surface and tablet's top band (OD stream guide): heading, rail,
+// footer. It follows the latest artifact while the rail sits at the right end and holds
+// its place once the reader scrolls back, raising 「새 산출물 n →」 instead.
+
 import type { Artifact } from '../../artifacts'
-import { nextTick, onMounted, ref, watch } from 'vue'
-import { clock } from '../../artifacts'
+import type { Follow } from '../stream/follow'
+import { computed, nextTick, ref, watch } from 'vue'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
-import FloatingActions from '../overlay/FloatingActions.vue'
+import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
+import { arrivedSince, atLatest, lastSeq } from '../stream/follow'
+import StreamFooter from '../stream/StreamFooter.vue'
+import StreamRail from '../stream/StreamRail.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
   selected?: string | null
-  /** Viewing one session: the empty copy names the session scope */
-  scoped?: boolean
+  /** Session in view, or null for every session */
+  scope?: string | null
   /** Every session is muted: the empty view points back to the session menu */
   allMuted?: boolean
+  /** Gallery: open scrolled back to the start with this many arrivals waiting */
+  preview?: { unseen: number }
 }>()
 const emit = defineEmits<{ select: [key: string], open: [key: string], sessions: [] }>()
 
-const track = ref<HTMLElement>()
+const rail = ref<InstanceType<typeof StreamRail>>()
+const track = computed(() => rail.value?.el)
 
-function onCellClick(a: Artifact) {
-  if (props.selected === a.key)
-    emit('open', a.key)
-  else
-    emit('select', a.key)
-}
-
-// Follow latest: the track sticks to the right end. Scrolling back pauses it, and
-// new arrivals then raise 「새 산출물 n →」 instead of moving the reader.
-const following = ref(true)
+const follow = ref<Follow>('start')
 const unseen = ref(0)
+// Highest sequence number already accounted for, so only real arrivals are counted
+let seenSeq = lastSeq(props.artifacts)
+
 // Programmatic smooth scrolls pass through "not at the end" too; only a direct
 // interaction may pause following
 let userIntentUntil = 0
@@ -37,36 +41,72 @@ function markUserIntent() {
 }
 function onScroll() {
   const el = track.value!
-  if (el.scrollWidth - el.clientWidth - el.scrollLeft < 70) {
-    following.value = true
+  if (atLatest(el)) {
+    follow.value = 'following'
     unseen.value = 0
   }
   else if (Date.now() < userIntentUntil) {
-    following.value = false
+    follow.value = 'paused'
   }
 }
+function toLatest(behavior: ScrollBehavior) {
+  track.value?.scrollTo({ left: track.value.scrollWidth, behavior })
+}
 function jumpToLatest() {
-  track.value?.scrollTo({ left: track.value.scrollWidth, behavior: 'smooth' })
+  toLatest('smooth')
   // The pill goes away, so focus lands on the track it led back to
   track.value?.focus({ preventScroll: true })
   unseen.value = 0
 }
-watch(() => props.artifacts.length, async (n, prev) => {
-  await nextTick()
-  if (following.value)
-    track.value?.scrollTo({ left: track.value.scrollWidth, behavior: prev ? 'smooth' : 'instant' })
-  else if (n > prev)
-    unseen.value += n - prev
-})
-onMounted(() => track.value?.scrollTo({ left: track.value.scrollWidth, behavior: 'instant' }))
 
-/** Brings a cell into view, e.g. when its chat thumbnail is picked */
-function reveal(key: string) {
+/** Brings a cell to the middle of the rail, e.g. when its chat thumbnail is picked */
+function reveal(key: string, behavior: ScrollBehavior = 'smooth') {
   // Counts as browsing: following pauses unless the cell sits at the right end
   markUserIntent()
-  track.value?.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  track.value?.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ behavior, inline: 'center', block: 'nearest' })
 }
 defineExpose({ reveal })
+
+watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevList, prevScope]) => {
+  const arrived = arrivedSince(seenSeq, list)
+  seenSeq = Math.max(seenSeq, lastSeq(list))
+  // Cells that only appeared or vanished: a session muted or unmuted
+  const before = new Set(prevList.map(a => a.key))
+  const now = new Set(list.map(a => a.key))
+  const reshuffled = prevList.some(a => !now.has(a.key)) || list.some(a => !before.has(a.key) && a.seq <= lastSeq(prevList))
+  await nextTick()
+  if (scope !== prevScope) {
+    // A new scope starts at its latest artifact
+    follow.value = 'following'
+    unseen.value = 0
+    toLatest('instant')
+  }
+  else if (reshuffled && props.selected && list.some(a => a.key === props.selected)) {
+    // Muting keeps the reader on the cell they picked
+    reveal(props.selected, 'instant')
+  }
+  else if (arrived && follow.value !== 'paused') {
+    toLatest('smooth')
+  }
+  else if (arrived) {
+    unseen.value += arrived
+  }
+})
+
+// The rail mounts at the latest, also when the first artifact ends an empty state
+watch(track, (el) => {
+  if (!el)
+    return
+  if (props.preview) {
+    follow.value = 'paused'
+    unseen.value = props.preview.unseen
+  }
+  else {
+    toLatest('instant')
+  }
+}, { flush: 'post' })
+
+const { setTarget } = useFeedbackTarget()
 </script>
 
 <template>
@@ -81,39 +121,15 @@ defineExpose({ reveal })
       v-if="!artifacts.length && allMuted" icon="mute" title="모든 세션을 음소거했어요"
       description="세션 목록에서 다시 표시할 수 있어요." action="세션 목록 열기" @action="emit('sessions')"
     />
-    <StateView v-else-if="!artifacts.length" :title="scoped ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
-    <div
-      v-else ref="track" class="track" tabindex="0" aria-label="가로로 스크롤하는 산출물 스트림"
+    <StateView v-else-if="!artifacts.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
+    <StreamRail
+      v-else ref="rail" :artifacts="artifacts" :selected="selected"
+      @select="emit('select', $event)" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"
-    >
-      <article
-        v-for="a in artifacts" :key="a.key" class="cell"
-        :class="{ 'session-start': a.sessionStart, 'selected': selected === a.key }"
-        :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
-      >
-        <div class="meta">
-          <strong>{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
-          <time>{{ clock(a.at) }} · {{ a.width }} × {{ a.height }}</time>
-        </div>
-        <button
-          class="hit" type="button" :aria-pressed="selected === a.key"
-          :aria-label="`${a.session} ${clock(a.at)} 산출물 선택. 다시 누르면 크게 보기`" @click="onCellClick(a)"
-        >
-          <img :src="a.url" alt="" draggable="false">
-        </button>
-        <div class="caption">
-          <span>{{ a.label }}</span>
-          <span class="mono">{{ String(a.seq).padStart(2, '0') }}</span>
-        </div>
-        <FloatingActions :view-label="`${a.session} ${clock(a.at)} 이미지 크게 보기`" @view="emit('open', a.key)" />
-      </article>
-    </div>
-    <NewPill v-if="!following && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />
-    <div class="footer">
-      <span><i class="dot" />이미지는 원래 비율 그대로</span>
-      <span class="mono">{{ following ? '최신 산출물 · 따라가는 중' : '이전 산출물 · 자동 따라가기 일시 정지' }}</span>
-    </div>
+    />
+    <NewPill v-if="follow === 'paused' && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />
+    <StreamFooter :follow="follow" />
   </section>
 </template>
 
@@ -124,8 +140,11 @@ defineExpose({ reveal })
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Cells size themselves from the panel height (cqh) */
+  /* Cells size themselves from the panel height (cqh): heading 58 + meta 48 +
+     caption 37 + rail padding 18 + footer 48 = 209 around the image face */
   container-type: size;
+  --stream-chrome: 209px;
+  --stream-inset: 52px;
   border-radius: 24px;
   background: var(--bg);
   box-shadow: inset 0 0 0 1px var(--border);
@@ -147,145 +166,15 @@ defineExpose({ reveal })
   font-size: 11px;
   color: var(--muted);
 }
-.track {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: stretch;
-  gap: 22px;
-  padding: 0 26px 18px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-.cell {
-  flex: none;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  /* The image ratio sets the width: panel height minus heading, meta, caption, footer */
-  width: calc((100cqh - 209px) * var(--ratio));
-}
-.cell.session-start:not(:first-child) {
-  margin-left: 17px;
-}
-.cell.session-start:not(:first-child)::before {
-  content: '';
-  position: absolute;
-  left: -21px;
-  top: 0;
-  bottom: 10px;
-  border-left: 1px dashed var(--border);
-}
-.meta {
-  height: 48px;
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  white-space: nowrap;
-}
-.meta strong {
-  font-size: 12px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.meta time {
-  font-size: 10px;
-  color: var(--muted);
-}
-.hit {
-  display: block;
-  position: relative;
-  flex: 1 1;
-  min-height: 0;
-  width: 100%;
-  padding: 0;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 10px 24px oklch(0 0 0 / 0.2);
-}
-.hit:hover:not(:disabled) {
-  background: var(--surface);
-  border-color: var(--muted);
-}
-.cell.selected .hit,
-.cell.selected .hit:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-.hit img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 10px;
-}
-.caption {
-  height: 37px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.caption span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.footer {
-  height: 48px;
-  flex: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 26px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-right: 7px;
-  border-radius: 50%;
-  background: var(--muted);
-}
 
+/* Tablet: 36 + 35 + 24 + 6 + 27 = 128 */
 @media (min-width: 768px) and (max-width: 1023px) {
+  .stream-panel {
+    --stream-chrome: 128px;
+    --stream-inset: 44px;
+  }
   .heading {
     padding: 11px 22px 5px;
-  }
-  .track {
-    gap: 18px;
-    padding: 0 22px 6px;
-  }
-  .cell {
-    width: calc((100cqh - 128px) * var(--ratio));
-  }
-  .meta {
-    height: 35px;
-  }
-  .meta strong {
-    font-size: 10px;
-  }
-  .meta time {
-    font-size: 9px;
-  }
-  .caption {
-    height: 24px;
-    font-size: 9px;
-  }
-  .footer {
-    height: 27px;
-    padding: 0 22px;
   }
 }
 
