@@ -1,4 +1,4 @@
-// `golla serve` — 결과물을 받아 저장하고 열린 모든 화면에 흘린다.
+// `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { IncomingEvent, ServerFrame } from '../shared/types'
 import { existsSync } from 'node:fs'
@@ -14,7 +14,7 @@ export function startServer() {
 
   const server = Bun.serve({
     port: serverPort(),
-    // 같은 네트워크 · tailnet 기기에서도 열 수 있게 모든 인터페이스에서 듣는다
+    // Listen on all interfaces so devices on the same network or tailnet can open it too
     hostname: '0.0.0.0',
     async fetch(req, srv) {
       const url = new URL(req.url)
@@ -52,13 +52,13 @@ export function startServer() {
     },
   })
 
-  console.log(`gollabara 가 http://localhost:${server.port} 에서 구경 중입니다`)
+  console.log(`gollabara is watching at http://localhost:${server.port}`)
   return server
 }
 
 function serveWeb(pathname: string): Response {
   if (!existsSync(WEB_DIST))
-    return new Response('web/dist 가 없습니다. `bun run build:web` 또는 `bun run dev:web` 을 쓰세요.', { status: 503 })
+    return new Response('web/dist is missing. Use `bun run build:web` or `bun run dev:web`.', { status: 503 })
   const safe = pathname.replace(/\.{2,}/g, '')
   const file = Bun.file(join(WEB_DIST, safe === '/' ? 'index.html' : safe))
   return new Response(file.size > 0 ? file : Bun.file(join(WEB_DIST, 'index.html')))

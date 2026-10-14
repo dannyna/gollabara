@@ -1,5 +1,5 @@
 {
   "name": "gollabara",
   "version": "0.1.0",
-  "description": "세션이 만든 스크린샷 · 리캡 · 질문을 Gollabara 스트림으로 흘려보낸다"
+  "description": "Streams the screenshots, recaps, and questions a session produces to the Gollabara stream"
 }

@@ -8,14 +8,14 @@ export default antfu({
     // 빌드 산출물 — plugin/bin/hook.js 는 build:hook 결과물이라 손대지 않는다(CI 가 drift 를 따로 검사).
     'plugin/bin/**',
     'web/dist/**',
-    // 훅 입력 포착 스파이크(셸 스크립트 · 실행 로그) — production 코드 아님
+    // Hook input capture spike (shell scripts, run logs) — not production code
     'spike/**',
-    // 구조도 SVG 는 디자인 산출물
+    // Architecture SVGs are design artifacts
     'docs/**/*.svg',
     '.impeccable/**',
   ],
 }, {
-  // CLI 와 서버 진입점은 사용자에게 보여 줄 출력을 console 로 낸다.
+  // The CLI and server entry points print user-facing output to the console.
   files: ['src/cli.ts', 'src/server/index.ts'],
   rules: {
     'no-console': 'off',
