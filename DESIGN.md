@@ -169,7 +169,7 @@ components:
 
 gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.
 
-**Source.** The design source is the Open Design project `gollabara-app` ("Night Dock"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins for visuals and this file says so. `session-chat-components.html` in the same project is the companion reference for chat rows.
+**Source.** The design source is the Open Design project `gollabara-app` ("Night Dock"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins. `session-chat-components.html` in the same project is the companion reference for chat rows.
 
 The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
 
@@ -276,7 +276,7 @@ Soft, generous corners that grow with size: 6px thumbnail labels, 8px buttons an
 
 The symbol's open bracket frame is a square-cornered stroke (40 on a 512 grid) around a round dot (r 42). In the app bar it is drawn in `--on-accent` on a 30px `--accent` square with an 8px radius.
 
-Every control is at least 44px tall (46px for answer choices on mobile).
+On mobile and coarse pointers every control is at least 44px (answer choices 46px). On desktop, primary controls stay at 44px while hover action bars and inline text buttons run 32–36px.
 
 ## Components
 
@@ -331,7 +331,7 @@ A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「�
 
 Before anything arrives the surfaces give way to a centered setup guide: a muted symbol, 「세션에서 만든 산출물이 여기에 모입니다」, 「켜 두고 구경하세요. 말을 걸고 싶을 때만 한마디.」, and three numbered steps (server running, install the Claude Code plugin with a copy button, watch from your phone with a QR code). The session menu button is hidden.
 
-## Copy
+### Copy
 
 - Name the two areas 「산출물 스트림」 and 「세션 대화」 everywhere, including accessible labels.
 - Stream hint: 「산출물을 선택해 피드백을 남겨요」. Chat hint: 「질문에 답하고, 피드백을 남겨요」. Composer placeholder: 「세션에 메시지나 피드백을 남겨보세요」.
@@ -339,7 +339,7 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 - Status copy only when it helps the user judge or act. Show the session's original question; never invent questions or performance numbers.
 - Never present unbuilt features or sample data as real.
 
-## Interactions
+### Interactions
 
 | Flow               | Behavior                                                                                                                                                     | Current scope            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
@@ -356,11 +356,11 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 | Escape             | Closes the viewer, else settings, else the session menu, and always the mention list. Focus is trapped inside open dialogs and returns to the trigger.       | Live                     |
 | Theme and settings | Stored in this browser.                                                                                                                                      | Live                     |
 
-### Scope of the current build
+#### Scope of the current build
 
 Sending anything to a session (replies, question answers, `@mention`, pause/resume) is a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
 
-## State acceptance
+### State acceptance
 
 The app must reproduce each state the Night Dock HTML exposes through its query string (`app-night-dock.html?state=…`):
 

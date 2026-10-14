@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-14T14:00:01.000Z",
+  "generatedAt": "2026-10-14T14:02:32.000Z",
   "title": "Design System: gollabara",
   "extensions": {
     "colorMeta": {
@@ -390,7 +390,7 @@
       "kind": "button",
       "refersTo": "primary-button",
       "description": "Yellow fill for the main action of a screen; one of the three places yellow may appear.",
-      "html": "<button class=\"ds-primary\">설정 저장</button>",
+      "html": "<button class=\"ds-primary\">확인</button>",
       "css": ".ds-primary { min-height: 44px; padding: 0 18px; border: 1px solid transparent; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: 600 13px \"Noto Sans KR\", sans-serif; cursor: pointer; } .ds-primary:hover:not(:disabled) { background: oklch(.81 .14 95); } .ds-primary:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; } .ds-primary:disabled { opacity: .55; cursor: default; }"
     },
     {
@@ -412,7 +412,7 @@
   ],
   "narrative": {
     "northStar": "Night Dock",
-    "overview": "gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.\n\n**Source.** The design source is the Open Design project `gollabara-app` (\"Night Dock\"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins for visuals and this file says so. `session-chat-components.html` in the same project is the companion reference for chat rows.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.\n\ngollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. **In the current scope those controls are drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.",
+    "overview": "gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.\n\n**Source.** The design source is the Open Design project `gollabara-app` (\"Night Dock\"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins. `session-chat-components.html` in the same project is the companion reference for chat rows.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.\n\ngollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. **In the current scope those controls are drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.",
     "keyCharacteristics": [
       "Dark by default, with light and system themes as alternatives",
       "Two independent rounded surfaces: 「산출물 스트림」 (artifact stream) and 「세션 대화」 (session chat)",
