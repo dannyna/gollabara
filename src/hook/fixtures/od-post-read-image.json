@@ -1,0 +1,31 @@
+{
+  "session_id": "30b07810-bc42-4ed3-a3fb-b609b37fc829",
+  "transcript_path": "x",
+  "cwd": "/Users/me/Library/Application Support/Open Design/namespaces/release-stable/data/projects/gollabara-spike",
+  "prompt_id": "5f727a91-1390-4441-acd0-06355c9dcfdc",
+  "permission_mode": "bypassPermissions",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Read",
+  "tool_input": {
+    "file_path": "/Users/me/Library/Application Support/Open Design/namespaces/release-stable/data/projects/gollabara-spike/spike-capture.png"
+  },
+  "tool_response": {
+    "type": "image",
+    "file": {
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "type": "image/png",
+      "originalSize": 10198,
+      "dimensions": {
+        "originalWidth": 800,
+        "originalHeight": 500,
+        "displayWidth": 800,
+        "displayHeight": 500
+      }
+    }
+  },
+  "tool_use_id": "toolu_011REDi4No5FoJYeDEwKaL8W",
+  "duration_ms": 2
+}
