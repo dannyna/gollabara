@@ -1,0 +1,42 @@
+eslint.config.mjs
+  s_b7f30c572db9a8::t_0f7877d626a55a 1-23
+.husky/commit-msg
+  s_b7f30c572db9a8::t_a70aa4c3d61114 1
+.github/workflows/ci.yml
+  s_b7f30c572db9a8::t_214e62474c3483 37
+  s_b7f30c572db9a8::t_44a8e6077dea7d 1-36,38-62
+.husky/pre-commit
+  s_b7f30c572db9a8::t_a70aa4c3d61114 1
+package.json
+  s_b7f30c572db9a8::t_a70aa4c3d61114 16-19,41-43
+  s_b7f30c572db9a8::t_e3c25d69edd9f4 27-29,32-35
+  s_b7f30c572db9a8::t_1756bb6e1b909e 3,20-24
+.gemini/config.yaml
+  s_b7f30c572db9a8::t_214e62474c3483 21-32
+  s_b7f30c572db9a8::t_0f05bcfbb2cee1 3
+  s_b7f30c572db9a8::t_89e674b468acad 1-2,4-20
+commitlint.config.js
+  s_b7f30c572db9a8::t_a70aa4c3d61114 1-6
+.github/dependabot.yml
+  s_b7f30c572db9a8::t_d9aac722cf51ea 1-17
+.github/workflows/pr-title.yml
+  s_b7f30c572db9a8::t_62c8805a1eb4da 1-57
+bun.lock
+  s_b7f30c572db9a8::t_216d1c706250bf 13-15,18-21,30-35,44-121,128-137,140-145,148-187,220-243,246-267,270-271,298-303,306-329,332-373,376-383,386-397,400-473,476-497,500-511,514-585,610-619,622-719,724-755,758-763,768-773,776-805,808-817,820-839,842-851,854-855,858-875,882-883,886-923,925-958
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e47e3dfa80a3e4f40df93bf2297be8e02b1d5f9",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
