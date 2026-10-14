@@ -14,6 +14,15 @@
   --on-accent: oklch(0.267 0.009 250);
   --ink: oklch(0.267 0.009 250);
   --shade: oklch(0 0 0 / 0.2);
+  /* Overlays (OD modal-components.html §08). The scrim is one value for both themes. */
+  --scrim: oklch(0 0 0 / 0.38);
+  --z-message-actions: 1;
+  --z-pill: 2;
+  --z-mention: 5;
+  --z-popover: 15;
+  --z-sheet: 20;
+  --z-viewer: 30;
+  --z-toast: 50;
   --display: 'Space Grotesk', 'Noto Sans KR', sans-serif;
   --body: 'Noto Sans KR', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
@@ -97,6 +106,67 @@ time {
 }
 .muted {
   color: var(--muted);
+}
+
+/* Shared button looks (DESIGN.md Buttons) */
+.icon-button {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 9px;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 7px;
+}
+.secondary {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+/* Filled with --fg: the one action of a confirm dialog. Hover adds a ring and keeps the fill. */
+.fg-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--fg);
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--surface);
+  font-weight: 600;
+}
+.fg-button:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--surface);
+  box-shadow: 0 0 0 3px var(--border);
+}
+/* Line icons used by overlays */
+.icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Touch: every button at least 44 × 44 */
+@media (max-width: 767px), (pointer: coarse) {
+  .icon-button,
+  .text-button,
+  .secondary,
+  .fg-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

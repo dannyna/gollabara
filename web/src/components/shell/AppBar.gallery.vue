@@ -16,6 +16,9 @@ import AppBar from './AppBar.vue'
   <GalleryCase title="disconnected · 다시 연결 중">
     <AppBar offline />
   </GalleryCase>
+  <GalleryCase title="reconnected · 다시 연결됐어요 (3 s)">
+    <AppBar connection="restored" />
+  </GalleryCase>
   <GalleryCase title="first connection · session button hidden">
     <AppBar :show-session-button="false" />
   </GalleryCase>

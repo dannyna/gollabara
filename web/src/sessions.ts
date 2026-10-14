@@ -1,0 +1,65 @@
+// Session scope and mute for the session menu. Mute is a client-side filter only:
+// it hides a session in this browser and sends nothing to the session.
+
+import type { Session, StreamMessage } from '../../src/shared/types'
+import { ref } from 'vue'
+import { splitSessionName } from './artifacts'
+
+export interface SessionRow {
+  id: string
+  session: string
+  branch?: string
+  lastSeenAt: number
+  muted: boolean
+}
+
+/**
+ * One row per session, most recent first. Sessions that only appear in messages
+ * (stored before session records existed) are listed too.
+ */
+export function toSessionRows(sessions: Session[], messages: StreamMessage[], muted: ReadonlySet<string>): SessionRow[] {
+  const rows = new Map<string, SessionRow>()
+  for (const s of sessions)
+    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id) })
+  for (const m of messages) {
+    const row = rows.get(m.sessionId)
+    if (!row)
+      rows.set(m.sessionId, { id: m.sessionId, ...splitSessionName(m.sessionName), lastSeenAt: m.at, muted: muted.has(m.sessionId) })
+    else if (m.at > row.lastSeenAt)
+      row.lastSeenAt = m.at
+  }
+  return [...rows.values()].sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+}
+
+/** Messages in view: never a muted session, and only the chosen one when scoped */
+export function inScope(messages: StreamMessage[], scope: string | null, muted: ReadonlySet<string>): StreamMessage[] {
+  return messages.filter(m => !muted.has(m.sessionId) && (scope == null || m.sessionId === scope))
+}
+
+const STORAGE_KEY = 'gollabara-muted'
+
+function readStored(): Set<string> {
+  try {
+    const ids = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    return new Set(Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : [])
+  }
+  catch {
+    return new Set()
+  }
+}
+
+const muted = ref<ReadonlySet<string>>(readStored())
+
+export function useMutedSessions() {
+  function toggleMute(id: string) {
+    const next = new Set(muted.value)
+    if (!next.delete(id))
+      next.add(id)
+    muted.value = next
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]))
+    }
+    catch {}
+  }
+  return { muted, toggleMute }
+}

@@ -2,12 +2,19 @@
 import type { Artifact } from '../../artifacts'
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { clock } from '../../artifacts'
+import NewPill from '../banner/NewPill.vue'
+import StateView from '../banner/StateView.vue'
+import FloatingActions from '../overlay/FloatingActions.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
   selected?: string | null
+  /** Viewing one session: the empty copy names the session scope */
+  scoped?: boolean
+  /** Every session is muted: the empty view points back to the session menu */
+  allMuted?: boolean
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string] }>()
+const emit = defineEmits<{ select: [key: string], open: [key: string], sessions: [] }>()
 
 const track = ref<HTMLElement>()
 
@@ -40,6 +47,8 @@ function onScroll() {
 }
 function jumpToLatest() {
   track.value?.scrollTo({ left: track.value.scrollWidth, behavior: 'smooth' })
+  // The pill goes away, so focus lands on the track it led back to
+  track.value?.focus({ preventScroll: true })
   unseen.value = 0
 }
 watch(() => props.artifacts.length, async (n, prev) => {
@@ -68,18 +77,20 @@ defineExpose({ reveal })
       </h2>
       <span class="hint">산출물을 선택해 피드백을 남겨요</span>
     </div>
+    <StateView
+      v-if="!artifacts.length && allMuted" icon="mute" title="모든 세션을 음소거했어요"
+      description="세션 목록에서 다시 표시할 수 있어요." action="세션 목록 열기" @action="emit('sessions')"
+    />
+    <StateView v-else-if="!artifacts.length" :title="scoped ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
     <div
-      ref="track" class="track" tabindex="0" aria-label="가로로 스크롤하는 산출물 스트림"
+      v-else ref="track" class="track" tabindex="0" aria-label="가로로 스크롤하는 산출물 스트림"
       @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"
     >
-      <p v-if="!artifacts.length" class="track-empty">
-        아직 산출물이 없어요.
-      </p>
       <article
         v-for="a in artifacts" :key="a.key" class="cell"
         :class="{ 'session-start': a.sessionStart, 'selected': selected === a.key }"
-        :style="{ '--ratio': a.width / a.height }" :data-key="a.key"
+        :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
       >
         <div class="meta">
           <strong>{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
@@ -95,11 +106,10 @@ defineExpose({ reveal })
           <span>{{ a.label }}</span>
           <span class="mono">{{ String(a.seq).padStart(2, '0') }}</span>
         </div>
+        <FloatingActions :view-label="`${a.session} ${clock(a.at)} 이미지 크게 보기`" @view="emit('open', a.key)" />
       </article>
     </div>
-    <button v-if="!following && unseen" class="new-pill" type="button" @click="jumpToLatest">
-      새 산출물 {{ unseen }} →
-    </button>
+    <NewPill v-if="!following && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />
     <div class="footer">
       <span><i class="dot" />이미지는 원래 비율 그대로</span>
       <span class="mono">{{ following ? '최신 산출물 · 따라가는 중' : '이전 산출물 · 자동 따라가기 일시 정지' }}</span>
@@ -148,11 +158,6 @@ defineExpose({ reveal })
   overflow-y: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
-}
-.track-empty {
-  margin: auto;
-  color: var(--muted);
-  font-size: 12px;
 }
 .cell {
   flex: none;
@@ -235,21 +240,6 @@ defineExpose({ reveal })
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.new-pill {
-  position: absolute;
-  bottom: 64px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--border);
-  border-radius: 40px;
-  background: var(--surface);
-  box-shadow: 0 5px 24px var(--shade);
-  font-size: 12px;
-  white-space: nowrap;
-}
 .footer {
   height: 48px;
   flex: none;
@@ -296,9 +286,6 @@ defineExpose({ reveal })
   .footer {
     height: 27px;
     padding: 0 22px;
-  }
-  .new-pill {
-    bottom: 36px;
   }
 }
 
