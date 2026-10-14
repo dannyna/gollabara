@@ -69,6 +69,7 @@ Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main
 - **UI:** Follow [DESIGN.md](DESIGN.md). Define tokens in `web/src/style.css` for both light and dark. The design source is the Open Design project `gollabara-brand` (direction 03, "구경 모드 · Quiet signal"). The app mockup in the `gollabara-app` project is still under review and not adopted; do not port it.
 - **Service name:** Always the Latin `gollabara`, never a Korean spelling.
 - **Docs:** [README.md](README.md) (English) and [README.ko.md](README.ko.md) (Korean) must stay in sync. AGENTS.md, DESIGN.md, and [REVIEW.md](REVIEW.md) are in English. The README carries the design philosophy, not technical detail.
-- **Code comments:** Short, in Korean, explaining why.
-- **Commits:** Conventional Commits with Korean descriptions (`feat(web): …`, `fix(hook): …`), enforced by commitlint.
+- **Language:** Code, comments, commit messages, PR titles and bodies, issues, and docs are in English. The exceptions are [README.ko.md](README.ko.md) and the product UI copy, which are Korean. Write in English even when the conversation with the user is in Korean.
+- **Code comments:** Short, explaining why.
+- **Commits:** Conventional Commits (`feat(web): …`, `fix(hook): …`), enforced by commitlint.
 - **Pull requests:** `main` takes changes only through PRs and squash merges, so the PR title becomes the commit on `main` and must be a Conventional Commit too (checked by `pr-title`). Name branches `<type>/<short-topic>` (e.g. `ci/lint-and-hooks`). The `ci` and `pr-title` checks must pass and every review thread must be resolved before merging.
