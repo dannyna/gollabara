@@ -111,7 +111,11 @@ function hue(id: string) {
   <div class="frame">
     <section class="content">
       <header class="ctop">
-        <b>결과물</b>
+        <span class="brand">
+          <svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true"><path d="M198 120h-78v272h78m116-272h78v272h-78" fill="none" stroke="currentColor" stroke-width="44" /><circle cx="256" cy="256" r="46" fill="currentColor" /></svg>
+          gollabara
+        </span>
+        <span class="observe">구경 중</span>
         <span class="muted">이미지 {{ columns.length }} · 세션 {{ sessions.length }}</span>
         <span class="sp" />
         <span v-if="following" class="live">최신을 따라가는 중</span>
@@ -134,7 +138,7 @@ function hue(id: string) {
           >
             <figcaption class="meta">
               <span class="dot" :style="{ background: hue(c.sessionId) }" />
-              <b>{{ c.sessionName }}</b>{{ time(c.at) }} · {{ c.image.width }}×{{ c.image.height }}
+              <b>{{ c.sessionName }}</b><span class="mono">{{ time(c.at) }} · {{ c.image.width }}×{{ c.image.height }}</span>
             </figcaption>
             <img :src="c.image.url" :style="{ aspectRatio: `${c.image.width} / ${c.image.height}` }" alt="" @load="onImageLoad">
           </figure>
@@ -210,8 +214,11 @@ function hue(id: string) {
 .empty { color: var(--muted); font-size: 14px; margin: auto; }
 .col { flex: none; height: calc(100% - 64px); display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
 .col img { flex: 1; min-height: 0; height: 100%; width: auto; object-fit: contain; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
-.col.sel img { outline: 3px solid var(--select); outline-offset: 2px; }
-.col.sel .meta b { color: var(--select); }
+.col.sel img { outline: 3px solid var(--accent); outline-offset: 2px; }
+.col.sel .meta b { color: var(--accent-ink); }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+.observe { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.mono { font-family: var(--font-mono); font-size: 11px; }
 .meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .meta b { color: var(--text); font-weight: 600; }
 .dot { width: 8px; height: 8px; border-radius: 3px; flex: none; }
@@ -234,11 +241,11 @@ function hue(id: string) {
 .body { font-size: 14px; line-height: 1.5; margin-top: 2px; overflow-wrap: anywhere; }
 .thumbs { display: flex; gap: 6px; margin-top: 6px; align-items: flex-end; flex-wrap: wrap; }
 .thumbs img { height: 48px; width: auto; border-radius: 5px; border: 1px solid var(--line); cursor: pointer; object-fit: cover; }
-.thumbs img.sel { outline: 2px solid var(--select); outline-offset: 1px; }
-.q { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 14px; }
-.q small { display: block; font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+.thumbs img.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.q { background: var(--sunken); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 14px; }
+.q small { display: block; font-size: 11px; color: var(--accent-ink); margin-bottom: 4px; }
 .opts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.opt { font-size: 13px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--accent-line); background: var(--surface); }
+.opt { font-size: 13px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
 .input { margin: 12px 20px 18px; border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
 
 .viewer { position: fixed; inset: 0; background: rgb(0 0 0 / .85); display: grid; place-items: center; z-index: 10; cursor: zoom-out; padding: 24px; }

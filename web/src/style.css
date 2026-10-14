@@ -1,35 +1,35 @@
-/* 임시 토큰 — 브랜딩 결과가 나오면 교체한다 */
+/* 브랜드 방향 03 「구경 모드 · Quiet signal」 — gollabara-brand 보드의 토큰 */
 :root {
-  --bg: #fbfaf7;
-  --surface: #ffffff;
-  --sunken: #f1efe9;
-  --line: #e4e1da;
-  --text: #1d1c1a;
-  --muted: #86827a;
-  --accent: #5b3fc4;
-  --accent-soft: #f4f0ff;
-  --accent-line: #e1d8ff;
-  --select: #b4552c;
-  --ok: #2f7d5b;
-  --me-bg: #1d1c1a;
-  --me-text: #ffffff;
+  --bg: #F5F6F7;
+  --surface: #FFFFFF;
+  --sunken: #ECEEF0;
+  --line: #D3D7DC;
+  --text: #22262A;
+  --muted: #5B626A;
+  /* 강조 노랑은 면으로만 쓴다. 밝은 화면에서 글자로 쓸 때는 --accent-ink */
+  --accent: #F4D34F;
+  --accent-ink: #7A6200;
+  --on-accent: #22262A;
+  --ok: #2F7D5B;
+  --me-bg: #22262A;
+  --me-text: #F2F4F6;
+  --font-display: "Space Grotesk", "Noto Sans KR", system-ui, sans-serif;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161513;
-    --surface: #1f1e1b;
-    --sunken: #26241f;
-    --line: #34312b;
-    --text: #ecebe7;
-    --muted: #9a958b;
-    --accent: #a48cff;
-    --accent-soft: #241f38;
-    --accent-line: #3a3160;
-    --select: #e0865a;
-    --ok: #5fc495;
-    --me-bg: #ecebe7;
-    --me-text: #161513;
+    --bg: #181B1F;
+    --surface: #24282D;
+    --sunken: #1F2327;
+    --line: #41474F;
+    --text: #F2F4F6;
+    --muted: #ADB5BF;
+    --accent-ink: #F4D34F;
+    --ok: #5FC495;
+    --me-bg: #F2F4F6;
+    --me-text: #181B1F;
     color-scheme: dark;
   }
 }
@@ -39,7 +39,7 @@ html, body, #app { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
