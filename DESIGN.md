@@ -1,251 +1,406 @@
 ---
 name: gollabara
-description: "A quiet viewfinder that watches the artifacts, not the sessions"
+description: "Night Dock: a dark dock for watching what sessions make"
 colors:
-  quiet-paper: "#F5F6F7"
-  card-white: "#FFFFFF"
-  recess-gray: "#ECEEF0"
-  hairline: "#D3D7DC"
-  graphite-ink: "#22262A"
-  slate-muted: "#5B626A"
-  signal-yellow: "#F4D34F"
-  signal-ink: "#7A6200"
-  live-green: "#2F7D5B"
-  night-paper: "#181B1F"
-  night-card: "#24282D"
-  night-recess: "#1F2327"
-  night-hairline: "#41474F"
-  night-ink: "#F2F4F6"
-  night-muted: "#ADB5BF"
-  night-live-green: "#5FC495"
+  dark-bg: "oklch(0.220704 0.009062 255.6084)"
+  dark-surface: "oklch(0.274908 0.010907 254.0192)"
+  dark-fg: "oklch(0.966197 0.003428 247.8584)"
+  dark-muted: "oklch(0.769881 0.016843 253.9307)"
+  dark-border: "oklch(0.395448 0.015664 255.6039)"
+  light-bg: "oklch(0.972666 0.001711 247.8392)"
+  light-surface: "oklch(1.000000 0.000000 89.8756)"
+  light-fg: "oklch(0.266235 0.009457 248.1828)"
+  light-muted: "oklch(0.492867 0.015485 251.6888)"
+  light-border: "oklch(0.877533 0.008140 253.8593)"
+  accent: "oklch(0.871579 0.150779 94.9011)"
+  accent-hover: "oklch(0.81 0.14 95)"
+  on-accent: "oklch(0.267 0.009 250)"
+  shade: "oklch(0 0 0 / 0.2)"
 typography:
   wordmark:
-    fontFamily: "Space Grotesk, Noto Sans KR, system-ui, sans-serif"
-    fontSize: "16px"
+    fontFamily: "Space Grotesk, Noto Sans KR, sans-serif"
+    fontSize: "25px"
+    fontWeight: 500
+    letterSpacing: "-1.3px"
+  heading:
+    fontFamily: "Noto Sans KR, sans-serif"
+    fontSize: "19px"
     fontWeight: 700
-    letterSpacing: "-0.01em"
+    letterSpacing: "-0.6px"
   title:
-    fontFamily: "Noto Sans KR, Apple SD Gothic Neo, system-ui, sans-serif"
-    fontSize: "15px"
-    fontWeight: 700
+    fontFamily: "Noto Sans KR, sans-serif"
+    fontSize: "12px"
+    fontWeight: 600
   body:
-    fontFamily: "Noto Sans KR, Apple SD Gothic Neo, system-ui, sans-serif"
-    fontSize: "14px"
+    fontFamily: "Noto Sans KR, sans-serif"
+    fontSize: "13px"
     fontWeight: 400
-    lineHeight: 1.5
-  label:
-    fontFamily: "Noto Sans KR, Apple SD Gothic Neo, system-ui, sans-serif"
+    lineHeight: 1.65
+  message:
+    fontFamily: "Noto Sans KR, sans-serif"
     fontSize: "12px"
     fontWeight: 400
+    lineHeight: 1.8
+  label:
+    fontFamily: "Noto Sans KR, sans-serif"
+    fontSize: "11px"
+    fontWeight: 500
   mono:
-    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontFamily: "IBM Plex Mono, monospace"
     fontSize: "11px"
     fontWeight: 400
 rounded:
-  tag: "3px"
-  thumb: "5px"
-  chip: "8px"
-  card: "10px"
-  field: "12px"
-  pill: "999px"
+  label: "6px"
+  button: "8px"
+  thumb: "9px"
+  control: "12px"
+  bubble: "15px 15px 4px 15px"
+  card: "16px"
+  dock: "17px"
+  popover: "18px"
+  surface: "24px"
+  pill: "40px"
 spacing:
-  xs: "4px"
-  sm: "6px"
-  md: "10px"
-  lg: "14px"
-  xl: "20px"
-  2xl: "24px"
+  dock-inset: "4px"
+  xs: "6px"
+  sm: "9px"
+  md: "12px"
+  surface-gap: "16px"
+  app-gutter: "18px"
+  message-gap: "20px"
+  track-gap: "22px"
+  stream-inset: "26px"
 components:
-  observe-badge:
-    backgroundColor: "{colors.signal-yellow}"
-    textColor: "{colors.graphite-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.pill}"
-    padding: "3px 9px"
-  pill-button:
-    backgroundColor: "{colors.graphite-ink}"
-    textColor: "{colors.quiet-paper}"
-    typography: "{typography.label}"
-    rounded: "{rounded.pill}"
-    padding: "5px 12px"
-  filter-chip:
-    backgroundColor: "{colors.card-white}"
-    textColor: "{colors.graphite-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.pill}"
-    padding: "4px 9px"
-  filter-chip-on:
-    backgroundColor: "{colors.graphite-ink}"
-    textColor: "{colors.quiet-paper}"
-    rounded: "{rounded.pill}"
-    padding: "4px 9px"
-  question-card:
-    backgroundColor: "{colors.recess-gray}"
-    textColor: "{colors.graphite-ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.card}"
-    padding: "10px 12px"
-  question-option:
-    backgroundColor: "{colors.card-white}"
-    textColor: "{colors.graphite-ink}"
-    rounded: "{rounded.chip}"
-    padding: "5px 11px"
-  session-avatar:
-    textColor: "{colors.card-white}"
-    rounded: "{rounded.chip}"
+  app-bar:
+    backgroundColor: "{colors.dark-bg}"
+    textColor: "{colors.dark-fg}"
+    height: "92px"
+    padding: "0 10px"
+  logo-symbol:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.button}"
     size: "30px"
-  app-header:
-    height: "56px"
-    padding: "0 24px"
+  control-dock:
+    backgroundColor: "{colors.dark-surface}"
+    rounded: "{rounded.dock}"
+    height: "54px"
+    padding: "4px"
+  session-menu-button:
+    backgroundColor: "{colors.dark-bg}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.title}"
+    rounded: "{rounded.control}"
+    height: "44px"
+    padding: "0 12px"
+  stream-surface:
+    backgroundColor: "{colors.dark-bg}"
+    rounded: "{rounded.surface}"
+  chat-surface:
+    backgroundColor: "{colors.dark-surface}"
+    rounded: "{rounded.surface}"
+    width: "440px"
+  artifact-cell:
+    backgroundColor: "{colors.dark-surface}"
+    rounded: "{rounded.control}"
+  artifact-cell-selected:
+    backgroundColor: "{colors.dark-surface}"
+    rounded: "{rounded.control}"
+  chat-thumbnail:
+    backgroundColor: "{colors.dark-bg}"
+    rounded: "{rounded.thumb}"
+    height: "77px"
+  question-card:
+    backgroundColor: "{colors.dark-bg}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.message}"
+    rounded: "{rounded.card}"
+    padding: "16px"
+  answer-choice:
+    backgroundColor: "{colors.dark-surface}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.mono}"
+    rounded: "{rounded.control}"
+    height: "44px"
+  my-bubble:
+    backgroundColor: "{colors.dark-bg}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.message}"
+    rounded: "{rounded.bubble}"
+    padding: "9px 13px"
+  composer:
+    backgroundColor: "{colors.dark-bg}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.message}"
+    rounded: "{rounded.card}"
+    padding: "9px 10px 8px"
+  primary-button:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.button}"
+    height: "44px"
+    padding: "0 18px"
+  secondary-button:
+    backgroundColor: "{colors.dark-surface}"
+    textColor: "{colors.dark-fg}"
+    rounded: "{rounded.button}"
+    height: "44px"
+    padding: "0 14px"
+  new-pill:
+    backgroundColor: "{colors.dark-surface}"
+    textColor: "{colors.dark-fg}"
+    typography: "{typography.title}"
+    rounded: "{rounded.pill}"
+    height: "44px"
+    padding: "0 18px"
+  session-menu:
+    backgroundColor: "{colors.dark-surface}"
+    textColor: "{colors.dark-fg}"
+    rounded: "{rounded.popover}"
+    width: "390px"
+    padding: "16px"
 ---
 
 # Design System: gollabara
 
 ## Overview
 
-**Creative North Star: "구경 모드 · Quiet signal"**
+**Creative North Star: "Night Dock"**
 
-gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day, so the surface is as quiet as a near-monochrome developer tool and the screenshots and mockups take center stage. Color shows up only when there is a signal: a single yellow means "watching now" and "what you picked," and everything else is divided by hairlines and whitespace.
+gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.
 
-The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. Both meanings run through the whole system: surfaces left open like the frame, and yellow placed as rarely as the dot.
+**Source.** The design source is the Open Design project `gollabara-app` ("Night Dock"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins for visuals and this file says so. `session-chat-components.html` in the same project is the companion reference for chat rows.
 
-gollabara is an observer, not a mediator, and the interface carries that stance. No modals, alarm colors, or big calls to action pushing you to decide. Questions from sessions are only mirrored, so they are drawn so they never look like something you must press.
+The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
+
+gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. **In the current scope those controls are drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
 
 **Key Characteristics:**
 
-- Near-monochrome surfaces plus one signal yellow
-- Flat, shadowless; depth from 1px hairlines and one recessed tone
+- Dark by default, with light and system themes as alternatives
+- Two independent rounded surfaces: 「산출물 스트림」 (artifact stream) and 「세션 대화」 (session chat)
+- One right-side tool dock holding a single session menu button, theme, and settings
+- Yellow on three things only: the logo symbol background, the selection outline, and primary actions
 - The image's own aspect ratio sets each column's width
 - Numbers, times, and sizes in monospace
-- Light and dark as equals, following the system setting
 
 ## Colors
 
-A cool-gray neutral palette where one saturated yellow appears only as a signal.
+A cool-gray neutral palette in OKLch with one saturated yellow. Every color is a token; the theme swaps the five neutrals and leaves the accent alone.
 
-### Primary
+The app starts with `data-theme="dark"` on `<html>`. The user can pick 「시스템」, 「밝게」, or 「어둡게」 in settings, or flip between light and dark with the theme button in the dock. System mode removes `data-theme` and follows `prefers-color-scheme`.
 
-- **Signal Yellow** (`signal-yellow`): The brand's only accent: the fill of the "watching" badge (「구경 중」), the outline of the selected image column, and the app icon background. Same value in light and dark.
-- **Signal Ink** (`signal-ink`): A deep ochre that stands in for yellow text on light screens: the "asked by the session" label (「세션이 물은 질문」) and the selected column's session name. In dark mode Signal Yellow takes this role.
+| Token         | Dark (default)                      | Light                               | Role                                                                               |
+| ------------- | ----------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
+| `--bg`        | `oklch(0.220704 0.009062 255.6084)` | `oklch(0.972666 0.001711 247.8392)` | App ground, stream surface, question cards, my bubbles, composer box, menu buttons |
+| `--surface`   | `oklch(0.274908 0.010907 254.0192)` | `oklch(1.000000 0.000000 89.8756)`  | Chat surface, dock, image cells, popovers, sheets, answer choices                  |
+| `--fg`        | `oklch(0.966197 0.003428 247.8584)` | `oklch(0.266235 0.009457 248.1828)` | Text, focus ring, send button, chosen answer fill                                  |
+| `--muted`     | `oklch(0.769881 0.016843 253.9307)` | `oklch(0.492867 0.015485 251.6888)` | Times, hints, states, captions, hover outlines                                     |
+| `--border`    | `oklch(0.395448 0.015664 255.6039)` | `oklch(0.877533 0.008140 253.8593)` | Hairlines, stream surface inset ring, generic button hover                         |
+| `--accent`    | `oklch(0.871579 0.150779 94.9011)`  | same                                | Logo symbol background, selection outline, primary actions                         |
+| `--on-accent` | `oklch(.267 0.009 250)`             | same                                | Content on accent: the symbol mark, primary button text                            |
+| `--shade`     | `oklch(0 0 0 / .2)`                 | same                                | Shadow color for floating layers                                                   |
 
-### Neutral
-
-- **Quiet Paper** / **Night Paper** (`quiet-paper` / `night-paper`): The app background.
-- **Card White** / **Night Card** (`card-white` / `night-card`): One layer up: image column backgrounds, filter chips, question options.
-- **Recess Gray** / **Night Recess** (`recess-gray` / `night-recess`): One step below the background: question cards and the highlight on a chat message linked to the selected column.
-- **Hairline** / **Night Hairline** (`hairline` / `night-hairline`): The 1px line for panel edges, header rules, chip borders, and the dashed session divider.
-- **Graphite Ink** / **Night Ink** (`graphite-ink` / `night-ink`): Body and heading text; also inverted as the fill of selected filter chips and pill buttons.
-- **Slate Muted** / **Night Muted** (`slate-muted` / `night-muted`): Secondary info such as times, counts, and empty-state hints.
-
-### Status
-
-- **Live Green** / **Night Live Green** (`live-green` / `night-live-green`): Only for the "following latest" indicator (「최신을 따라가는 중」) and the connection dot. A status signal, never decoration.
-
-### Session hues
-
-Each session gets a hue hashed from its id, painted as `hsl(h 45% 42%)`. It appears only on the 30px session avatar and the 8px dot in an image column's meta line. Fixed saturation and lightness keep every session color quieter than the signal yellow.
+Primary buttons darken to `oklch(.81 .14 95)` on hover.
 
 ### Named Rules
 
-**The Surface-Only Yellow Rule.** Yellow is only ever a fill or an outline. Never yellow text on a light screen; use Signal Ink instead.
+**The Three Yellows Rule.** Yellow (`--accent`) marks exactly three things: the logo symbol background, the selection outline on the selected artifact, and primary actions. Not status, not badges, not the connection state, not chosen answers or focus rings (those use `--fg`).
 
-**The One Signal Rule.** On any screen, yellow marks only the "watching" badge and the current selection. Its rarity is what makes it mean "you picked this."
+**The No Yellow Text Rule.** Yellow is only ever a fill or an outline. Never set text in yellow, and never put yellow text on a light surface. Content on yellow uses `--on-accent`.
 
 ## Typography
 
-**Display Font:** Space Grotesk (fallback: Noto Sans KR, system-ui)
-**Body Font:** Noto Sans KR (fallback: Apple SD Gothic Neo, system-ui)
-**Label/Mono Font:** IBM Plex Mono (fallback: ui-monospace)
+**Display Font:** Space Grotesk (fallback: Noto Sans KR, sans-serif)
+**Body Font:** Noto Sans KR (fallback: sans-serif)
+**Mono Font:** IBM Plex Mono (fallback: monospace)
 
-**Character:** Geometric Space Grotesk is reserved for the wordmark; plain Noto Sans KR carries the rest. Numbers and machine-made values are set apart in IBM Plex Mono so they read differently from human sentences. Fonts are bundled via `@fontsource` and look the same offline.
+**Character:** Space Grotesk is reserved for the wordmark and session initials; Noto Sans KR carries everything else at small, dense sizes (`word-break: keep-all` for Korean). Machine-made values are set apart in IBM Plex Mono with tabular figures, so they read differently from human sentences.
 
 ### Hierarchy
 
-- **Wordmark** (700, 16px, -0.01em): The lowercase `gollabara` in the header, nowhere else.
-- **Title** (700, 15px): Panel titles, such as "Stream" (「스트림」).
-- **Body** (400, 14px, 1.5): Recaps and question text; long paths and URLs break with `overflow-wrap: anywhere`.
-- **Label** (400–700, 12–13px): Filter chips, badges, sender names, meta info.
-- **Mono** (400, 11px): Times, image sizes (`1280×800`), counts.
+- **Wordmark** (500, 25px, -1.3px; 24px on mobile): the lowercase `gollabara` in the app bar.
+- **Heading** (700, 19px, -0.6px): sheet and dialog titles such as 「설정」; the session menu title 「표시할 세션」 is 16px.
+- **Title** (600, 12px): surface titles 「산출물 스트림」 and 「세션 대화」, the session menu button.
+- **Body** (400, 13px, 1.65): the base size.
+- **Message** (400, 12px, 1.8): chat message bodies, question text, my bubbles, the composer.
+- **Label** (400–600, 10–11px): sender names, hints, session states, button text in menus and action bars.
+- **Mono** (400, 9–11px, tabular): times, image sizes (`1440 × 900`), sequence numbers (`06`), viewer index (`05 / 06`), zoom (`100%`), answer letters.
 
 ### Named Rules
 
-**The Mono Numbers Rule.** Machine-made numbers (times, sizes, counts) are set in monospace. Never set numbers in a serif.
+**The Mono Numbers Rule.** Times, sizes, counts, and sequence numbers are set in IBM Plex Mono with tabular figures. Never set numbers in a serif.
 
 **The Latin Name Rule.** The service name is written in Latin letters only, never in Korean. The wordmark is always lowercase `gollabara`.
 
 ## Layout
 
-The desktop is a two-column grid where two flows run at right angles. In the left content panel (fluid width) images flow sideways; in the right chat panel (fixed 440px) recaps and questions flow down. Both panels have a 56px header, and a 1px Hairline separates headers and panels.
+Night Dock is an app bar over two separate rounded work surfaces with an 18px gutter around them (`.app { padding: 0 18px 18px }`) and a 16px gap between them.
 
-- **Image track:** Each column is the track height minus 64px tall, as wide as the image's ratio allows. 18px between columns, 28px side padding. A dashed vertical divider marks where the session changes.
-- **Follow latest:** The track follows the newest (right) end by default. Scrolling back pauses following and shows a "new images n →" pill (「새 이미지 n →」).
-- **Chat feed:** 16px 20px padding, 14px between messages. Selecting an image column highlights its message in Recess Gray.
-- **Mobile (≤767px):** The content panel hides and only chat remains. Thumbnails grow to 96px tall and open the full-screen viewer on tap.
+| Width       | Arrangement                                                                                                                | App bar                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| ≥ 1280px    | Stream left (fluid), chat right (440px)                                                                                    | 92px, one row: identity left, dock right                       |
+| 1024–1279px | Stream left (fluid), chat right (440px)                                                                                    | 88px, one row                                                  |
+| 768–1023px  | Stacked: stream on top (about 43% height), chat below; 14px gutter, 12px gap                                               | 88px, one row                                                  |
+| ≤ 767px     | Chat only, full bleed, top corners rounded (22px). The stream surface is hidden; tapping a chat thumbnail opens the viewer | 120px, two rows: identity (56px) over a full-width dock (54px) |
 
-**The Image Sets the Width Rule.** Track columns keep the original aspect ratio and are never cropped (`object-fit: contain`). Only thumbnails may use `cover`.
+- **App bar:** Logo symbol and wordmark on the left; the control dock on the right. The dock is a `--surface` capsule (54px, 4px inset, 17px radius) holding the session menu button, the theme button, and the settings button. On mobile the dock spans the full width and the session button stretches.
+- **Artifact track:** Inside 「산출물 스트림」, artifacts flow sideways, newest on the right. Each cell is as tall as the surface allows and as wide as the image ratio gives (`width: calc((100cqh - 209px) * var(--ratio))`). 22px between cells. Where the session changes, a dashed `--border` divider and an extra 17px separate the runs. Above each image: session, branch, mono time and size. Below: label and mono sequence number. A footer line reads 「이미지는 원래 비율 그대로」 and the follow state.
+- **Follow latest:** The track follows the right end. Scrolling back pauses following (「이전 산출물 · 자동 따라가기 일시 정지」); new arrivals then raise the 「새 산출물 n →」 pill instead of moving the reader.
+- **Chat feed:** 「세션 대화」 flows down: a centered date label, session messages (23px avatar, name · branch, mono time, body indented 31px), thumbnails, question cards, my bubbles aligned right, and centered system lines. The composer sits at the bottom of the chat surface.
+
+**The Image Sets the Width Rule.** Artifact cells and chat thumbnails keep the original aspect ratio and are never cropped (`object-fit: contain`, or fixed height with `width: auto`). Only the tiny quote previews in a reply context or a sent bubble may use `cover`.
 
 ## Elevation & Depth
 
-A flat, shadowless system. Depth comes only from three tonal layers (Paper → Card → Recess) and the 1px Hairline. The one layer that floats above the app is the full-screen viewer, an 85% black scrim (`rgb(0 0 0 / .85)`) over everything.
+Depth comes from the two-tone ground (`--bg` under `--surface`) and a small set of soft shadows tinted from black. Shadows separate layers; they never decorate text.
 
-**The Flat-By-Default Rule.** No `box-shadow` on cards, chips, or panels. If you need more separation, change the tonal layer or add a Hairline.
+| Layer                     | Treatment                                                    |
+| ------------------------- | ------------------------------------------------------------ |
+| Chat surface              | `--surface`, `0 8px 25px oklch(0 0 0 / .08)`                 |
+| Stream surface            | `--bg`, `inset 0 0 0 1px var(--border)` (a ring, not a lift) |
+| Image in a cell           | `0 10px 24px oklch(0 0 0 / .2)`                              |
+| Composer box              | `inset 0 1px 4px oklch(0 0 0 / .13)` (pressed in)            |
+| Hover action bars         | `0 3px 14px var(--shade)` on cells, `0 3px 9px` on messages  |
+| New-artifacts pill, toast | `0 5px 24px var(--shade)` / `0 5px 25px var(--shade)`        |
+| Session menu              | `0 12px 45px var(--shade)`                                   |
+| Mention list              | `0 -8px 30px var(--shade)` (opens upward)                    |
+| Settings sheet            | Right-side sheet over an `oklch(0 0 0 / .38)` scrim          |
+| Viewer                    | Opaque full-screen `--bg` dialog with `--surface` bars       |
+
+**The Two Grounds Rule.** Separate with tone before shadow: `--bg` for ground and recessed fills, `--surface` for anything lifted. Add a shadow only to the layers listed above.
 
 ## Shapes
 
-Soft but never bubbly corners, scaling with size: 3px session dots, 5px thumbnails, 8px avatars and options, 10px image columns and question cards, 12px input area. Chips, badges, and buttons are full pills (999px), so shape alone separates "things you press" from "things that hold."
+Soft, generous corners that grow with size: 6px thumbnail labels, 8px buttons and the logo symbol, 9px chat thumbnails, 11–12px dock controls, image cells, and answer choices, 16px question cards and the composer box, 17px dock, 18px popovers, 24px work surfaces (20px on tablet, 22px top corners on mobile). The new-artifacts pill is fully rounded (40px). My bubbles have one tight corner (`15px 15px 4px 15px`) that points to the sender.
 
-The symbol's open bracket frame is a square-cornered stroke (40–44 on a 512 grid) around a round dot. The app icon is a Graphite Ink symbol on Signal Yellow, a rounded square with a 112px radius on a 512 grid.
+The symbol's open bracket frame is a square-cornered stroke (40 on a 512 grid) around a round dot (r 42). In the app bar it is drawn in `--on-accent` on a 30px `--accent` square with an 8px radius.
+
+Every control is at least 44px tall (46px for answer choices on mobile).
 
 ## Components
 
-### Observe badge
+Component structure is provisional. An atomic component system comes later; today's Vue components in `web/src` are screen-level. The descriptions below are visual contracts, not a component API.
 
-The only yellow label, announcing that the screen is "watching."
+### App bar and session menu
 
-- **Style:** Signal Yellow fill, Graphite Ink text, 12px 700, pill (3px 9px).
-- **Placement:** Exactly one, right next to the wordmark in the content header.
+- **Identity:** Logo symbol plus wordmark. 「다시 연결 중」 appears next to it in muted text **only** while disconnected. No image or session counts and no always-on 「구경 중」 badge.
+- **Session menu button:** A single `--bg` button in the dock showing 「전체 세션」 or the selected session's name, with a muted chevron. Hover and open state add an inset `--muted` ring. Do not split it back into a segmented filter plus a separate manage button.
+- **Session menu:** A popover titled 「표시할 세션」 with the hint 「세션을 고르거나, 잠시 멈추고 음소거할 수 있어요.」. First row is 「전체 세션」 (「음소거한 세션은 숨겨요」); then one row per session with a check mark, name, branch, state (「작업 중」, 「쉬는 중」, 「멈춤」, 「음소거」), 「멈춤」/「재개」, 「음소거」/「음소거 해제」, and mono 「마지막 활동 hh:mm」. The current row gets a `--bg` fill.
+  - Selecting a session changes the stream scope and closes the menu.
+  - Muted sessions stay listed so they can be unmuted, but they cannot be selected.
+  - Muting the selected session returns the scope to 「전체 세션」.
+
+### Artifact cell
+
+An image on `--surface` in a 12px cell with a 2px transparent border and the image shadow. Hover shows a `--muted` border and a floating action bar (「답장」, 「멈춤」, 「확대 ↗」). **Selected:** the border turns `--accent`; this is the selection outline. Clicking a selected cell again opens the viewer.
+
+### Chat message and thumbnails
+
+A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」 and 「멈춤」. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
+
+### Question card
+
+A `--bg` card (16px radius, 16px padding) headed by a muted eyebrow 「세션에서 물었어요」, then the session's own question text. Below it, answer choices: `--surface` buttons with a `--border` line, mono letters, and a muted 「추천」 after the option the session itself recommended. A chosen answer inverts to `--fg`. 「직접 답하기」 is an underlined text button. When answered, a muted line replaces the actions: 「터미널에서 답함」, 「A로 답함 · 전달됨 ✓」, or 「직접 답변 전달됨 ✓」.
+
+### My bubble and system line
+
+My messages sit on the right in a `--bg` bubble with a muted quote line (「↪ session · quoted」, optional tiny image) and a 9px muted delivery note 「전달됨 ✓」. System lines are centered 10px muted text such as 「client-e2e · checkout 멈춤」 or 「api · quota-refill 음소거함」.
+
+### Composer
+
+A `--bg` box (16px radius, pressed-in shadow) with the placeholder 「세션에 메시지나 피드백을 남겨보세요」, an 「@ 세션」 text button, and a 34px `--fg` send button. A reply context row above shows what is quoted with a cancel button. The note below reads 「@세션을 부르거나, 산출물에 답장해 보세요」 on desktop and 「메시지를 오른쪽으로 밀면 답장」 on mobile. The mention list opens upward with 「어느 세션에 말할까요?」.
 
 ### Buttons
 
-- **Pill button:** Rare actions like "new images n →": an inverted pill, Paper text on Graphite Ink (5px 12px, 12px).
-- **No primary CTA:** There is no big primary button, because gollabara never asks you to act first.
-
-### Chips
-
-- **Filter chip:** Session filter. Card fill with a Hairline border by default, inverted to Graphite Ink when selected (4px 9px, 12px). The row scrolls sideways with the scrollbar hidden.
-- **Question option:** An option from a session's question. Card fill, Hairline border, 8px corners. A static label, not a button, with no hover response.
-
-### Cards / Containers
-
-- **Image column:** An image on Card, 10px corners, 1px Hairline, topped by one line of session dot, name, and mono meta (time, size). When selected it gets a 3px Signal Yellow outline (2px offset) and the session name turns Signal Ink.
-- **Question card:** Recess Gray fill, 1px Hairline, 10px corners, 10px 12px padding, headed by an 11px Signal Ink label saying the session asked it.
-- **Stream message:** A 30px session avatar (session-hue square with white initials), then sender name, time, and kind (such as "turn end" 「턴 끝」 or "images n"), then the body. Thumbnails are 48px tall and keep their ratio.
-
-### Status indicators
-
-- **Live dot:** A 7px Live Green dot with a 12px "following latest" label.
-- **Connection dot:** A 7px dot in the chat header: Live Green when connected, Slate Muted while reconnecting.
+- **Primary:** `--accent` fill, `--on-accent` text, 600, 8px radius, 44px. Reserved for the main action of a screen.
+- **Secondary:** `--surface` fill, `--border` line, 8px radius, 44px (「설정 저장」, 「이 이미지에 답장 ↗」).
+- **Icon and text buttons:** 44px, no fill; hover fills `--border` (or `--bg` inside the dock).
+- **New pill:** 「새 산출물 n →」, `--surface` with a `--border` line, 40px radius, floating above the track footer.
+- **Focus:** every focusable element gets `outline: 2px solid var(--fg)` with a 3px offset. Disabled buttons drop to 55% opacity.
 
 ### Viewer
 
-Double-click an image (tap on mobile) to show the original, fitted to the screen, over an 85% black scrim. Clicking anywhere on the scrim closes it. Pinch zoom works on mobile.
+A full-screen dialog: a top bar (close, session · branch with mono time and size, zoom out / mono percentage / zoom in) and a bottom bar (mono index 「05 / 06」, caption, 「이 이미지에 답장 ↗」). The stage fits the image with its ratio kept; prev/next buttons sit at the edges. Zoom runs from 100% to 400% in 50% steps, by pinch, or by Ctrl + wheel; drag pans when zoomed. Arrow keys move between images.
+
+### Settings sheet
+
+A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), and the theme choice 「시스템」 / 「밝게」 / 「어둡게」, saved with 「설정 저장」. Settings live in this browser only; saving connects to nothing and deletes no files.
+
+### Empty state
+
+Before anything arrives the surfaces give way to a centered setup guide: a muted symbol, 「세션에서 만든 산출물이 여기에 모입니다」, 「켜 두고 구경하세요. 말을 걸고 싶을 때만 한마디.」, and three numbered steps (server running, install the Claude Code plugin with a copy button, watch from your phone with a QR code). The session menu button is hidden.
+
+## Copy
+
+- Name the two areas 「산출물 스트림」 and 「세션 대화」 everywhere, including accessible labels.
+- Stream hint: 「산출물을 선택해 피드백을 남겨요」. Chat hint: 「질문에 답하고, 피드백을 남겨요」. Composer placeholder: 「세션에 메시지나 피드백을 남겨보세요」.
+- Keep "stream" general: artifacts are not only images. Say 「이미지」 only for image-specific features such as zooming or the original-ratio note.
+- Status copy only when it helps the user judge or act. Show the session's original question; never invent questions or performance numbers.
+- Never present unbuilt features or sample data as real.
+
+## Interactions
+
+| Flow               | Behavior                                                                                                                                                     | Current scope            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| Select an artifact | Click a cell or thumbnail: the cell gets the yellow outline, the related chat message is highlighted and scrolled into view. Click again to open the viewer. | Live                     |
+| Quote-reply        | 「답장」 on a cell or message, 「이 이미지에 답장 ↗」 in the viewer, or swipe a message right on mobile, fills the reply context in the composer.            | **Drawn, disabled**      |
+| Answer a question  | Pick a choice or 「직접 답하기」. A question already answered in the terminal shows 「터미널에서 답함」 and blocks a second answer.                          | **Drawn, disabled**      |
+| `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                | **Drawn, disabled**      |
+| Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                            | **Drawn, disabled**      |
+| Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                  | Live, client-side filter |
+| Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                               | Live                     |
+| Browse history     | Scrolling back keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest.                                                        | Live                     |
+| Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                            | Live                     |
+| Disconnected       | Keep earlier chat, show 「다시 연결 중」 and 「연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.」, block sending.                                    | Live                     |
+| Escape             | Closes the viewer, else settings, else the session menu, and always the mention list. Focus is trapped inside open dialogs and returns to the trigger.       | Live                     |
+| Theme and settings | Stored in this browser.                                                                                                                                      | Live                     |
+
+### Scope of the current build
+
+Sending anything to a session (replies, question answers, `@mention`, pause/resume) is a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
+
+## State acceptance
+
+The app must reproduce each state the Night Dock HTML exposes through its query string (`app-night-dock.html?state=…`):
+
+| State            | Query                 | What must show                                                 |
+| ---------------- | --------------------- | -------------------------------------------------------------- |
+| Default          | (none)                | Dark theme, both surfaces, track at the latest artifact        |
+| First connection | `?state=empty`        | Setup guide; session menu button hidden                        |
+| Session menu     | `?state=sessions`     | Session menu open under its button                             |
+| Viewer           | `?state=viewer`       | Full-screen viewer on an artifact                              |
+| Mention          | `?state=mention`      | Composer holding `@` with the mention list open                |
+| Disconnected     | `?state=disconnected` | 「다시 연결 중」 in the app bar, note in chat, sending blocked |
+| Answered         | `?state=answered`     | Scope on one session; its question shows 「터미널에서 답함」   |
+| New artifacts    | `?state=new`          | Track scrolled back with 「새 산출물 2 →」 visible             |
+| Settings         | `?state=settings`     | Settings sheet open                                            |
+| Light theme      | `?theme=light`        | Same default screen in the light tokens                        |
+
+On every state: no horizontal page scroll on mobile, visible focus, and text and icon contrast kept in hover and selected states.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** use yellow only as a fill or outline, for the "watching" badge and the current selection.
-- **Do** use Signal Ink (`#7A6200`) when a light screen needs yellow-family text.
-- **Do** set times, sizes, and counts in IBM Plex Mono.
-- **Do** let the original ratio set image column width, uncropped.
-- **Do** try the tonal layers (Paper, Card, Recess) and the Hairline before adding a color.
-- **Do** define new tokens for both light and dark in `web/src/style.css`.
+- **Do** start in the dark theme and define every token for dark (default) and light in `web/src/style.css`.
+- **Do** keep yellow to the logo symbol background, the selection outline, and primary actions.
+- **Do** use `--fg` for focus rings, chosen answers, and the active thumbnail.
+- **Do** keep one session menu button that shows 「전체 세션」 or the selected session.
+- **Do** set times, sizes, counts, and sequence numbers in IBM Plex Mono.
+- **Do** let the original ratio set image width, uncropped.
+- **Do** separate with `--bg` and `--surface` before reaching for a shadow.
+- **Do** draw reply, answers, `@mention`, and pause/resume disabled until sending to sessions ships.
 
 ### Don't:
 
+- **Don't** set text in yellow, and never yellow text on a light surface.
+- **Don't** show image or session counts or an always-on 「구경 중」 badge in the app bar.
+- **Don't** split the session control into a segmented filter plus a separate manage button.
+- **Don't** let a muted session be selected, or leave the scope on a session you just muted.
+- **Don't** move a reader who is browsing history when new artifacts arrive.
 - **Don't** use cards with an accent stripe on the left border.
 - **Don't** set numbers in a serif.
-- **Don't** put shadows on cards, chips, or panels.
-- **Don't** draw a session's question options as pressable buttons; they are only mirrored.
-- **Don't** build modals, alarm colors, or big primary buttons that push the user to approve or decide.
+- **Don't** build anything that pushes the user to approve or decide, or invent questions for sessions.
+- **Don't** present disabled or sample features as if they work.
 - **Don't** write the service name in Korean.
