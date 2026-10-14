@@ -14,7 +14,7 @@ import { extractImages, mapHook, recapOf, sessionInfo, sessionName } from './map
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 
-function noBranchLookup() {
+function noBranchLookup(): string | undefined {
   throw new Error('Open Design sessions must not read the git branch')
 }
 const odSession = (input: HookInput) => sessionInfo(input, odEnv, noBranchLookup)
