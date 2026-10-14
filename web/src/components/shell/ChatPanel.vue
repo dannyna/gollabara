@@ -1,37 +1,125 @@
 <script setup lang="ts">
-import type { StreamMessage } from '../../../../src/shared/types'
-import { nextTick, ref, watch } from 'vue'
-import { artifactKey, clock, splitSessionName } from '../../artifacts'
+import type { Session, StreamMessage } from '../../../../src/shared/types'
+import type { Thumb } from '../chat/ArtifactThumbs.vue'
+import type { SystemEvent } from '../chat/chat'
+import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { artifactKey, clock } from '../../artifacts'
+import { useMutedSessions } from '../../sessions'
+import NewPill from '../banner/NewPill.vue'
+import NoticeLine from '../banner/NoticeLine.vue'
+import StateView from '../banner/StateView.vue'
+import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
+import { toTimeline } from '../chat/chat'
+import ChatComposer from '../chat/ChatComposer.vue'
+import DateLabel from '../chat/DateLabel.vue'
+import QuestionCard from '../chat/QuestionCard.vue'
+import SessionMessage from '../chat/SessionMessage.vue'
+import SystemLine from '../chat/SystemLine.vue'
+import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
+import { useImageViewer } from '../overlay/useImageViewer'
 
 const props = defineProps<{
   messages: StreamMessage[]
+  /** For the 「… 시작」 lines */
+  sessions?: Session[]
+  /** Lost the server: the notice line shows, questions lock, sending is blocked */
   offline?: boolean
   /** Key of the selected artifact, to mark its thumbnail */
   selected?: string | null
   /** Message the selected artifact belongs to, to highlight it */
   selectedMessage?: number | null
+  /** Delivery to sessions is wired elsewhere; until then the composer stays disabled */
+  canSend?: boolean
+  /** Viewing one session rather than 「전체 세션」 */
+  scoped?: boolean
+  /** The scope is a muted session (unreachable today: muting the scope resets it) */
+  scopeMuted?: boolean
+  /** Every session is muted, so nothing is in view */
+  allMuted?: boolean
 }>()
-defineEmits<{ thumb: [key: string] }>()
+const emit = defineEmits<{
+  thumb: [key: string]
+  /** A paired thumbnail pressed again; it also opens the image viewer */
+  openImage: [image: Thumb]
+  send: [payload: ComposerSend]
+  /** Open the session menu */
+  sessions: []
+}>()
 
-// PLACEHOLDER until the chat components land (#16): a plain list, one entry per
-// turn (thumbnails, then each recap on its own line), and questions as plain text.
-// The composer is drawn disabled: sending to sessions is a later track (DESIGN.md).
+// Answering questions is not built yet: question cards are drawn inert.
 
 const feed = ref<HTMLElement>()
-const recaps = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
-const initial = (name: string) => splitSessionName(name).session.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toLowerCase()
+const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
 
-// Stick to the bottom only when the reader is already there
+// Mute is a client filter with no history, so its lines exist only for changes made
+// while this page is open, and only in 「전체 세션」 (OD chat guide 05)
+const { muted } = useMutedSessions()
+const muteEvents = ref<SystemEvent[]>([])
+watch(muted, (next, prev) => {
+  const at = Date.now()
+  for (const id of next) {
+    if (!prev.has(id))
+      muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: `${nameOf(id)} 음소거함` })
+  }
+  for (const id of prev) {
+    if (!next.has(id))
+      muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
+  }
+})
+const timeline = computed(() => toTimeline(props.messages, props.sessions, props.scoped ? [] : muteEvents.value))
+
+// Chat thumbnails open the one app viewer at every width
+const { open } = useImageViewer()
+function openImage(image: Thumb) {
+  open(image.key)
+  emit('openImage', image)
+}
+
+// The viewer's 「이 이미지에 피드백 ↗」 sets the target; the composer shows it as its chip
+const { target, clearTarget } = useFeedbackTarget()
+const attachment = computed<ComposerAttachment | null>(() => target.value && {
+  url: target.value.imageUrl,
+  session: nameOf(target.value.sessionId),
+  caption: target.value.caption ?? clock(target.value.at),
+})
+function onAttachment(next: ComposerAttachment | null) {
+  if (!next)
+    clearTarget()
+}
+const recaps = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
+const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
+
+// Stick to the bottom only when the reader is already there. Otherwise count what
+// arrives and raise 「새 메시지 n ↓」 instead of moving the reader.
+const unseen = ref(0)
+const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
 let first = true
-watch(() => props.messages, async () => {
+// Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
+// Scope changes and unmuting reveal older messages; those are not counted.
+let lastId = -Infinity
+watch(() => props.messages, async (list) => {
+  const arrived = list.filter(m => m.id > lastId).length
+  lastId = Math.max(lastId, ...list.map(m => m.id))
   const el = feed.value
-  const atEnd = !el || el.scrollHeight - el.clientHeight - el.scrollTop < 70
+  const atEnd = !el || isAtEnd(el)
   await nextTick()
   if (first || atEnd)
     feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: first ? 'instant' : 'smooth' })
+  else
+    unseen.value += arrived
   if (props.messages.length)
     first = false
 }, { immediate: true })
+function onScroll() {
+  if (feed.value && isAtEnd(feed.value))
+    unseen.value = 0
+}
+function jumpToLatest() {
+  feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: 'smooth' })
+  feed.value?.focus({ preventScroll: true })
+  unseen.value = 0
+}
 
 /** Scrolls the message linked to the selected artifact into view */
 function reveal(messageId: number) {
@@ -46,58 +134,48 @@ defineExpose({ reveal })
       <h2>세션 대화</h2>
       <span>질문에 답하고, 피드백을 남겨요</span>
     </div>
-    <div v-if="offline" class="disconnected-note">
+    <NoticeLine v-if="offline">
       연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.
-    </div>
-    <div ref="feed" class="feed" role="log" aria-label="세션 메시지">
-      <article
-        v-for="m in messages" :key="m.id" class="message"
-        :class="{ highlighted: selectedMessage === m.id }" :data-msg="m.id"
-      >
-        <div class="head">
-          <span class="avatar" aria-hidden="true">{{ initial(m.sessionName) }}</span>
-          <strong>{{ splitSessionName(m.sessionName).session }}<span v-if="splitSessionName(m.sessionName).branch" class="branch"> · {{ splitSessionName(m.sessionName).branch }}</span></strong>
-          <time>{{ clock(m.at) }}</time>
-        </div>
-        <div class="body">
-          <div v-if="m.images?.length" class="thumbs">
-            <button
-              v-for="(img, i) in m.images" :key="i" class="thumb" type="button"
-              :class="{ active: selected === artifactKey(m.id, i) }" :aria-label="`이미지 ${i + 1} 선택`"
-              @click="$emit('thumb', artifactKey(m.id, i))"
-            >
-              <img :src="img.url" alt="" :style="{ aspectRatio: `${img.width} / ${img.height}` }">
-            </button>
-          </div>
-          <p v-for="(line, i) in recaps(m)" :key="i">
-            {{ line }}
-          </p>
-          <p v-for="(q, qi) in m.questions" :key="`q${qi}`">
-            {{ q.question }}
-          </p>
-        </div>
-      </article>
-    </div>
-    <div class="composer">
-      <div class="box">
-        <textarea
-          rows="1" disabled aria-label="세션에 메시지 보내기"
-          :placeholder="offline ? '연결되면 다시 말할 수 있어요' : '세션에 메시지나 피드백을 남겨보세요'"
-        />
-        <div class="box-bottom">
-          <button class="mention" type="button" disabled>
-            @ 세션
-          </button>
-          <button class="send" type="button" disabled aria-label="메시지 보내기">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
-          </button>
-        </div>
+    </NoticeLine>
+    <StateView v-if="scopeMuted" title="음소거한 세션이에요." description="세션 목록에서 다시 표시할 수 있어요." />
+    <StateView
+      v-else-if="allMuted" title="모든 세션을 음소거했어요" description="세션 목록에서 다시 표시할 수 있어요."
+      action="세션 목록 열기" @action="emit('sessions')"
+    />
+    <div v-else class="feed-box">
+      <div ref="feed" class="feed" role="log" aria-label="세션 메시지" tabindex="-1" @scroll.passive="onScroll">
+        <template v-for="item in timeline" :key="item.key">
+          <DateLabel v-if="item.type === 'date'" :label="item.label" />
+          <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text" />
+          <SessionMessage
+            v-else :name="item.message.sessionName" :at="item.message.at"
+            :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
+          >
+            <p v-for="(line, i) in recaps(item.message)" :key="i">
+              {{ line }}
+            </p>
+            <ArtifactThumbs
+              v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
+              :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
+            />
+            <!-- Answering is not built yet; with several questions every card shows at once -->
+            <QuestionCard
+              v-for="(q, qi) in item.message.questions" :key="`q${qi}`" :question="q" inert
+              :state="offline ? 'offline' : 'open'"
+              :count="item.message.questions!.length > 1 ? `${qi + 1} / ${item.message.questions!.length}` : undefined"
+            />
+          </SessionMessage>
+        </template>
       </div>
-      <div class="note">
-        <span class="desktop-hint">@세션을 부르거나, 산출물에 답장해 보세요</span>
-        <span>보내기는 준비 중이에요</span>
-      </div>
+      <!-- Nothing arrives while offline, so no pill then (OD banner guide 08) -->
+      <NewPill v-if="unseen && !offline" kind="message" :count="unseen" @click="jumpToLatest" />
     </div>
+    <ChatComposer
+      :can-send="canSend" hint="@세션을 부르거나, 산출물에 답장해 보세요"
+      :blocked="offline ? { icon: 'plug', text: '다시 연결되면 보낼 수 있어요' } : undefined"
+      :note="canSend ? undefined : '보내기는 준비 중이에요'" :attachment="attachment"
+      @update:attachment="onAttachment" @send="$emit('send', $event)"
+    />
   </section>
 </template>
 
@@ -131,12 +209,12 @@ defineExpose({ reveal })
   font-size: 10px;
   color: var(--muted);
 }
-.disconnected-note {
-  padding: 8px 24px;
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+.feed-box {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .feed {
   flex: 1;
@@ -147,151 +225,6 @@ defineExpose({ reveal })
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-.message {
-  margin: 0 0 20px;
-  border-radius: 9px;
-  transition: background 0.16s;
-}
-.message.highlighted {
-  background: var(--bg);
-  outline: 1px solid var(--border);
-  outline-offset: 8px;
-}
-.head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-.avatar {
-  width: 23px;
-  height: 23px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--bg);
-  font: 600 11px var(--display);
-}
-.head strong {
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.branch {
-  color: var(--muted);
-  font-weight: 400;
-}
-.head time {
-  margin-left: auto;
-  flex: none;
-  font-size: 9px;
-  color: var(--muted);
-}
-.body {
-  padding-left: 31px;
-  font-size: 12px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-.thumbs {
-  display: flex;
-  gap: 7px;
-  overflow: auto;
-  margin: 8px 0 5px;
-  padding-bottom: 3px;
-  scrollbar-width: thin;
-}
-.thumb {
-  height: 77px;
-  flex: none;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--bg);
-}
-.thumb:hover:not(:disabled) {
-  background: var(--bg);
-  border-color: var(--muted);
-}
-.thumb.active {
-  outline: 2px solid var(--fg);
-  outline-offset: -2px;
-}
-.thumb img {
-  display: block;
-  height: 100%;
-  width: auto;
-}
-
-.composer {
-  flex: none;
-  padding: 13px 20px 17px;
-  background: var(--surface);
-}
-.box {
-  padding: 9px 10px 8px;
-  border-radius: 16px;
-  background: var(--bg);
-  box-shadow: inset 0 1px 4px oklch(0 0 0 / 0.13);
-}
-.box textarea {
-  display: block;
-  width: 100%;
-  min-height: 37px;
-  padding: 0 3px;
-  resize: none;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: var(--fg);
-  font-size: 12px;
-  line-height: 1.7;
-}
-.box textarea::placeholder {
-  color: var(--muted);
-}
-.box-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  /* Sits beside the input on tablet; never squeeze 「@ 세션」 onto two lines */
-  flex: none;
-}
-.mention {
-  white-space: nowrap;
-  min-height: 32px;
-  padding: 0 4px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.send {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--fg);
-  color: var(--surface);
-}
-.send svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.note {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  margin: 7px 3px 0;
-  font-size: 9px;
-  color: var(--muted);
-}
 @media (min-width: 768px) and (max-width: 1023px) {
   .chat-panel {
     border-radius: 20px;
@@ -301,27 +234,6 @@ defineExpose({ reveal })
   }
   .feed {
     padding: 0 26px 12px;
-  }
-  .message {
-    margin-bottom: 16px;
-  }
-  .composer {
-    padding: 9px 22px 13px;
-  }
-  .box {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-  }
-  .box textarea {
-    height: 29px;
-    min-height: 29px;
-  }
-  .box-bottom {
-    gap: 12px;
-  }
-  .note {
-    margin-top: 4px;
   }
 }
 
@@ -341,36 +253,6 @@ defineExpose({ reveal })
   }
   .feed {
     padding: 0 16px 8px;
-  }
-  .message {
-    margin-bottom: 21px;
-  }
-  .body {
-    padding-left: 29px;
-  }
-  .thumb {
-    height: 120px;
-  }
-  .composer {
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  }
-  .box textarea {
-    height: 33px;
-    min-height: 33px;
-    font-size: 16px;
-  }
-  .box textarea::placeholder {
-    font-size: 12px;
-  }
-  .desktop-hint {
-    display: none;
-  }
-}
-@media (max-width: 767px), (pointer: coarse) {
-  .mention,
-  .send {
-    min-width: 44px;
-    min-height: 44px;
   }
 }
 </style>
