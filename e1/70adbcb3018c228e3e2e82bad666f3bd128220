@@ -1,0 +1,28 @@
+web/src/components/chat/ChatComposer.vue
+  s_b7f30c572db9a8::t_11bfe91554218f 81
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_ea9bf3fe84196d 4-5,7-8,11,19-20,34-39,41,43,46-47,53-89,135-140,144,154,171-172
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_9852c25fb8fc57 4,52-59,62,67-69,71-72,74,76-78,84-85,88
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_7208e5e3f1f180 43,49-56
+  s_b7f30c572db9a8::t_ce2b4982a5957a 57-58
+web/src/App.vue
+  s_b7f30c572db9a8::t_be76d0dee003dd 126-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e170adbcb3018c228e3e2e82bad666f3bd128220",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
