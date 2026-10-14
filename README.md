@@ -31,11 +31,11 @@ You don't change a session's prompt or workflow for this app. Sessions work as u
 
 ### Judgment stays with your eyes
 
-Whether a screen is right is for a person to judge, not a model. So gollabara renders and judges nothing: it shows screenshots and mockups exactly as sessions captured them. The image is the star, so every column takes the image's own aspect ratio, uncropped.
+Whether a screen is right is for a person to judge, not a model. So gollabara judges nothing: it shows screenshots and mockups exactly as sessions captured them. The image is the star, so every column takes the image's own aspect ratio, uncropped.
 
 ### A quiet surface, a single signal
 
-It sits beside you all day, so the surface stays quiet, like a near-monochrome developer tool. Yellow appears in only two places: "watching now" and "what you picked." The symbol, an open viewfinder, stands for observing; the dot inside it is the moment you pick. The full rules live in [DESIGN.md](DESIGN.md).
+It sits beside you all day, so the surface stays quiet, like a near-monochrome developer tool. A single yellow marks only three things: the logo, what you picked, and the main action. The symbol, an open viewfinder, stands for observing; the dot inside it is the moment you pick. The full rules live in [DESIGN.md](DESIGN.md).
 
 ### Two flows, two directions
 

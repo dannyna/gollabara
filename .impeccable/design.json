@@ -1,103 +1,163 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-14T13:00:27.343Z",
+  "generatedAt": "2026-10-14T14:02:32.000Z",
   "title": "Design System: gollabara",
   "extensions": {
     "colorMeta": {
-      "quiet-paper": {
+      "dark-bg": {
         "role": "neutral",
-        "displayName": "Quiet Paper",
-        "canonical": "oklch(97.27% 0.0017 247.8)",
+        "displayName": "Dark Background",
+        "canonical": "oklch(0.220704 0.009062 255.6084)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "card-white": {
+      "dark-surface": {
         "role": "neutral",
-        "displayName": "Card White",
-        "canonical": "oklch(100% 0 0)",
+        "displayName": "Dark Surface",
+        "canonical": "oklch(0.274908 0.010907 254.0192)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "recess-gray": {
+      "dark-fg": {
         "role": "neutral",
-        "displayName": "Recess Gray",
-        "canonical": "#ECEEF0",
+        "displayName": "Dark Foreground",
+        "canonical": "oklch(0.966197 0.003428 247.8584)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "hairline": {
+      "dark-muted": {
         "role": "neutral",
-        "displayName": "Hairline",
-        "canonical": "oklch(87.75% 0.0081 253.9)",
+        "displayName": "Dark Muted",
+        "canonical": "oklch(0.769881 0.016843 253.9307)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "graphite-ink": {
+      "dark-border": {
         "role": "neutral",
-        "displayName": "Graphite Ink",
-        "canonical": "oklch(26.62% 0.0095 248.2)",
+        "displayName": "Dark Border",
+        "canonical": "oklch(0.395448 0.015664 255.6039)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "slate-muted": {
+      "light-bg": {
         "role": "neutral",
-        "displayName": "Slate Muted",
-        "canonical": "oklch(49.29% 0.0155 251.7)",
+        "displayName": "Light Background",
+        "canonical": "oklch(0.972666 0.001711 247.8392)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "signal-yellow": {
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Light Surface",
+        "canonical": "oklch(1.000000 0.000000 89.8756)",
+        "tonalRamp": [
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
+        ]
+      },
+      "light-fg": {
+        "role": "neutral",
+        "displayName": "Light Foreground",
+        "canonical": "oklch(0.266235 0.009457 248.1828)",
+        "tonalRamp": [
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
+        ]
+      },
+      "light-muted": {
+        "role": "neutral",
+        "displayName": "Light Muted",
+        "canonical": "oklch(0.492867 0.015485 251.6888)",
+        "tonalRamp": [
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
+        ]
+      },
+      "light-border": {
+        "role": "neutral",
+        "displayName": "Light Border",
+        "canonical": "oklch(0.877533 0.008140 253.8593)",
+        "tonalRamp": [
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
+        ]
+      },
+      "accent": {
         "role": "primary",
-        "displayName": "Signal Yellow",
-        "canonical": "oklch(87.16% 0.1508 94.9)",
+        "displayName": "Dock Yellow",
+        "canonical": "oklch(0.871579 0.150779 94.9011)",
         "tonalRamp": [
           "oklch(15% 0.04 95)",
           "oklch(25% 0.07 95)",
@@ -109,10 +169,10 @@
           "oklch(96% 0.06 95)"
         ]
       },
-      "signal-ink": {
+      "accent-hover": {
         "role": "primary",
-        "displayName": "Signal Ink",
-        "canonical": "#7A6200",
+        "displayName": "Dock Yellow Hover",
+        "canonical": "oklch(0.81 0.14 95)",
         "tonalRamp": [
           "oklch(15% 0.04 95)",
           "oklch(25% 0.07 95)",
@@ -124,264 +184,257 @@
           "oklch(96% 0.06 95)"
         ]
       },
-      "live-green": {
-        "role": "status",
-        "displayName": "Live Green",
-        "canonical": "#2F7D5B",
-        "tonalRamp": [
-          "oklch(15% 0.03 160)",
-          "oklch(25% 0.05 160)",
-          "oklch(35% 0.07 160)",
-          "oklch(48% 0.09 160)",
-          "oklch(60% 0.11 160)",
-          "oklch(75% 0.11 160)",
-          "oklch(88% 0.07 160)",
-          "oklch(96% 0.03 160)"
-        ]
-      },
-      "night-paper": {
+      "on-accent": {
         "role": "neutral",
-        "displayName": "Night Paper",
-        "canonical": "oklch(22.07% 0.0091 255.6)",
+        "displayName": "On Accent",
+        "canonical": "oklch(0.267 0.009 250)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       },
-      "night-card": {
+      "shade": {
         "role": "neutral",
-        "displayName": "Night Card",
-        "canonical": "oklch(27.49% 0.0109 254.0)",
+        "displayName": "Shade",
+        "canonical": "oklch(0 0 0 / 0.2)",
         "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
-        ]
-      },
-      "night-recess": {
-        "role": "neutral",
-        "displayName": "Night Recess",
-        "canonical": "#1F2327",
-        "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
-        ]
-      },
-      "night-hairline": {
-        "role": "neutral",
-        "displayName": "Night Hairline",
-        "canonical": "oklch(39.54% 0.0157 255.6)",
-        "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
-        ]
-      },
-      "night-ink": {
-        "role": "neutral",
-        "displayName": "Night Ink",
-        "canonical": "oklch(96.62% 0.0034 247.9)",
-        "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
-        ]
-      },
-      "night-muted": {
-        "role": "neutral",
-        "displayName": "Night Muted",
-        "canonical": "oklch(76.99% 0.0168 253.9)",
-        "tonalRamp": [
-          "oklch(15% 0.01 250)",
-          "oklch(25% 0.01 250)",
-          "oklch(35% 0.01 250)",
-          "oklch(48% 0.01 250)",
-          "oklch(60% 0.01 250)",
-          "oklch(75% 0.01 250)",
-          "oklch(88% 0.01 250)",
-          "oklch(96% 0.01 250)"
-        ]
-      },
-      "night-live-green": {
-        "role": "status",
-        "displayName": "Night Live Green",
-        "canonical": "#5FC495",
-        "tonalRamp": [
-          "oklch(15% 0.03 160)",
-          "oklch(25% 0.05 160)",
-          "oklch(35% 0.07 160)",
-          "oklch(48% 0.09 160)",
-          "oklch(60% 0.11 160)",
-          "oklch(75% 0.11 160)",
-          "oklch(88% 0.07 160)",
-          "oklch(96% 0.03 160)"
+          "oklch(15% 0.01 255)",
+          "oklch(25% 0.01 255)",
+          "oklch(35% 0.01 255)",
+          "oklch(48% 0.01 255)",
+          "oklch(60% 0.01 255)",
+          "oklch(75% 0.01 255)",
+          "oklch(88% 0.01 255)",
+          "oklch(96% 0.01 255)"
         ]
       }
     },
     "typographyMeta": {
       "wordmark": {
         "displayName": "Wordmark",
-        "purpose": "Only the lowercase gollabara wordmark in the header."
+        "purpose": "Only the lowercase gollabara wordmark in the app bar."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Sheet and dialog titles."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Panel titles."
+        "purpose": "Surface titles and the session menu button."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Recap and question text."
+        "purpose": "Base text size."
+      },
+      "message": {
+        "displayName": "Message",
+        "purpose": "Chat message bodies, question text, my bubbles, the composer."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Chips, badges, sender names, meta info."
+        "purpose": "Sender names, hints, session states, menu and action-bar buttons."
       },
       "mono": {
         "displayName": "Mono",
-        "purpose": "Times, image sizes, counts."
+        "purpose": "Times, image sizes, sequence numbers, zoom, answer letters."
       }
     },
-    "shadows": [],
+    "shadows": [
+      {
+        "name": "work-surface",
+        "value": "0 8px 25px oklch(0 0 0 / .08)",
+        "purpose": "Chat surface lift."
+      },
+      {
+        "name": "stream-ring",
+        "value": "inset 0 0 0 1px var(--border)",
+        "purpose": "Stream surface outline on the ground tone."
+      },
+      {
+        "name": "artifact",
+        "value": "0 10px 24px oklch(0 0 0 / .2)",
+        "purpose": "Image inside an artifact cell."
+      },
+      {
+        "name": "composer-inset",
+        "value": "inset 0 1px 4px oklch(0 0 0 / .13)",
+        "purpose": "Pressed-in composer box."
+      },
+      {
+        "name": "action-bar",
+        "value": "0 3px 14px var(--shade)",
+        "purpose": "Hover action bars on cells (messages use 0 3px 9px)."
+      },
+      {
+        "name": "floating-pill",
+        "value": "0 5px 24px var(--shade)",
+        "purpose": "New-artifacts pill and toast."
+      },
+      {
+        "name": "popover",
+        "value": "0 12px 45px var(--shade)",
+        "purpose": "Session menu."
+      },
+      {
+        "name": "mention-list",
+        "value": "0 -8px 30px var(--shade)",
+        "purpose": "Mention list opening upward from the composer."
+      }
+    ],
     "motion": [
       {
-        "name": "linked-highlight",
-        "value": "background .2s",
-        "purpose": "Highlight transition on the chat message linked to an image column."
+        "name": "highlight",
+        "value": "background .16s",
+        "purpose": "Chat message highlight when its artifact is selected."
+      },
+      {
+        "name": "hover-actions",
+        "value": "opacity .15s",
+        "purpose": "Action bars fading in on hover or focus."
       },
       {
         "name": "follow-scroll",
         "value": "scroll-behavior: smooth",
-        "purpose": "Following latest and column ↔ message jumps; the first load jumps instantly."
+        "purpose": "Track and chat jumps; disabled under prefers-reduced-motion."
       }
     ],
     "breakpoints": [
       {
         "name": "mobile",
         "value": "767px",
-        "purpose": "At or below this width only chat shows; images open in the full-screen viewer."
+        "purpose": "At or below: chat only, two-row 120px app bar; chat thumbnails open the viewer."
+      },
+      {
+        "name": "tablet",
+        "value": "768px–1023px",
+        "purpose": "Stream above chat, stacked."
+      },
+      {
+        "name": "desktop",
+        "value": "1024px",
+        "purpose": "At or above: stream left, 440px chat right."
+      },
+      {
+        "name": "app-bar-wide",
+        "value": "1280px",
+        "purpose": "At or above the app bar is 92px; 768–1279px it is 88px."
       },
       {
         "name": "chat-panel",
         "value": "440px",
-        "purpose": "Fixed width of the desktop chat panel."
+        "purpose": "Fixed width of the desktop chat surface."
       }
     ],
     "overlays": [
       {
-        "name": "viewer-scrim",
-        "value": "rgb(0 0 0 / .85)",
-        "purpose": "Backdrop of the full-screen image viewer."
+        "name": "sheet-scrim",
+        "value": "oklch(0 0 0 / .38)",
+        "purpose": "Backdrop behind the settings sheet."
+      },
+      {
+        "name": "viewer",
+        "value": "var(--bg)",
+        "purpose": "Opaque full-screen image viewer with surface bars."
       }
     ]
   },
   "components": [
     {
-      "name": "Observe Badge",
-      "kind": "chip",
-      "refersTo": "observe-badge",
-      "description": "The only yellow label, announcing that the screen is \"watching\" (구경 중).",
-      "html": "<span class=\"ds-observe\">구경 중</span>",
-      "css": ".ds-observe { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--accent, #F4D34F); color: var(--on-accent, #22262A); font-family: \"Noto Sans KR\", system-ui, sans-serif; }"
+      "name": "App Bar",
+      "kind": "nav",
+      "refersTo": "app-bar",
+      "description": "Logo symbol on yellow and the lowercase wordmark on the left; the control dock with the single session menu button, theme, and settings on the right. No counts and no always-on badge.",
+      "html": "<header class=\"ds-bar\"><span class=\"ds-brand\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 512 512\" aria-hidden=\"true\"><path d=\"M198 120h-78v272h78m116-272h78v272h-78\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"40\"/><circle cx=\"256\" cy=\"256\" r=\"42\" fill=\"currentColor\"/></svg>gollabara</span><nav class=\"ds-dock\"><button class=\"ds-scope\">전체 세션 <span>⌄</span></button><button class=\"ds-icon\" aria-label=\"테마 전환\">◐</button><button class=\"ds-icon\" aria-label=\"설정\">⚙</button></nav></header>",
+      "css": ".ds-bar { height: 92px; display: flex; align-items: center; gap: 20px; padding: 0 10px; background: var(--bg); color: var(--fg); font-family: \"Noto Sans KR\", sans-serif; } .ds-brand { display: flex; align-items: center; gap: 8px; font: 500 25px/1 \"Space Grotesk\", \"Noto Sans KR\", sans-serif; letter-spacing: -1.3px; } .ds-brand svg { padding: 3px; border-radius: 8px; background: var(--accent); color: var(--on-accent); } .ds-dock { margin-left: auto; display: flex; gap: 3px; height: 54px; padding: 4px; border-radius: 17px; background: var(--surface); } .ds-scope { display: flex; align-items: center; gap: 9px; min-height: 44px; max-width: 280px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--bg); color: var(--fg); font-size: 12px; cursor: pointer; } .ds-scope span { color: var(--muted); } .ds-scope:hover, .ds-scope[aria-expanded=true] { box-shadow: inset 0 0 0 1px var(--muted); } .ds-icon { width: 44px; height: 44px; border: 0; border-radius: 11px; background: none; color: var(--fg); cursor: pointer; } .ds-icon:hover { background: var(--bg); } .ds-bar button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }"
     },
     {
-      "name": "Pill Button",
-      "kind": "button",
-      "refersTo": "pill-button",
-      "description": "An inverted pill for rare actions like \"new images n →\".",
-      "html": "<button class=\"ds-pill\">새 이미지 3 →</button>",
-      "css": ".ds-pill { font: 12px \"Noto Sans KR\", system-ui, sans-serif; padding: 5px 12px; border-radius: 999px; border: 0; background: var(--text, #22262A); color: var(--bg, #F5F6F7); cursor: pointer; transition: opacity .15s; } .ds-pill:hover { opacity: .85; } .ds-pill:focus-visible { outline: 3px solid var(--accent, #F4D34F); outline-offset: 2px; }"
-    },
-    {
-      "name": "Filter Chips",
-      "kind": "chip",
-      "refersTo": "filter-chip",
-      "description": "Session filter; inverts to an ink fill when selected.",
-      "html": "<div class=\"ds-filters\"><button class=\"ds-flt ds-on\">전체</button><button class=\"ds-flt\">piuda · desktop-shell</button><button class=\"ds-flt\">od</button></div>",
-      "css": ".ds-filters { display: flex; gap: 6px; } .ds-flt { font: 12px \"Noto Sans KR\", system-ui, sans-serif; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); color: var(--text, #22262A); white-space: nowrap; cursor: pointer; } .ds-flt:hover { border-color: var(--muted, #5B626A); } .ds-flt:focus-visible { outline: 2px solid var(--accent, #F4D34F); outline-offset: 1px; } .ds-flt.ds-on { background: var(--text, #22262A); color: var(--bg, #F5F6F7); border-color: var(--text, #22262A); }"
+      "name": "Artifact Cell",
+      "kind": "custom",
+      "refersTo": "artifact-cell",
+      "description": "An artifact in the stream at its original ratio; the selected cell gets the yellow selection outline.",
+      "html": "<article class=\"ds-cell ds-sel\"><div class=\"ds-meta\"><strong>client-e2e <span>· checkout</span></strong><time>14:38 · 390 × 844</time></div><button class=\"ds-hit\" aria-pressed=\"true\"><span class=\"ds-img\"></span></button><div class=\"ds-cap\"><span>결제 화면 · 하단 버튼 잘림</span><span class=\"ds-mono\">06</span></div></article>",
+      "css": ".ds-cell { display: inline-flex; flex-direction: column; width: 180px; color: var(--fg); font-family: \"Noto Sans KR\", sans-serif; } .ds-meta { height: 48px; display: flex; flex-direction: column; justify-content: center; } .ds-meta strong { font-size: 12px; font-weight: 500; } .ds-meta strong span { color: var(--muted); } .ds-meta time, .ds-mono { font: 10px \"IBM Plex Mono\", monospace; color: var(--muted); font-variant-numeric: tabular-nums; } .ds-hit { padding: 0; border: 2px solid transparent; border-radius: 12px; background: var(--surface); box-shadow: 0 10px 24px oklch(0 0 0 / .2); cursor: pointer; } .ds-hit:hover { border-color: var(--muted); } .ds-hit:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; } .ds-img { display: block; aspect-ratio: 390 / 844; border-radius: 10px; background: var(--bg); } .ds-sel .ds-hit { border-color: var(--accent); } .ds-cap { height: 37px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); }"
     },
     {
       "name": "Question Card",
       "kind": "card",
       "refersTo": "question-card",
-      "description": "A card that only mirrors a question the session asked; options are static labels.",
-      "html": "<div class=\"ds-q\"><small>세션이 물은 질문</small>헤더 레이아웃을 어느 쪽으로 할까요?<div class=\"ds-opts\"><span class=\"ds-opt\">왼쪽 정렬</span><span class=\"ds-opt\">가운데 정렬</span></div></div>",
-      "css": ".ds-q { background: var(--sunken, #ECEEF0); border: 1px solid var(--line, #D3D7DC); border-radius: 10px; padding: 10px 12px; font: 14px/1.5 \"Noto Sans KR\", system-ui, sans-serif; color: var(--text, #22262A); max-width: 360px; } .ds-q small { display: block; font-size: 11px; color: var(--accent-ink, #7A6200); margin-bottom: 4px; } .ds-opts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; } .ds-opt { font-size: 13px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); }"
+      "description": "The session's own question with answer choices. Choices are buttons, drawn but disabled until sending to sessions ships.",
+      "html": "<div class=\"ds-q\"><div class=\"ds-eyebrow\">세션에서 물었어요</div><p>히어로 시안 3안 중 어느 쪽으로 갈까요?</p><div class=\"ds-choices\"><button class=\"ds-choice\" disabled>A</button><button class=\"ds-choice ds-rec\" disabled>B</button><button class=\"ds-choice\" disabled>C</button></div><button class=\"ds-direct\" disabled>직접 답하기</button></div>",
+      "css": ".ds-q { max-width: 380px; padding: 16px; border-radius: 16px; background: var(--bg); color: var(--fg); font-family: \"Noto Sans KR\", sans-serif; } .ds-eyebrow { font-size: 10px; color: var(--muted); margin-bottom: 7px; } .ds-q p { margin: 0; font-size: 12px; line-height: 1.7; } .ds-choices { display: flex; gap: 6px; margin-top: 11px; } .ds-choice { flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--fg); font: 500 12px \"IBM Plex Mono\", monospace; cursor: pointer; } .ds-choice:hover:not(:disabled) { border-color: var(--fg); } .ds-choice.ds-chosen { background: var(--fg); color: var(--surface); } .ds-rec::after { content: \"추천\"; margin-left: 5px; font: 9px \"Noto Sans KR\", sans-serif; color: var(--muted); } .ds-direct { min-height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 10px; text-decoration: underline; text-underline-offset: 3px; } .ds-q button:disabled { opacity: .55; cursor: default; } .ds-q button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }"
     },
     {
-      "name": "Image Column",
+      "name": "Chat Message",
       "kind": "custom",
-      "refersTo": "image-column",
-      "description": "An image column that keeps the original ratio; a yellow outline when selected.",
-      "html": "<figure class=\"ds-col ds-sel\"><figcaption><i></i><b>piuda</b><span>21:24 · 1280×800</span></figcaption><div class=\"ds-img\"></div></figure>",
-      "css": ".ds-col { margin: 0; display: inline-flex; flex-direction: column; gap: 8px; font: 12px \"Noto Sans KR\", system-ui, sans-serif; color: var(--muted, #5B626A); } .ds-col figcaption { display: flex; align-items: center; gap: 8px; white-space: nowrap; } .ds-col i { width: 8px; height: 8px; border-radius: 3px; background: hsl(210 45% 42%); } .ds-col b { color: var(--text, #22262A); font-weight: 600; } .ds-col span { font: 11px \"IBM Plex Mono\", ui-monospace, monospace; } .ds-img { width: 256px; aspect-ratio: 1280 / 800; border-radius: 10px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); } .ds-col.ds-sel .ds-img { outline: 3px solid var(--accent, #F4D34F); outline-offset: 2px; } .ds-col.ds-sel b { color: var(--accent-ink, #7A6200); }"
+      "refersTo": "chat-thumbnail",
+      "description": "Session avatar with initial, name, branch, and mono time, then the body and ratio-keeping thumbnails; the thumbnail matching the selection gets an fg outline.",
+      "html": "<article class=\"ds-msg\"><div class=\"ds-head\"><span class=\"ds-av\">o</span><strong>od <span>· landing-hero</span></strong><time>14:35</time></div><div class=\"ds-body\">히어로 시안 3개 뽑았어.<div class=\"ds-thumbs\"><button class=\"ds-thumb\"></button><button class=\"ds-thumb ds-active\"></button></div></div></article>",
+      "css": ".ds-msg { max-width: 400px; color: var(--fg); font-family: \"Noto Sans KR\", sans-serif; } .ds-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; } .ds-av { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 8px; background: var(--bg); font: 600 11px \"Space Grotesk\", sans-serif; } .ds-head strong { font-size: 11px; font-weight: 600; } .ds-head strong span { color: var(--muted); font-weight: 400; } .ds-head time { margin-left: auto; font: 9px \"IBM Plex Mono\", monospace; color: var(--muted); } .ds-body { padding-left: 31px; font-size: 12px; line-height: 1.8; } .ds-thumbs { display: flex; gap: 7px; margin: 8px 0 5px; } .ds-thumb { height: 77px; aspect-ratio: 1440 / 900; padding: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; } .ds-thumb.ds-active { outline: 2px solid var(--fg); outline-offset: -2px; }"
     },
     {
-      "name": "Stream Message",
+      "name": "Composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "Pressed-in message box with @mention and send. Drawn but disabled until sending to sessions ships.",
+      "html": "<form class=\"ds-compose\"><textarea rows=\"1\" placeholder=\"세션에 메시지나 피드백을 남겨보세요\" disabled></textarea><div class=\"ds-row\"><button type=\"button\" disabled>@ 세션</button><button class=\"ds-send\" type=\"submit\" aria-label=\"메시지 보내기\" disabled>↑</button></div></form>",
+      "css": ".ds-compose { max-width: 400px; padding: 9px 10px 8px; border-radius: 16px; background: var(--bg); box-shadow: inset 0 1px 4px oklch(0 0 0 / .13); color: var(--fg); font-family: \"Noto Sans KR\", sans-serif; } .ds-compose:focus-within { outline: 2px solid var(--fg); outline-offset: 3px; } .ds-compose textarea { display: block; width: 100%; min-height: 37px; resize: none; border: 0; outline: none; background: transparent; color: var(--fg); font: 12px/1.7 \"Noto Sans KR\", sans-serif; } .ds-compose textarea::placeholder { color: var(--muted); } .ds-row { display: flex; justify-content: space-between; align-items: center; } .ds-row button { border: 0; background: none; color: var(--muted); font-size: 11px; min-height: 32px; } .ds-row .ds-send { width: 34px; height: 34px; border-radius: 10px; background: var(--fg); color: var(--surface); } .ds-compose button:disabled { opacity: .55; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "primary-button",
+      "description": "Yellow fill for the main action of a screen; one of the three places yellow may appear.",
+      "html": "<button class=\"ds-primary\">확인</button>",
+      "css": ".ds-primary { min-height: 44px; padding: 0 18px; border: 1px solid transparent; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: 600 13px \"Noto Sans KR\", sans-serif; cursor: pointer; } .ds-primary:hover:not(:disabled) { background: oklch(.81 .14 95); } .ds-primary:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; } .ds-primary:disabled { opacity: .55; cursor: default; }"
+    },
+    {
+      "name": "New Artifacts Pill",
+      "kind": "button",
+      "refersTo": "new-pill",
+      "description": "Appears while the reader browses history and new artifacts arrive; returns the track to the latest.",
+      "html": "<button class=\"ds-new\">새 산출물 2 →</button>",
+      "css": ".ds-new { min-height: 44px; padding: 0 18px; border: 1px solid var(--border); border-radius: 40px; background: var(--surface); color: var(--fg); box-shadow: 0 5px 24px oklch(0 0 0 / .2); font: 12px \"Noto Sans KR\", sans-serif; cursor: pointer; } .ds-new:hover { background: var(--border); } .ds-new:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }"
+    },
+    {
+      "name": "Session Menu",
       "kind": "custom",
-      "refersTo": "session-avatar",
-      "description": "Session avatar, then sender, time, and kind, then the recap body.",
-      "html": "<div class=\"ds-msg\"><div class=\"ds-av\">PI</div><div><div class=\"ds-who\">piuda<span>21:24 · 턴 끝</span></div><p>빌드 끝났어. 결과 화면 올려뒀어.</p></div></div>",
-      "css": ".ds-msg { display: flex; gap: 10px; font-family: \"Noto Sans KR\", system-ui, sans-serif; color: var(--text, #22262A); } .ds-av { width: 30px; height: 30px; border-radius: 8px; flex: none; background: hsl(210 45% 42%); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; } .ds-who { font-size: 13px; font-weight: 700; } .ds-who span { font-weight: 400; color: var(--muted, #5B626A); margin-left: 6px; } .ds-msg p { margin: 2px 0 0; font-size: 14px; line-height: 1.5; }"
-    },
-    {
-      "name": "App Header",
-      "kind": "nav",
-      "refersTo": "app-header",
-      "description": "Wordmark, watching badge, mono counts, and follow-latest status.",
-      "html": "<header class=\"ds-head\"><span class=\"ds-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 512 512\" aria-hidden=\"true\"><path d=\"M198 120h-78v272h78m116-272h78v272h-78\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"44\"/><circle cx=\"256\" cy=\"256\" r=\"46\" fill=\"currentColor\"/></svg>gollabara</span><span class=\"ds-badge\">구경 중</span><span class=\"ds-count\">이미지 12 · 세션 3</span><span class=\"ds-sp\"></span><span class=\"ds-live\">최신을 따라가는 중</span></header>",
-      "css": ".ds-head { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 24px; border-bottom: 1px solid var(--line, #D3D7DC); background: var(--bg, #F5F6F7); color: var(--text, #22262A); font: 14px \"Noto Sans KR\", system-ui, sans-serif; } .ds-brand { display: flex; align-items: center; gap: 8px; font: 700 16px \"Space Grotesk\", \"Noto Sans KR\", sans-serif; letter-spacing: -0.01em; } .ds-badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--accent, #F4D34F); color: var(--on-accent, #22262A); } .ds-count { font: 11px \"IBM Plex Mono\", ui-monospace, monospace; color: var(--muted, #5B626A); } .ds-sp { flex: 1; } .ds-live { font-size: 12px; color: var(--ok, #2F7D5B); display: flex; align-items: center; gap: 6px; } .ds-live::before { content: \"\"; width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #2F7D5B); }"
+      "refersTo": "session-menu",
+      "description": "Popover under the session menu button: scope, state, pause/resume (disabled in the current scope), and mute (a client-side filter). Muted sessions stay listed but cannot be selected.",
+      "html": "<div class=\"ds-menu\" role=\"dialog\" aria-label=\"세션 선택과 관리\"><h2>표시할 세션</h2><button class=\"ds-pick ds-cur\"><span>✓</span><span><strong>전체 세션</strong><small>음소거한 세션은 숨겨요</small></span></button><div class=\"ds-srow\"><button class=\"ds-pick\" disabled><span></span><span><strong>api</strong><small>quota-refill</small></span><em>음소거</em></button><div class=\"ds-ops\"><button disabled>멈춤</button><button aria-pressed=\"true\">음소거 해제</button><time>마지막 활동 14:39</time></div></div></div>",
+      "css": ".ds-menu { width: 390px; padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); color: var(--fg); box-shadow: 0 12px 45px oklch(0 0 0 / .2); font-family: \"Noto Sans KR\", sans-serif; } .ds-menu h2 { margin: 0 0 4px; font-size: 16px; } .ds-pick { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 61px; padding: 7px 10px; border: 0; border-radius: 10px; background: none; color: var(--fg); text-align: left; cursor: pointer; } .ds-pick:hover:not(:disabled) { background: var(--bg); box-shadow: inset 0 0 0 1px var(--border); } .ds-pick:disabled { opacity: .55; cursor: default; } .ds-cur { background: var(--bg); } .ds-pick strong { display: block; font-size: 12px; font-weight: 500; } .ds-pick small { display: block; font-size: 10px; color: var(--muted); } .ds-pick em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--muted); } .ds-ops { display: flex; align-items: center; gap: 6px; margin: 0 10px 0 38px; } .ds-ops button { min-height: 44px; padding: 0 10px; border: 0; border-radius: 7px; background: var(--bg); color: var(--fg); font-size: 10px; } .ds-ops button:disabled { opacity: .55; } .ds-ops time { margin-left: auto; font: 9px \"IBM Plex Mono\", monospace; color: var(--muted); } .ds-menu button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }"
     }
   ],
   "narrative": {
-    "northStar": "구경 모드 · Quiet signal",
-    "overview": "gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day, so the surface is as quiet as a near-monochrome developer tool and the screenshots and mockups take center stage. Color shows up only when there is a signal: a single yellow means \"watching now\" and \"what you picked,\" and everything else is divided by hairlines and whitespace.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. Both meanings run through the whole system: surfaces left open like the frame, and yellow placed as rarely as the dot.\n\ngollabara is an observer, not a mediator, and the interface carries that stance. No modals, alarm colors, or big calls to action pushing you to decide. Questions from sessions are only mirrored, so they are drawn so they never look like something you must press.",
+    "northStar": "Night Dock",
+    "overview": "gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.\n\n**Source.** The design source is the Open Design project `gollabara-app` (\"Night Dock\"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins. `session-chat-components.html` in the same project is the companion reference for chat rows.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.\n\ngollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. **In the current scope those controls are drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.",
     "keyCharacteristics": [
-      "Near-monochrome surfaces plus one signal yellow",
-      "Flat, shadowless; depth from 1px hairlines and one recessed tone",
+      "Dark by default, with light and system themes as alternatives",
+      "Two independent rounded surfaces: 「산출물 스트림」 (artifact stream) and 「세션 대화」 (session chat)",
+      "One right-side tool dock holding a single session menu button, theme, and settings",
+      "Yellow on three things only: the logo symbol background, the selection outline, and primary actions",
       "The image's own aspect ratio sets each column's width",
-      "Numbers, times, and sizes in monospace",
-      "Light and dark as equals, following the system setting"
+      "Numbers, times, and sizes in monospace"
     ],
     "rules": [
       {
-        "name": "The Surface-Only Yellow Rule",
-        "body": "Yellow is only ever a fill or an outline. Never yellow text on a light screen; use Signal Ink instead.",
+        "name": "The Three Yellows Rule",
+        "body": "Yellow (`--accent`) marks exactly three things: the logo symbol background, the selection outline on the selected artifact, and primary actions. Not status, not badges, not the connection state, not chosen answers or focus rings (those use `--fg`).",
         "section": "colors"
       },
       {
-        "name": "The One Signal Rule",
-        "body": "On any screen, yellow marks only the \"watching\" badge and the current selection. Its rarity is what makes it mean \"you picked this.\"",
+        "name": "The No Yellow Text Rule",
+        "body": "Yellow is only ever a fill or an outline. Never set text in yellow, and never put yellow text on a light surface. Content on yellow uses `--on-accent`.",
         "section": "colors"
       },
       {
         "name": "The Mono Numbers Rule",
-        "body": "Machine-made numbers (times, sizes, counts) are set in monospace. Never set numbers in a serif.",
+        "body": "Times, sizes, counts, and sequence numbers are set in IBM Plex Mono with tabular figures. Never set numbers in a serif.",
         "section": "typography"
       },
       {
@@ -391,29 +444,35 @@
       },
       {
         "name": "The Image Sets the Width Rule",
-        "body": "Track columns keep the original aspect ratio and are never cropped (`object-fit: contain`). Only thumbnails may use `cover`.",
+        "body": "Artifact cells and chat thumbnails keep the original aspect ratio and are never cropped (`object-fit: contain`, or fixed height with `width: auto`). Only the tiny quote previews in a reply context or a sent bubble may use `cover`.",
         "section": "layout"
       },
       {
-        "name": "The Flat-By-Default Rule",
-        "body": "No `box-shadow` on cards, chips, or panels. If you need more separation, change the tonal layer or add a Hairline.",
+        "name": "The Two Grounds Rule",
+        "body": "Separate with tone before shadow: `--bg` for ground and recessed fills, `--surface` for anything lifted. Add a shadow only to the layers listed above.",
         "section": "elevation & depth"
       }
     ],
     "dos": [
-      "**Do** use yellow only as a fill or outline, for the \"watching\" badge and the current selection.",
-      "**Do** use Signal Ink (`#7A6200`) when a light screen needs yellow-family text.",
-      "**Do** set times, sizes, and counts in IBM Plex Mono.",
-      "**Do** let the original ratio set image column width, uncropped.",
-      "**Do** try the tonal layers (Paper, Card, Recess) and the Hairline before adding a color.",
-      "**Do** define new tokens for both light and dark in `web/src/style.css`."
+      "**Do** start in the dark theme and define every token for dark (default) and light in `web/src/style.css`.",
+      "**Do** keep yellow to the logo symbol background, the selection outline, and primary actions.",
+      "**Do** use `--fg` for focus rings, chosen answers, and the active thumbnail.",
+      "**Do** keep one session menu button that shows 「전체 세션」 or the selected session.",
+      "**Do** set times, sizes, counts, and sequence numbers in IBM Plex Mono.",
+      "**Do** let the original ratio set image width, uncropped.",
+      "**Do** separate with `--bg` and `--surface` before reaching for a shadow.",
+      "**Do** draw reply, answers, `@mention`, and pause/resume disabled until sending to sessions ships."
     ],
     "donts": [
+      "**Don't** set text in yellow, and never yellow text on a light surface.",
+      "**Don't** show image or session counts or an always-on 「구경 중」 badge in the app bar.",
+      "**Don't** split the session control into a segmented filter plus a separate manage button.",
+      "**Don't** let a muted session be selected, or leave the scope on a session you just muted.",
+      "**Don't** move a reader who is browsing history when new artifacts arrive.",
       "**Don't** use cards with an accent stripe on the left border.",
       "**Don't** set numbers in a serif.",
-      "**Don't** put shadows on cards, chips, or panels.",
-      "**Don't** draw a session's question options as pressable buttons; they are only mirrored.",
-      "**Don't** build modals, alarm colors, or big primary buttons that push the user to approve or decide.",
+      "**Don't** build anything that pushes the user to approve or decide, or invent questions for sessions.",
+      "**Don't** present disabled or sample features as if they work.",
       "**Don't** write the service name in Korean."
     ]
   }

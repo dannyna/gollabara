@@ -7,7 +7,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 1. **Observer, not mediator.** Never add features that ask a session for approval or invent questions. Mirror only the session's own questions (`AskUserQuestion`). No dedicated `post` / `ask` tools for agents to decide what to send.
 2. **The hook never blocks a session.** 1.5 s timeout, swallow every error, always exit 0. If the server is down, exit quietly.
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
-4. **No rendering, no judging.** The server and the UI show received images as-is. No running HTML artifacts, server-side screenshots, or diffing.
+4. **No judging, no diffing.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
 5. **Local only.** Data lives in local SQLite and image files. No third-party storage, no public internet exposure.
 6. **Multi-harness by design.** Only the Claude Code plugin exists today, but Codex, Open Design, and Claude Design are targets. Keep the event types in `src/shared/types.ts` free of Claude-Code-only concepts.
 
@@ -66,7 +66,7 @@ Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main
 
 ## Conventions
 
-- **UI:** Follow [DESIGN.md](DESIGN.md). Define tokens in `web/src/style.css` for both light and dark. The design source is the Open Design project `gollabara-brand` (direction 03, "구경 모드 · Quiet signal"). The app mockup in the `gollabara-app` project is still under review and not adopted; do not port it.
+- **UI:** Follow [DESIGN.md](DESIGN.md). Define tokens in `web/src/style.css` for dark (the default) and light. The design source is the Open Design project `gollabara-app` ("Night Dock"): its `app-night-dock.html` is authoritative for screens and interactions. Component structure is provisional; an atomic component system comes later.
 - **Service name:** Always the Latin `gollabara`, never a Korean spelling.
 - **Docs:** [README.md](README.md) (English) and [README.ko.md](README.ko.md) (Korean) must stay in sync. AGENTS.md, DESIGN.md, and [REVIEW.md](REVIEW.md) are in English. The README carries the design philosophy, not technical detail.
 - **Language:** Code, comments, commit messages, PR titles and bodies, issues, and docs are in English. The exceptions are [README.ko.md](README.ko.md) and the product UI copy, which are Korean. Write in English even when the conversation with the user is in Korean.
