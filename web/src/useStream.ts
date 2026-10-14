@@ -22,8 +22,8 @@ export function useStream() {
       const frame = JSON.parse(e.data) as ServerFrame
       if (frame.type === 'hello')
         messages.value = frame.messages
-      else
-        messages.value = [...messages.value, frame.message]
+      else if (frame.type === 'message' || frame.type === 'message-upsert')
+        messages.value = upsert(messages.value, frame.message)
     }
     ws.onclose = () => {
       connected.value = false
@@ -40,4 +40,10 @@ export function useStream() {
   })
 
   return { messages, connected }
+}
+
+/** Turn messages change in place as images and recaps arrive, so replace by id */
+function upsert(list: StreamMessage[], message: StreamMessage): StreamMessage[] {
+  const i = list.findIndex(m => m.id === message.id)
+  return i === -1 ? [...list, message] : list.map((m, j) => j === i ? message : m)
 }

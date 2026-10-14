@@ -10,6 +10,12 @@ export interface HookInput {
   tool_input?: any
   tool_response?: any
   last_assistant_message?: string
+  stop_hook_active?: boolean
+}
+
+/** Hook process env. Only the keys read here; never pass the rest along (it holds tool tokens). */
+export interface HookEnv {
+  OD_PROJECT_ID?: string
 }
 
 const RECAP_MAX = 160
@@ -17,6 +23,17 @@ const RECAP_MAX = 160
 export function sessionName(cwd: string, branch?: string): string {
   const dir = cwd.split('/').filter(Boolean).pop() ?? cwd
   return branch && branch !== 'main' && branch !== 'master' ? `${dir} · ${branch}` : dir
+}
+
+/**
+ * Builds the session from hook input and env. Open Design runs set OD_PROJECT_ID;
+ * those sessions are named after the project and skip the branch lookup.
+ */
+export function sessionInfo(input: HookInput, env: HookEnv, readBranch: (cwd: string) => string | undefined): SessionInfo {
+  const project = env.OD_PROJECT_ID
+  if (project)
+    return { id: input.session_id, name: project, harness: 'open-design', project, cwd: input.cwd }
+  return { id: input.session_id, name: sessionName(input.cwd, readBranch(input.cwd)), harness: 'claude-code', cwd: input.cwd }
 }
 
 export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent | null {
@@ -38,7 +55,10 @@ export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent |
     }
     case 'Stop': {
       const text = recapOf(input.last_assistant_message)
-      return text ? { kind: 'recap', session, text } : null
+      if (!text)
+        return null
+      // A second Stop after another stop hook let the turn continue; both recaps matter
+      return input.stop_hook_active ? { kind: 'recap', session, text, continuation: true } : { kind: 'recap', session, text }
     }
     default:
       return null

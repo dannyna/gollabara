@@ -25,14 +25,18 @@ export function startServer() {
 
       if (url.pathname === '/api/events' && req.method === 'POST') {
         const event = await req.json() as IncomingEvent
-        const message = store.add(event)
+        const { session, message, created } = store.ingest(event)
+        srv.publish(TOPIC, JSON.stringify({ type: 'session', session } satisfies ServerFrame))
         if (message)
-          srv.publish(TOPIC, JSON.stringify({ type: 'message', message } satisfies ServerFrame))
+          srv.publish(TOPIC, JSON.stringify({ type: created ? 'message' : 'message-upsert', message } satisfies ServerFrame))
         return Response.json({ ok: true, id: message?.id ?? null })
       }
 
       if (url.pathname === '/api/messages')
         return Response.json(store.recent())
+
+      if (url.pathname === '/api/sessions')
+        return Response.json(store.sessions())
 
       if (url.pathname.startsWith('/img/')) {
         const file = Bun.file(join(store.imageDir, url.pathname.slice('/img/'.length).replace(/[^\w.]/g, '')))
@@ -46,7 +50,7 @@ export function startServer() {
     websocket: {
       open(ws) {
         ws.subscribe(TOPIC)
-        ws.send(JSON.stringify({ type: 'hello', messages: store.recent() } satisfies ServerFrame))
+        ws.send(JSON.stringify({ type: 'hello', messages: store.recent(), sessions: store.sessions() } satisfies ServerFrame))
       },
       message() {},
     },

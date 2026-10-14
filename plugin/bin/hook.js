@@ -1,10 +1,11 @@
 // @bun
 // src/hook/entry.ts
-import process2 from "process";
+import process3 from "process";
 
 // src/hook/index.ts
 import { readFileSync } from "fs";
 import { join } from "path";
+import process2 from "process";
 
 // src/shared/config.ts
 import process from "process";
@@ -21,6 +22,12 @@ var RECAP_MAX = 160;
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
+}
+function sessionInfo(input, env, readBranch) {
+  const project = env.OD_PROJECT_ID;
+  if (project)
+    return { id: input.session_id, name: project, harness: "open-design", project, cwd: input.cwd };
+  return { id: input.session_id, name: sessionName(input.cwd, readBranch(input.cwd)), harness: "claude-code", cwd: input.cwd };
 }
 function mapHook(input, session) {
   switch (input.hook_event_name) {
@@ -40,7 +47,9 @@ function mapHook(input, session) {
     }
     case "Stop": {
       const text = recapOf(input.last_assistant_message);
-      return text ? { kind: "recap", session, text } : null;
+      if (!text)
+        return null;
+      return input.stop_hook_active ? { kind: "recap", session, text, continuation: true } : { kind: "recap", session, text };
     }
     default:
       return null;
@@ -105,11 +114,7 @@ async function runHook() {
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
-    const session = {
-      id: input.session_id,
-      name: sessionName(input.cwd, readBranch(input.cwd)),
-      cwd: input.cwd
-    };
+    const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, readBranch);
     const event = mapHook(input, session);
     if (!event)
       return;
@@ -132,4 +137,4 @@ function readBranch(cwd) {
 
 // src/hook/entry.ts
 await runHook();
-process2.exit(0);
+process3.exit(0);

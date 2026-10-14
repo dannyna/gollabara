@@ -1,12 +1,75 @@
 import type { SessionInfo } from '../shared/types'
 import type { HookInput } from './map'
 import { describe, expect, test } from 'bun:test'
+import odEnv from './fixtures/od-env.json'
+import odPostReadImage from './fixtures/od-post-read-image.json'
+import odPostWrite from './fixtures/od-post-write.json'
+import odSessionStart from './fixtures/od-session-start.json'
+import odStopHookActive from './fixtures/od-stop-hook-active.json'
+import odStop from './fixtures/od-stop.json'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, mapHook, recapOf, sessionName } from './map'
+import { extractImages, mapHook, recapOf, sessionInfo, sessionName } from './map'
 
-const session: SessionInfo = { id: 's1', name: 'piuda', cwd: '/Users/me/IdeaProjects/piuda' }
+const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
+
+function noBranchLookup(): string | undefined {
+  throw new Error('Open Design sessions must not read the git branch')
+}
+const odSession = (input: HookInput) => sessionInfo(input, odEnv, noBranchLookup)
+
+describe('Open Design (real payloads and env captured in the spike)', () => {
+  test('SessionStart becomes an open-design session named after the project', () => {
+    for (const source of ['startup', 'resume']) {
+      const input = { ...odSessionStart, source } as HookInput
+      expect(mapHook(input, odSession(input))).toEqual({
+        kind: 'session',
+        session: { id: odSessionStart.session_id, name: 'gollabara-spike', harness: 'open-design', project: 'gollabara-spike', cwd: odSessionStart.cwd },
+      })
+    }
+  })
+
+  test('Read image lands under the Open Design session', () => {
+    const event = mapHook(odPostReadImage as HookInput, odSession(odPostReadImage as HookInput))
+    expect(event).toMatchObject({ kind: 'image', toolName: 'Read', session: { harness: 'open-design', project: 'gollabara-spike' } })
+    if (event?.kind === 'image')
+      expect(event.images[0]).toMatchObject({ mime: 'image/png', width: 800, height: 500 })
+  })
+
+  test('Write without an image sends nothing', () => {
+    expect(mapHook(odPostWrite as HookInput, odSession(odPostWrite as HookInput))).toBeNull()
+  })
+
+  test('both Stops in a turn become recaps; the stop-hook one is a continuation', () => {
+    const first = mapHook(odStop as HookInput, odSession(odStop as HookInput))
+    const second = mapHook(odStopHookActive as HookInput, odSession(odStopHookActive as HookInput))
+    expect(first).toMatchObject({ kind: 'recap', text: expect.stringMatching(/^index\.html을 만들고/) })
+    expect(first).not.toHaveProperty('continuation')
+    expect(second).toMatchObject({ kind: 'recap', continuation: true, text: expect.stringMatching(/^디자인 훅이 지적한/) })
+  })
+
+  test('no other OD_* value reaches the event', () => {
+    const env = { ...odEnv, OD_TOOL_TOKEN: 'secret-token' }
+    const event = mapHook(odSessionStart as HookInput, sessionInfo(odSessionStart as HookInput, env, noBranchLookup))
+    expect(JSON.stringify(event)).not.toContain('secret-token')
+    expect(JSON.stringify(event)).not.toContain('OD_PROJECT_DIR')
+    expect(Object.keys(event!.session).sort()).toEqual(['cwd', 'harness', 'id', 'name', 'project'])
+  })
+})
+
+describe('sessionInfo', () => {
+  test('without OD_PROJECT_ID it is a claude-code session named by folder and branch', () => {
+    const input = postReadImage as HookInput
+    expect(sessionInfo(input, {}, () => 'feat/shell')).toEqual({
+      id: input.session_id,
+      name: sessionName(input.cwd, 'feat/shell'),
+      harness: 'claude-code',
+      cwd: input.cwd,
+    })
+    expect(sessionInfo(input, { OD_PROJECT_ID: '' }, () => undefined).harness).toBe('claude-code')
+  })
+})
 
 describe('mapHook (real payloads captured in the spike)', () => {
   test('captures a Read tool image result with its size', () => {

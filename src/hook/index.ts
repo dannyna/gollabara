@@ -1,12 +1,12 @@
 // `golla hook` — Claude Code hook entry point.
 // Never blocks the session: short timeout, swallow every error, always exit 0.
 
-import type { SessionInfo } from '../shared/types'
 import type { HookInput } from './map'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import process from 'node:process'
 import { serverUrl } from '../shared/config'
-import { mapHook, sessionName } from './map'
+import { mapHook, sessionInfo } from './map'
 
 const POST_TIMEOUT_MS = 1500
 
@@ -14,11 +14,8 @@ export async function runHook(): Promise<void> {
   try {
     const raw = await Bun.stdin.text()
     const input = JSON.parse(raw) as HookInput
-    const session: SessionInfo = {
-      id: input.session_id,
-      name: sessionName(input.cwd, readBranch(input.cwd)),
-      cwd: input.cwd,
-    }
+    // Pick only the keys we use: the rest of the env can hold tool tokens
+    const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, readBranch)
     const event = mapHook(input, session)
     if (!event)
       return
