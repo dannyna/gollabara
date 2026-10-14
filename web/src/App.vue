@@ -122,7 +122,7 @@ function onThumb(key: string) {
         @select="select" @open="open" @sessions="sessionsOpen = true"
       />
       <ChatPanel
-        ref="chat" :messages="visible" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
+        ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         @thumb="onThumb"
       />
     </main>
