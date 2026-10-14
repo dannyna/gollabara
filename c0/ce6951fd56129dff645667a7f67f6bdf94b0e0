@@ -1,0 +1,56 @@
+web/src/components/shell/EmptyState.vue
+  s_b7f30c572db9a8::t_46794fcad11cd9 1-194
+web/src/gallery/GalleryCase.vue
+  s_b7f30c572db9a8::t_814f72f024e53e 1-25
+web/src/App.vue
+  s_b7f30c572db9a8::t_d61365b1a89fb2 2-8,11-26,28-29,31-34,36,38-40,42,44-45,47-50,54,57-60,65-68,70-75,77,83-85,88-89,91,95-96,102,106-107,117-136,138-140,142-143,145-146
+  s_b7f30c572db9a8::t_d991fcbd794850 69
+web/src/main.ts
+  s_b7f30c572db9a8::t_5cbb351932943e 3,7-8,13-21
+web/src/artifacts.test.ts
+  s_b7f30c572db9a8::t_947afa93da729b 1-5,9-34
+  s_b7f30c572db9a8::t_f9e8a7eb75a727 6-8
+web/index.html
+  s_b7f30c572db9a8::t_559bd9c04bd7c4 2,6-7,9-14,16
+  s_b7f30c572db9a8::t_55956a6fd7f6c9 15
+web/src/style.css
+  s_b7f30c572db9a8::t_55956a6fd7f6c9 11
+  s_b7f30c572db9a8::t_2b6a4afa617554 1-5,7-10,12-19,23-28,32-39,50,52-54,57-67,69-71,74-106
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_2c46be81c8cf46 1-381
+web/src/gallery/GalleryApp.vue
+  s_b7f30c572db9a8::t_d943949773180e 1-155
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_01de8a2b24571f 3,10,24,26-27,51
+  s_b7f30c572db9a8::t_84821a094b009a 32-34
+  s_b7f30c572db9a8::t_55956a6fd7f6c9 28,30-31,35
+web/src/artifacts.ts
+  s_b7f30c572db9a8::t_cebd5e1d1391a0 1-30,32,52-54
+  s_b7f30c572db9a8::t_6558a1cb7f4745 31,33-51
+web/src/components/shell/AppBar.vue
+  s_b7f30c572db9a8::t_97eb53cb6f66b3 1-195
+web/src/components/shell/AppBar.gallery.vue
+  s_b7f30c572db9a8::t_54f406e1d127e1 1-22
+web/src/theme.ts
+  s_b7f30c572db9a8::t_269bda2a3ec276 1-29,33-55
+  s_b7f30c572db9a8::t_b6709920ce0303 30-32
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_cc8f9603357824 56-57
+  s_b7f30c572db9a8::t_650e831fc3ad39 1-55,58-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0ce6951fd56129dff645667a7f67f6bdf94b0e0",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
