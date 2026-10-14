@@ -14,8 +14,13 @@ import { extractImages, feedbackOutput, feedbackVia, mapHook, recapOf, sessionIn
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 
-function noBranchLookup(): string | undefined {
-  throw new Error('Open Design sessions must not read the git branch')
+const noBranchLookup = {
+  projectRoot(): string {
+    throw new Error('Open Design sessions must not look up the git root')
+  },
+  readBranch(): string | undefined {
+    throw new Error('Open Design sessions must not read the git branch')
+  },
 }
 const odSession = (input: HookInput) => sessionInfo(input, odEnv, noBranchLookup)
 
@@ -61,13 +66,22 @@ describe('Open Design (real payloads and env captured in the spike)', () => {
 describe('sessionInfo', () => {
   test('without OD_PROJECT_ID it is a claude-code session named by folder and branch', () => {
     const input = postReadImage as HookInput
-    expect(sessionInfo(input, {}, () => 'feat/shell')).toEqual({
+    expect(sessionInfo(input, {}, { projectRoot: cwd => cwd, readBranch: () => 'feat/shell' })).toEqual({
       id: input.session_id,
       name: sessionName(input.cwd, 'feat/shell'),
       harness: 'claude-code',
       cwd: input.cwd,
     })
-    expect(sessionInfo(input, { OD_PROJECT_ID: '' }, () => undefined).harness).toBe('claude-code')
+    expect(sessionInfo(input, { OD_PROJECT_ID: '' }, { projectRoot: cwd => cwd, readBranch: () => undefined }).harness).toBe('claude-code')
+  })
+
+  test('a nested cwd is named after the project root and reads the branch there', () => {
+    const input = { ...(postReadImage as HookInput), cwd: '/Users/me/piuda/apps/e2e-desktop' }
+    const git = {
+      projectRoot: () => '/Users/me/piuda',
+      readBranch: (root: string) => root === '/Users/me/piuda' ? 'feat/e2e' : undefined,
+    }
+    expect(sessionInfo(input, {}, git)).toMatchObject({ name: 'piuda · feat/e2e', cwd: input.cwd })
   })
 })
 

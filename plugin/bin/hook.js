@@ -3,8 +3,8 @@
 import process3 from "process";
 
 // src/hook/index.ts
-import { readFileSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync, statSync } from "fs";
+import { dirname, join, resolve } from "path";
 import process2 from "process";
 
 // src/shared/config.ts
@@ -23,11 +23,12 @@ function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
 }
-function sessionInfo(input, env, readBranch) {
+function sessionInfo(input, env, git) {
   const project = env.OD_PROJECT_ID;
   if (project)
     return { id: input.session_id, name: project, harness: "open-design", project, cwd: input.cwd };
-  return { id: input.session_id, name: sessionName(input.cwd, readBranch(input.cwd)), harness: "claude-code", cwd: input.cwd };
+  const root = git.projectRoot(input.cwd);
+  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: "claude-code", cwd: input.cwd };
 }
 function mapHook(input, session) {
   switch (input.hook_event_name) {
@@ -137,7 +138,7 @@ async function runHook() {
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
-    const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, readBranch);
+    const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
     const event = mapHook(input, session);
     const via = feedbackVia(input.hook_event_name);
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
@@ -157,9 +158,25 @@ async function runHook() {
       await Bun.write(Bun.stdout, JSON.stringify(output));
   } catch {}
 }
-function readBranch(cwd) {
+function projectRoot(cwd) {
+  for (let dir = resolve(cwd);; dir = dirname(dir)) {
+    if (existsSync(join(dir, ".git")))
+      return dir;
+    if (dirname(dir) === dir)
+      return cwd;
+  }
+}
+function readBranch(root) {
   try {
-    const head = readFileSync(join(cwd, ".git", "HEAD"), "utf8").trim();
+    const dotGit = join(root, ".git");
+    let gitDir = dotGit;
+    if (statSync(dotGit).isFile()) {
+      const line = readFileSync(dotGit, "utf8").trim();
+      if (!line.startsWith("gitdir:"))
+        return;
+      gitDir = resolve(root, line.slice("gitdir:".length).trim());
+    }
+    const head = readFileSync(join(gitDir, "HEAD"), "utf8").trim();
     return head.startsWith("ref: refs/heads/") ? head.slice("ref: refs/heads/".length) : undefined;
   } catch {
     return;
