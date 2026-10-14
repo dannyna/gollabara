@@ -173,7 +173,7 @@ gollabara is a UX engineer's viewfinder for watching, from one step back, the ar
 
 The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
 
-gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. Feedback the user writes is being enabled first (#22): the server and hook deliver it, and the web wiring follows. **Everything else is drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
+gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume. Feedback the user writes is live (#22): the composer sends it to one session, optionally about one image, and the session picks it up through the hook. **Everything else is drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
 
 **Key Characteristics:**
 
@@ -305,7 +305,7 @@ A `--bg` card (16px radius, 16px padding) headed by a muted eyebrow 「세션에
 
 ### My bubble and system line
 
-My messages sit on the right in a `--bg` bubble with a muted quote line (「↪ session · quoted」, optional tiny image) and a 9px muted delivery note 「전달됨 ✓」. System lines are centered 10px muted text such as 「client-e2e · checkout 멈춤」 or 「api · quota-refill 음소거함」.
+My messages sit on the right in a `--bg` bubble with a muted quote line (「↪ session · quoted」, optional tiny image) and a 9px muted delivery note 「전달됨 ✓」 on each session's latest delivered bubble (the tooltip says how the session picked it up). A send in flight shows 「보내는 중」; a failed one shows the reason and 「다시 보내기」. Feedback the server queued but the session has not picked up yet waits in the queue tray above the composer (「대기 n건」), and becomes a bubble at the moment the session receives it. System lines are centered 10px muted text such as 「client-e2e · checkout 멈춤」 or 「api · quota-refill 음소거함」.
 
 ### Composer
 
@@ -341,24 +341,26 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 
 ### Interactions
 
-| Flow               | Behavior                                                                                                                                                     | Current scope            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| Select an artifact | Click a cell or thumbnail: the cell gets the yellow outline, the related chat message is highlighted and scrolled into view. Click again to open the viewer. | Live                     |
-| Quote-reply        | 「답장」 on a cell or message, 「이 이미지에 답장 ↗」 in the viewer, or swipe a message right on mobile, fills the reply context in the composer.            | **Drawn, disabled**      |
-| Answer a question  | Pick a choice or 「직접 답하기」. A question already answered in the terminal shows 「터미널에서 답함」 and blocks a second answer.                          | **Drawn, disabled**      |
-| `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                | **Drawn, disabled**      |
-| Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                            | **Drawn, disabled**      |
-| Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                  | Live, client-side filter |
-| Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                               | Live                     |
-| Browse history     | Scrolling back keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest.                                                        | Live                     |
-| Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                            | Live                     |
-| Disconnected       | Keep earlier chat, show 「다시 연결 중」 and 「연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.」, block sending.                                    | Live                     |
-| Escape             | Closes the viewer, else settings, else the session menu, and always the mention list. Focus is trapped inside open dialogs and returns to the trigger.       | Live                     |
-| Theme and settings | Stored in this browser.                                                                                                                                      | Live                     |
+| Flow               | Behavior                                                                                                                                                                                                                                           | Current scope            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Select an artifact | Click a cell or thumbnail: the cell gets the yellow outline, the related chat message is highlighted and scrolled into view. Click again to open the viewer.                                                                                       | Live                     |
+| Feedback           | Write in the composer and send to the target session. The target is the attached image's session, else the session in view, else one picked with `@`; muted sessions are never targets. With none, 「@로 보낼 세션을 골라 주세요」 blocks sending. | Live                     |
+| Image feedback     | 「이 이미지에 피드백 ↗」 in the viewer attaches the image to the composer, focuses it, and targets that image's session.                                                                                                                           | Live                     |
+| Quote-reply        | 「답장」 on a cell or message, or swipe a message right on mobile, fills the reply context in the composer.                                                                                                                                        | **Drawn, disabled**      |
+| Answer a question  | Pick a choice or 「직접 답하기」. A question already answered in the terminal shows 「터미널에서 답함」 and blocks a second answer.                                                                                                                | **Drawn, disabled**      |
+| `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                                                                                                      | Live                     |
+| Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                                                                                                                  | **Drawn, disabled**      |
+| Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                                                                                                        | Live, client-side filter |
+| Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                                                                                                                     | Live                     |
+| Browse history     | Scrolling back keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest.                                                                                                                                              | Live                     |
+| Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                                                                                                                  | Live                     |
+| Disconnected       | Keep earlier chat, show 「다시 연결 중」 and 「연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.」, block sending.                                                                                                                          | Live                     |
+| Escape             | Closes the viewer, else settings, else the session menu, and always the mention list. Focus is trapped inside open dialogs and returns to the trigger.                                                                                             | Live                     |
+| Theme and settings | Stored in this browser.                                                                                                                                                                                                                            | Live                     |
 
 #### Scope of the current build
 
-Feedback delivery is being enabled (#22): text the user writes in the composer, optionally about one image from the stream, is queued and delivered to the session, and the UI reports it as queued, then delivered. The server and hook side ships first; the controls stay disabled until the web wiring lands. Answering a session's question and pause/resume remain a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
+Feedback delivery is live (#22): text the user writes in the composer, optionally about one image from the stream, is queued and delivered to the session, and the UI reports it as queued (the tray), then delivered (the bubble). Sending works only from this Mac or the tailnet; elsewhere the bubble says so. Answering a session's question, quote-reply from cells and messages, and pause/resume remain a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
 
 ### State acceptance
 
@@ -390,7 +392,7 @@ On every state: no horizontal page scroll on mobile, visible focus, and text and
 - **Do** set times, sizes, counts, and sequence numbers in IBM Plex Mono.
 - **Do** let the original ratio set image width, uncropped.
 - **Do** separate with `--bg` and `--surface` before reaching for a shadow.
-- **Do** draw reply, answers, `@mention`, and pause/resume disabled until sending to sessions ships.
+- **Do** draw quote-reply, answers, and pause/resume disabled until they ship; feedback and `@mention` are live.
 
 ### Don't:
 

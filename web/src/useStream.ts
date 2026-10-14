@@ -1,7 +1,8 @@
-// Connects to the server WebSocket for stream messages. Reconnects when dropped.
+// Connects to the server WebSocket for stream messages and feedback. Reconnects when dropped.
 
-import type { ServerFrame, Session, StreamMessage } from '../../src/shared/types'
-import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import type { Feedback, ServerFrame, Session, StreamMessage } from '../../src/shared/types'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { feedbackBySession, mergeFeedback, sortFeedback } from './feedback'
 
 const RETRY_MS = 2000
 // How long 「다시 연결됐어요」 stays in the app bar (OD banner guide 02-03)
@@ -39,6 +40,8 @@ export function restoredFlag(ms = RESTORED_MS) {
 export function useStream() {
   const messages = shallowRef<StreamMessage[]>([])
   const sessions = shallowRef<Session[]>([])
+  /** The user's feedback to sessions, in send order; ids move from queued to delivered */
+  const feedback = shallowRef<Feedback[]>([])
   const connected = ref(false)
   const flag = restoredFlag()
   let ws: WebSocket | null = null
@@ -57,6 +60,11 @@ export function useStream() {
       if (frame.type === 'hello') {
         messages.value = frame.messages
         sessions.value = frame.sessions
+        // Older servers send no feedback
+        feedback.value = sortFeedback(frame.feedback ?? [])
+      }
+      else if (frame.type === 'feedback') {
+        feedback.value = mergeFeedback(feedback.value, frame.feedback)
       }
       else if (frame.type === 'message' || frame.type === 'message-upsert') {
         messages.value = upsert(messages.value, frame.message)
@@ -83,7 +91,7 @@ export function useStream() {
     ws?.close()
   })
 
-  return { messages, sessions, connected, restored: flag.restored }
+  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), connected, restored: flag.restored }
 }
 
 /** Turn messages change in place as images and recaps arrive, so replace by id */

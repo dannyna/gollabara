@@ -3,18 +3,23 @@ import { computed } from 'vue'
 import ChatIcon from './ChatIcon.vue'
 import SessionAvatar from './SessionAvatar.vue'
 
-// Replies waiting for a busy session's turn to end, above the composer. Waiting is
-// not a warning, so no accent colour. Gallery only until sending exists.
+// Messages waiting for a session to pick them up, above the composer. Waiting is
+// not a warning, so no accent colour.
 export interface QueueGroup {
   session: string
-  /** 작업 중 · 멈춤 · 끝남 */
-  status: string
+  /** 작업 중 · 멈춤 · 끝남; left out when the state is unknown */
+  status?: string
   items: string[]
   /** Marks the first item 「다음」 */
   next?: boolean
 }
 
-const props = defineProps<{ groups: QueueGroup[], note: string }>()
+const props = withDefaults(defineProps<{
+  groups: QueueGroup[]
+  note: string
+  /** 편집 · 삭제; off where nothing backs them yet */
+  actions?: boolean
+}>(), { actions: true })
 const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0))
 </script>
 
@@ -25,11 +30,11 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
     </div>
     <div v-for="g in groups" :key="g.session" class="qt-group">
       <div class="qt-who">
-        <SessionAvatar :name="g.session" small />{{ g.session }}<span class="st">{{ g.status }}</span>
+        <SessionAvatar :name="g.session" small />{{ g.session }}<span v-if="g.status" class="st">{{ g.status }}</span>
       </div>
       <div v-for="(text, i) in g.items" :key="i" class="qi" :class="{ next: g.next && i === 0 }">
         <p>{{ text }}</p>
-        <div class="qi-a">
+        <div v-if="actions" class="qi-a">
           <button type="button">
             편집
           </button>

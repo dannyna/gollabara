@@ -17,7 +17,7 @@ import { useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, connected, restored } = useStream()
+const { messages, sessions, feedback, connected, restored } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute } = useMutedSessions()
 const { toast } = useToast()
@@ -123,7 +123,7 @@ function onThumb(key: string) {
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
-        :scoped="scope != null" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
+        :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
         @thumb="onThumb" @sessions="sessionsOpen = true"
       />
     </main>
