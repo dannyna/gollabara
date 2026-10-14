@@ -11,6 +11,9 @@ web/src/App.vue
   s_b7f30c572db9a8::t_d3a99cd3714c52 129-134
   s_b7f30c572db9a8::t_7ffba5a9799938 79-81
   s_b7f30c572db9a8::t_5ce8c146c8b2ed 52
+  s_b7f30c572db9a8::t_e58540c3afceb8 69-72,76
+  s_b7f30c572db9a8::t_e81dfd9a918bc6 107
+  s_b7f30c572db9a8::t_561cb12e70a258 120-123
 web/src/components/overlay/FloatingActions.vue
   s_b7f30c572db9a8::t_c000e255a2022a 1-17,19-46,48-52,54-64,66-72,74-78,80-91
   s_b7f30c572db9a8::t_c5e2dba4578315 73
@@ -26,10 +29,17 @@ web/src/components/shell/AppBar.vue
   s_b7f30c572db9a8::t_8f657c8cfc0996 5,19,22-24,37-47,117-121,201,203-205
   s_b7f30c572db9a8::t_f7d585839b2919 197-200,202
   s_b7f30c572db9a8::t_ff50fee0a7ed8b 122
+  s_b7f30c572db9a8::t_f341ef832bd3ec 2-4,6-9
+  s_b7f30c572db9a8::t_a3daa6737262a7 34
+  s_b7f30c572db9a8::t_c93b63c1bc6094 20-21
 web/src/components/shell/StreamPanel.vue
   s_b7f30c572db9a8::t_89b024de925ef8 109
   s_b7f30c572db9a8::t_95416c05c636ba 7
   s_b7f30c572db9a8::t_5fc945eb7f2176 93
+  s_b7f30c572db9a8::t_6045040d19536b 5-6,12-15,17
+  s_b7f30c572db9a8::t_015ffc77f551a5 50-51
+  s_b7f30c572db9a8::t_eb37dda327aacb 80-84,86
+  s_b7f30c572db9a8::t_04044eb88c5eec 112
 web/src/sessions.ts
   s_b7f30c572db9a8::t_64aee62fca8c40 1-65
 web/src/components/overlay/gallery-samples.ts
@@ -81,6 +91,8 @@ web/src/components/overlay/overlay.test.ts
   s_b7f30c572db9a8::t_b0cd21e44a0c15 1-26
 web/src/components/overlay/useFeedbackTarget.ts
   s_b7f30c572db9a8::t_acfc77ab30f2b8 1-26
+web/src/components/shell/AppBar.gallery.vue
+  s_b7f30c572db9a8::t_c20d48fee34a17 19-21
 ---
 {
   "schema_version": "authorship/3.0.0",
