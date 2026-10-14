@@ -6,8 +6,7 @@ import ChatIcon from './ChatIcon.vue'
 import SessionAvatar from './SessionAvatar.vue'
 
 // Always shows who a message goes to. It only emits `send`; delivery to sessions
-// lives elsewhere. Until that is wired the app leaves `canSend` off and every control
-// is drawn disabled.
+// lives elsewhere (ChatPanel). With `canSend` off every control is drawn disabled.
 export interface ComposerAttachment {
   /** Image URL for the thumbnail */
   url: string
@@ -39,15 +38,30 @@ const props = withDefaults(defineProps<{
   sendDisabled?: boolean
   /** Quoted artifact above the input, removable with × (v-model:attachment) */
   attachment?: ComposerAttachment | null
+  /** The @세션 list in the popover slot is open: ↓ moves into it, Escape closes it */
+  mentionOpen?: boolean
 }>(), { canSend: false, placeholder: '세션에 메시지나 피드백을 남겨보세요' })
 
 const emit = defineEmits<{
   'send': [payload: ComposerSend]
   'update:attachment': [value: ComposerAttachment | null]
+  /** 「@ 세션」 pressed */
+  'mention': []
+  /** What follows a typed `@` at the end of the draft, or null when there is none */
+  'mentionQuery': [query: string | null]
+  /** ↓ while the list is open */
+  'mentionFocus': []
+  'mentionClose': []
 }>()
 
 const draft = ref(props.text ?? '')
 watch(() => props.text, t => draft.value = t ?? '')
+const MENTION = /(?:^|\s)@(\S*)$/
+watch(draft, (text, prev) => {
+  const query = text.match(MENTION)?.[1] ?? null
+  if (query !== (prev.match(MENTION)?.[1] ?? null))
+    emit('mentionQuery', query)
+})
 // The button stays lit on an empty draft, as in the guide; an empty send does nothing
 const sendable = computed(() => props.canSend && !props.sendDisabled && !props.blocked)
 const noteText = computed(() => props.note ?? (props.blocked ? undefined : 'Enter로 보내기 · Shift+Enter 줄바꿈'))
@@ -55,19 +69,37 @@ const noteText = computed(() => props.note ?? (props.blocked ? undefined : 'Ente
 const noteId = useId()
 
 function send() {
-  if (!sendable.value || (!draft.value.trim() && !props.attachment))
+  // The server takes no empty feedback, even with an image attached
+  if (!sendable.value || !draft.value.trim())
     return
   emit('send', { text: draft.value.trim(), ...(props.attachment ? { attachment: props.attachment } : {}) })
   draft.value = ''
   emit('update:attachment', null)
 }
 function onKeydown(e: KeyboardEvent) {
+  if (props.mentionOpen && (e.key === 'ArrowDown' || e.key === 'Escape')) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Escape')
+      emit('mentionClose')
+    else
+      emit('mentionFocus')
+    return
+  }
   // Enter sends, Shift+Enter breaks the line; never while an IME is composing Hangul
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault()
     send()
   }
 }
+
+const input = ref<HTMLTextAreaElement>()
+/** After a pick: drop the typed `@query` and return to the input */
+function pickedMention() {
+  draft.value = draft.value.replace(MENTION, m => m.startsWith('@') ? '' : m[0]!)
+  input.value?.focus()
+}
+defineExpose({ focus: () => input.value?.focus(), pickedMention })
 </script>
 
 <template>
@@ -87,12 +119,12 @@ function onKeydown(e: KeyboardEvent) {
         <SessionAvatar :name="target" small />→ {{ target }}
       </div>
       <textarea
-        v-model="draft" rows="1" aria-label="세션에 메시지 보내기" :aria-describedby="noteId" :placeholder="placeholder"
+        ref="input" v-model="draft" rows="1" aria-label="세션에 메시지 보내기" :aria-describedby="noteId" :placeholder="placeholder"
         :disabled="!canSend"
         @keydown="onKeydown"
       />
       <div class="compose-bottom">
-        <button class="mention" type="button" :disabled="!canSend">
+        <button class="mention" type="button" :disabled="!canSend" :aria-expanded="mentionOpen" @click="emit('mention')">
           @ 세션
         </button>
         <button class="send" type="submit" aria-label="메시지 보내기" :disabled="!sendable">

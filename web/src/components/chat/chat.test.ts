@@ -56,6 +56,12 @@ describe('toTimeline', () => {
     expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'mute-x', 'm-2'])
   })
 
+  it('places the reader\'s bubbles among the messages by time', () => {
+    const mine = { key: 'f-1', at: at(14, 10), sessionId: 'a', text: 'hi', state: 'delivered' as const }
+    const items = toTimeline([msg(1, 'a', at(14, 9)), msg(2, 'a', at(14, 11))], [], [], at(14, 20), [mine])
+    expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'f-1', 'm-2'])
+  })
+
   it('labels older days with the date', () => {
     expect(dayLabel(at(10, 9), at(14, 9))).toContain('10월 10일')
   })

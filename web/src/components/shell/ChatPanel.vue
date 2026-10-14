@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import type { Session, StreamMessage } from '../../../../src/shared/types'
+import type { Feedback, Session, StreamMessage } from '../../../../src/shared/types'
+import type { PendingSend } from '../../feedback'
 import type { Thumb } from '../chat/ArtifactThumbs.vue'
 import type { SystemEvent } from '../chat/chat'
 import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
-import { computed, nextTick, ref, watch } from 'vue'
-import { artifactKey, clock } from '../../artifacts'
-import { useMutedSessions } from '../../sessions'
+import type { QueueGroup } from '../chat/QueueTray.vue'
+import type { MentionOption } from '../overlay/MentionList.vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
+import { artifactKey, clock, splitSessionName } from '../../artifacts'
+import { failureReason, mergeFeedback, postFeedback, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
+import { toSessionRows, useMutedSessions } from '../../sessions'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
 import StateView from '../banner/StateView.vue'
@@ -13,9 +17,12 @@ import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
 import { toTimeline } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
 import DateLabel from '../chat/DateLabel.vue'
+import MyMessage from '../chat/MyMessage.vue'
 import QuestionCard from '../chat/QuestionCard.vue'
+import QueueTray from '../chat/QueueTray.vue'
 import SessionMessage from '../chat/SessionMessage.vue'
 import SystemLine from '../chat/SystemLine.vue'
+import MentionList from '../overlay/MentionList.vue'
 import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
 import { useImageViewer } from '../overlay/useImageViewer'
 
@@ -29,10 +36,12 @@ const props = defineProps<{
   selected?: string | null
   /** Message the selected artifact belongs to, to highlight it */
   selectedMessage?: number | null
-  /** Delivery to sessions is wired elsewhere; until then the composer stays disabled */
-  canSend?: boolean
+  /** The user's feedback to every session, from useStream */
+  feedback?: Feedback[]
   /** Viewing one session rather than 「전체 세션」 */
   scoped?: boolean
+  /** The session in view, when scoped; it is the default receiver */
+  scope?: string | null
   /** The scope is a muted session (unreachable today: muting the scope resets it) */
   scopeMuted?: boolean
   /** Every session is muted, so nothing is in view */
@@ -42,7 +51,6 @@ const emit = defineEmits<{
   thumb: [key: string]
   /** A paired thumbnail pressed again; it also opens the image viewer */
   openImage: [image: Thumb]
-  send: [payload: ComposerSend]
   /** Open the session menu */
   sessions: []
 }>()
@@ -51,6 +59,7 @@ const emit = defineEmits<{
 
 const feed = ref<HTMLElement>()
 const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
+const shortName = (id: string) => splitSessionName(nameOf(id)).session
 
 // Mute is a client filter with no history, so its lines exist only for changes made
 // while this page is open, and only in 「전체 세션」 (OD chat guide 05)
@@ -67,7 +76,28 @@ watch(muted, (next, prev) => {
       muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
   }
 })
-const timeline = computed(() => toTimeline(props.messages, props.sessions, props.scoped ? [] : muteEvents.value))
+// Feedback follows the same view rules as messages: never a muted session, only the scope
+const inView = (sessionId: string) => !muted.value.has(sessionId) && (props.scope == null || sessionId === props.scope)
+// POST responses, merged so a bubble never waits on the WebSocket frame
+const confirmed = shallowRef<Feedback[]>([])
+const pending = ref<PendingSend[]>([])
+const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
+const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
+const timeline = computed(() => toTimeline(props.messages, props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value))
+
+// Queued on the server, not yet picked up: the tray, one group per session
+const queue = computed<QueueGroup[]>(() => {
+  const groups = new Map<string, QueueGroup>()
+  for (const f of feedback.value) {
+    if (f.deliveredAt != null)
+      continue
+    let group = groups.get(f.sessionId)
+    if (!group)
+      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [] })
+    group.items.push(f.image ? `↪ 이미지 · ${f.text}` : f.text)
+  }
+  return [...groups.values()]
+})
 
 // Chat thumbnails open the one app viewer at every width
 const { open } = useImageViewer()
@@ -86,6 +116,75 @@ const attachment = computed<ComposerAttachment | null>(() => target.value && {
 function onAttachment(next: ComposerAttachment | null) {
   if (!next)
     clearTarget()
+}
+const composer = ref<InstanceType<typeof ChatComposer>>()
+// Post-flush, after the viewer closed and handed focus back to its opener
+watch(target, async (next) => {
+  if (!next)
+    return
+  await nextTick()
+  composer.value?.focus()
+}, { flush: 'post' })
+
+// @세션: the list opens from the button or a typed `@`, and never offers a muted session
+const mentioned = ref<string | null>(null)
+const mentionQuery = ref<string | null>(null)
+const mentionButton = ref(false)
+const mentionList = ref<InstanceType<typeof MentionList>>()
+const mentionOptions = computed<MentionOption[]>(() => {
+  const q = mentionQuery.value?.toLowerCase() ?? ''
+  return toSessionRows(props.sessions ?? [], props.messages, muted.value)
+    .filter(r => !r.muted && r.session.toLowerCase().includes(q))
+    .map(r => ({ id: r.id, session: r.session, branch: r.branch }))
+})
+const mentionOpen = computed(() => (mentionButton.value || mentionQuery.value != null) && mentionOptions.value.length > 0)
+function closeMention() {
+  mentionButton.value = false
+  mentionQuery.value = null
+}
+function pickMention(id: string) {
+  mentioned.value = id
+  closeMention()
+  composer.value?.pickedMention()
+}
+
+const receiver = computed(() => resolveTarget({ attachment: target.value?.sessionId, scope: props.scope, mention: mentioned.value, muted: muted.value }))
+const blocked = computed(() => props.offline
+  ? { icon: 'plug' as const, text: '다시 연결되면 보낼 수 있어요' }
+  : receiver.value == null ? { icon: 'alert' as const, text: '@로 보낼 세션을 골라 주세요' } : undefined)
+
+let sendSeq = 0
+async function deliver(p: PendingSend) {
+  try {
+    const saved = await postFeedback(p.request)
+    confirmed.value = [...confirmed.value, saved]
+    pending.value = pending.value.filter(x => x.key !== p.key)
+  }
+  catch (error) {
+    pending.value = pending.value.map(x => x.key === p.key ? { ...x, state: 'failed', reason: failureReason(error) } : x)
+  }
+}
+function send({ text }: ComposerSend) {
+  const sessionId = receiver.value
+  if (sessionId == null)
+    return
+  const image = target.value
+  // Captured now, so a retry goes where the first try went
+  const p: PendingSend = {
+    key: `p-${++sendSeq}`,
+    request: { sessionId, text, ...(image ? { image: image.imageUrl } : {}) },
+    quote: image ? { text: `${shortName(image.sessionId)} · ${image.caption ?? clock(image.at)}`, image: image.imageUrl } : undefined,
+    at: Date.now(),
+    state: 'queued',
+  }
+  pending.value = [...pending.value, p]
+  clearTarget()
+  void deliver(p)
+  nextTick(jumpToLatest)
+}
+function retry(p: PendingSend) {
+  pending.value = pending.value.map(x => x.key === p.key ? { ...x, state: 'queued', reason: undefined } : x)
+  void deliver(p)
 }
 const recaps = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
 const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
@@ -111,6 +210,13 @@ watch(() => props.messages, async (list) => {
   if (props.messages.length)
     first = false
 }, { immediate: true })
+// A bubble turning delivered moves to the session's receive time; follow it when at the end
+watch(() => mine.value.length, async () => {
+  if (!feed.value || !isAtEnd(feed.value))
+    return
+  await nextTick()
+  feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: 'smooth' })
+})
 function onScroll() {
   if (feed.value && isAtEnd(feed.value))
     unseen.value = 0
@@ -147,6 +253,12 @@ defineExpose({ reveal })
         <template v-for="item in timeline" :key="item.key">
           <DateLabel v-if="item.type === 'date'" :label="item.label" />
           <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text" />
+          <MyMessage
+            v-else-if="item.type === 'mine'" :target="shortName(item.entry.sessionId)" :text="item.entry.text"
+            :quote="item.entry.quote" :state="item.entry.state" :at="item.entry.deliveredAt"
+            :via="item.entry.via && VIA_LABEL[item.entry.via]" :reason="item.entry.pending?.reason"
+            @retry="item.entry.pending && retry(item.entry.pending)"
+          />
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
@@ -171,11 +283,19 @@ defineExpose({ reveal })
       <NewPill v-if="unseen && !offline" kind="message" :count="unseen" @click="jumpToLatest" />
     </div>
     <ChatComposer
-      :can-send="canSend" hint="@세션을 부르거나, 산출물에 답장해 보세요"
-      :blocked="offline ? { icon: 'plug', text: '다시 연결되면 보낼 수 있어요' } : undefined"
-      :note="canSend ? undefined : '보내기는 준비 중이에요'" :attachment="attachment"
-      @update:attachment="onAttachment" @send="$emit('send', $event)"
-    />
+      ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :blocked="blocked"
+      :target="receiver && shortName(receiver)" :attachment="attachment" :mention-open="mentionOpen"
+      @update:attachment="onAttachment" @send="send"
+      @mention="mentionButton = !mentionButton" @mention-query="mentionQuery = $event"
+      @mention-focus="mentionList?.focusFirst()" @mention-close="closeMention"
+    >
+      <template v-if="queue.length" #tray>
+        <QueueTray :groups="queue" note="세션이 다음 작업을 할 때 전달돼요" :actions="false" />
+      </template>
+      <template v-if="mentionOpen" #popover>
+        <MentionList ref="mentionList" :options="mentionOptions" @pick="pickMention" @close="closeMention(); composer?.focus()" />
+      </template>
+    </ChatComposer>
   </section>
 </template>
 

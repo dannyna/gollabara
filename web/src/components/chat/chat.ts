@@ -1,6 +1,7 @@
 // Pure rules behind the session chat components (OD guide: session-chat-components.html)
 
 import type { Question, Session, StreamMessage } from '../../../../src/shared/types'
+import type { MyEntry } from '../../feedback'
 import type { IconName } from './icons'
 import { splitSessionName } from '../../artifacts'
 
@@ -61,31 +62,33 @@ export type TimelineItem
   = | { type: 'date', key: string, label: string }
     | ({ type: 'system' } & SystemEvent)
     | { type: 'message', key: string, message: StreamMessage }
+    | { type: 'mine', key: string, entry: MyEntry }
 
 /**
  * Orders what the chat feed draws: a date line whenever the day changes, a 「… 시작」 line
- * where a session started, other system lines at their time, then the messages. A start
- * older than the oldest loaded message is out of view and gets no line; sessions with
- * nothing in view get none either.
+ * where a session started, other system lines and the reader's own bubbles at their time,
+ * then the messages. A start older than the oldest loaded message is out of view and gets
+ * no line; sessions with nothing in view get none either.
  */
-export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], events: SystemEvent[] = [], now = Date.now()): TimelineItem[] {
+export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], events: SystemEvent[] = [], now = Date.now(), mine: MyEntry[] = []): TimelineItem[] {
   const oldest = messages[0]?.at ?? -Infinity
   const inView = new Set(messages.map(m => m.sessionId))
   const lines = sessions
     .filter(s => inView.has(s.id) && s.startedAt >= oldest)
     .map((s): SystemEvent => ({ key: `start-${s.id}`, at: s.startedAt, icon: 'start', text: `${s.name} 시작` }))
     .concat(events)
-    .map(e => ({ type: 'system' as const, ...e }))
+    .map(e => ({ at: e.at, item: { type: 'system' as const, ...e } as TimelineItem }))
+    .concat(mine.map(entry => ({ at: entry.at, item: { type: 'mine', key: entry.key, entry } })))
     .sort((a, b) => a.at - b.at)
 
   const rows: { at: number, item: TimelineItem }[] = []
   let s = 0
   for (const m of messages) {
     while (s < lines.length && lines[s]!.at <= m.at)
-      rows.push({ at: lines[s]!.at, item: lines[s++]! })
+      rows.push(lines[s++]!)
     rows.push({ at: m.at, item: { type: 'message', key: `m-${m.id}`, message: m } })
   }
-  rows.push(...lines.slice(s).map(item => ({ at: item.at, item })))
+  rows.push(...lines.slice(s))
 
   const out: TimelineItem[] = []
   let day: number | null = null

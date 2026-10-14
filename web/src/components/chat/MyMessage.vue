@@ -2,8 +2,8 @@
 import { clock } from '../../artifacts'
 import ChatIcon from './ChatIcon.vue'
 
-// A message the reader sent, with its delivery state. The state comes from props so
-// the app can feed real delivery data once sending is wired.
+// A message the reader sent, with its delivery state. The state comes from props: the
+// app feeds it from the feedback records the server streams.
 /** `queued`: handed off, not yet confirmed (보내는 중) */
 export type DeliveryState = 'queued' | 'delivered' | 'failed' | 'none'
 
@@ -17,6 +17,10 @@ withDefaults(defineProps<{
   state?: DeliveryState
   /** Delivery time, shown with `delivered` */
   at?: number
+  /** How the session picked it up, as a tooltip on the delivered line */
+  via?: string
+  /** Replaces 「전달하지 못했어요」 when the cause is known */
+  reason?: string
 }>(), { state: 'delivered' })
 defineEmits<{ retry: [] }>()
 </script>
@@ -35,13 +39,13 @@ defineEmits<{ retry: [] }>()
     <div v-if="state === 'queued'" class="delivery">
       <span class="spin" aria-hidden="true" />보내는 중
     </div>
-    <div v-else-if="state === 'delivered'" class="delivery">
+    <div v-else-if="state === 'delivered'" class="delivery" :title="via">
       <ChatIcon name="check" />전달됨<template v-if="at">
         · <time>{{ clock(at) }}</time>
       </template>
     </div>
     <div v-else-if="state === 'failed'" class="delivery fail">
-      <ChatIcon name="alert" />전달하지 못했어요 · <button class="link" type="button" @click="$emit('retry')">
+      <ChatIcon name="alert" />{{ reason ?? '전달하지 못했어요' }} · <button class="link" type="button" @click="$emit('retry')">
         다시 보내기
       </button>
     </div>
