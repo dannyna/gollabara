@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { toArtifacts } from './artifacts'
+import { resolveNotices } from './components/banner/notices'
 import AppBar from './components/shell/AppBar.vue'
 import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
@@ -8,7 +9,7 @@ import StreamPanel from './components/shell/StreamPanel.vue'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, connected } = useStream()
+const { messages, sessions, connected, restored } = useStream()
 const { toggleTheme } = useTheme()
 
 // Session scope. The session menu that changes it lands with the overlay components (#17).
@@ -32,6 +33,13 @@ const offline = computed(() => !connected.value && (everConnected.value || grace
 const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
 const showEmpty = computed(() => !messages.value.length && (ready.value || graceOver.value))
+
+// One notice per area; the setup guide silences the rest (OD banner guide 08).
+// AppBar still draws only 「다시 연결 중」: 「다시 연결됐어요」 shows once it adopts ConnectionChip.
+const notices = computed(() => resolveNotices({
+  setup: showEmpty.value,
+  connection: offline.value ? 'offline' : restored.value ? 'restored' : 'online',
+}))
 
 // Selection links a cell, its chat thumbnail, and its message
 const selected = ref<string | null>(null)
@@ -64,12 +72,12 @@ function open(key: string) {
 <template>
   <div class="app">
     <!-- Session menu and settings sheet are stubs until #17 -->
-    <AppBar :offline="offline" :scope-label="scopeLabel" :show-session-button="!showEmpty" @theme="toggleTheme" />
+    <AppBar :offline="notices.chip === 'offline'" :scope-label="scopeLabel" :show-session-button="!showEmpty" @theme="toggleTheme" />
     <EmptyState v-if="showEmpty" :connected="connected" />
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel ref="stream" :artifacts="artifacts" :selected="selected" @select="select" @open="open" />
       <ChatPanel
-        ref="chat" :messages="visible" :offline="offline" :selected="selected" :selected-message="selectedMessage"
+        ref="chat" :messages="visible" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         @thumb="onThumb"
       />
     </main>

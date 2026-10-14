@@ -4,11 +4,43 @@ import type { ServerFrame, Session, StreamMessage } from '../../src/shared/types
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 const RETRY_MS = 2000
+// How long 「다시 연결됐어요」 stays in the app bar (OD banner guide 02-03)
+const RESTORED_MS = 3000
+
+/** True for a moment after a connection that had dropped opens again */
+export function restoredFlag(ms = RESTORED_MS) {
+  const restored = ref(false)
+  let dropped = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  function stop() {
+    clearTimeout(timer)
+    restored.value = false
+  }
+  return {
+    restored,
+    opened() {
+      if (!dropped)
+        return
+      dropped = false
+      clearTimeout(timer)
+      restored.value = true
+      timer = setTimeout(() => restored.value = false, ms)
+    },
+    /** `wasOpen` is false for retries that never connected; they keep the earlier drop */
+    closed(wasOpen: boolean) {
+      if (wasOpen)
+        dropped = true
+      stop()
+    },
+    dispose: stop,
+  }
+}
 
 export function useStream() {
   const messages = shallowRef<StreamMessage[]>([])
   const sessions = shallowRef<Session[]>([])
   const connected = ref(false)
+  const flag = restoredFlag()
   let ws: WebSocket | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let closed = false
@@ -18,6 +50,7 @@ export function useStream() {
     ws = new WebSocket(`${proto}://${location.host}/ws`)
     ws.onopen = () => {
       connected.value = true
+      flag.opened()
     }
     ws.onmessage = (e) => {
       const frame = JSON.parse(e.data) as ServerFrame
@@ -35,6 +68,7 @@ export function useStream() {
       }
     }
     ws.onclose = () => {
+      flag.closed(connected.value)
       connected.value = false
       if (!closed)
         timer = setTimeout(connect, RETRY_MS)
@@ -45,10 +79,11 @@ export function useStream() {
   onBeforeUnmount(() => {
     closed = true
     clearTimeout(timer)
+    flag.dispose()
     ws?.close()
   })
 
-  return { messages, sessions, connected }
+  return { messages, sessions, connected, restored: flag.restored }
 }
 
 /** Turn messages change in place as images and recaps arrive, so replace by id */
