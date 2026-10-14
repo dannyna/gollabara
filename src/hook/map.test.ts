@@ -1,4 +1,4 @@
-import type { SessionInfo } from '../shared/types'
+import type { Feedback, SessionInfo } from '../shared/types'
 import type { HookInput } from './map'
 import { describe, expect, test } from 'bun:test'
 import odEnv from './fixtures/od-env.json'
@@ -10,7 +10,7 @@ import odStop from './fixtures/od-stop.json'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, mapHook, recapOf, sessionInfo, sessionName } from './map'
+import { extractImages, feedbackOutput, feedbackVia, mapHook, recapOf, sessionInfo, sessionName } from './map'
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 
@@ -121,5 +121,45 @@ describe('helpers', () => {
   test('sender name is folder and branch (except main)', () => {
     expect(sessionName('/a/piuda', 'main')).toBe('piuda')
     expect(sessionName('/a/piuda', 'feat/shell')).toBe('piuda · feat/shell')
+  })
+})
+
+describe('feedback delivery', () => {
+  const at = (h: number, m: number) => new Date(2026, 9, 14, h, m).getTime()
+  const plain: Feedback = { id: 1, sessionId: 's1', text: 'Make the header darker', createdAt: at(23, 16) }
+  const withImage: Feedback = {
+    id: 2,
+    sessionId: 's1',
+    text: 'This card is cut off',
+    image: { url: '/img/abc.png', path: '/Users/me/.gollabara/data/images/abc.png', at: at(23, 14), sessionName: 'piuda' },
+    createdAt: at(23, 17),
+  }
+
+  test('only PostToolUse, Stop and UserPromptSubmit claim feedback', () => {
+    expect(['PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart', 'PreToolUse'].map(feedbackVia))
+      .toEqual(['post-tool-use', 'stop', 'user-prompt-submit', null, null])
+  })
+
+  test('PostToolUse and UserPromptSubmit add context labelled as the user\'s feedback', () => {
+    const line = '[gollabara] Feedback from the user while you work (sent 23:16): Make the header darker'
+    for (const hookEventName of ['PostToolUse', 'UserPromptSubmit'])
+      expect(feedbackOutput(hookEventName, [plain])).toEqual({ hookSpecificOutput: { hookEventName, additionalContext: line } })
+  })
+
+  test('Stop blocks with the feedback as the reason', () => {
+    expect(feedbackOutput('Stop', [plain])).toEqual({ decision: 'block', reason: expect.stringContaining('Make the header darker') })
+  })
+
+  test('image feedback names the stored file, its capture time and session; items join line by line', () => {
+    const out = feedbackOutput('PostToolUse', [plain, withImage]) as { hookSpecificOutput: { additionalContext: string } }
+    expect(out.hookSpecificOutput.additionalContext.split('\n')).toEqual([
+      '[gollabara] Feedback from the user while you work (sent 23:16): Make the header darker',
+      '[gollabara] Feedback from the user while you work (sent 23:17, about the image /Users/me/.gollabara/data/images/abc.png captured 23:14 in piuda): This card is cut off',
+    ])
+  })
+
+  test('nothing to print without items or on other hooks', () => {
+    expect(feedbackOutput('Stop', [])).toBeNull()
+    expect(feedbackOutput('SessionStart', [plain])).toBeNull()
   })
 })

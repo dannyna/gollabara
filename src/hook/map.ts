@@ -1,6 +1,6 @@
 // Turns Claude Code hook input (stdin JSON) into stream events.
 // Kept pure so it is easy to test. hook/index.ts handles I/O.
-import type { IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
+import type { Feedback, FeedbackVia, IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
 
 export interface HookInput {
   hook_event_name: string
@@ -63,6 +63,44 @@ export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent |
     default:
       return null
   }
+}
+
+/** Hook points where a session can pick up the user's feedback */
+const FEEDBACK_VIA: Record<string, FeedbackVia> = {
+  PostToolUse: 'post-tool-use',
+  Stop: 'stop',
+  UserPromptSubmit: 'user-prompt-submit',
+}
+
+export function feedbackVia(hookEventName: string): FeedbackVia | null {
+  return FEEDBACK_VIA[hookEventName] ?? null
+}
+
+/** Hook stdout JSON that hands claimed feedback to the session, or null when there is nothing to print */
+export function feedbackOutput(hookEventName: string, items: Feedback[]): object | null {
+  if (items.length === 0 || !feedbackVia(hookEventName))
+    return null
+  const text = items.map(feedbackLine).join('\n')
+  // Stop needs `block` to keep the turn going; the claim already emptied the queue, so the re-entered Stop lets it end
+  if (hookEventName === 'Stop')
+    return { decision: 'block', reason: text }
+  return { hookSpecificOutput: { hookEventName, additionalContext: text } }
+}
+
+/**
+ * Labelled as the user's own words relayed by gollabara, stated as fact rather than as a system
+ * instruction, so the session treats it as the user talking and not as untrusted tool output.
+ */
+export function feedbackLine(item: Feedback): string {
+  const about = item.image
+    ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ''}`
+    : ''
+  return `[gollabara] Feedback from the user while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
+}
+
+function clock(at: number): string {
+  const d = new Date(at)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 /** Extracts a one-line recap from the turn's last reply */

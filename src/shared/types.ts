@@ -73,10 +73,55 @@ export interface StoredImage {
   at?: number
 }
 
+/**
+ * When a session picked up feedback: after a tool call, when it tried to end its turn,
+ * or alongside the next prompt. Harnesses map their own hook points onto these.
+ */
+export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit'
+
+/** Body of POST /api/feedback. The user writes it; gollabara only carries it. */
+export interface FeedbackRequest {
+  sessionId: string
+  text: string
+  /** A stored image the feedback is about: its /img/<name> url or bare file name */
+  image?: string
+}
+
+/** Body of POST /api/feedback/claim, sent by the hook */
+export interface FeedbackClaim {
+  sessionId: string
+  via: FeedbackVia
+}
+
+/** The stored image feedback points at, resolved so the session can open it */
+export interface FeedbackImage {
+  /** /img/<name> */
+  url: string
+  /** Absolute path of the stored file on the server machine */
+  path: string
+  /** When the image was captured */
+  at: number
+  /** Session that produced the image, when it is still in the stream */
+  sessionName?: string
+}
+
+export interface Feedback {
+  id: number
+  sessionId: string
+  text: string
+  image?: FeedbackImage
+  createdAt: number
+  /** Unset while queued */
+  deliveredAt?: number
+  deliveredVia?: FeedbackVia
+}
+
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
-  = | { type: 'hello', messages: StreamMessage[], sessions: Session[] }
+  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[] }
     | { type: 'message', message: StreamMessage }
     // An existing message changed in place: same id, new content
     | { type: 'message-upsert', message: StreamMessage }
     | { type: 'session', session: Session }
+    // Same id moves from queued to delivered
+    | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }

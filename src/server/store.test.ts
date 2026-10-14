@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { Store, TURN_IDLE_MS } from './store'
+import { FeedbackError, Store, TURN_IDLE_MS } from './store'
 
 // 1×1 PNG
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAA'
@@ -98,5 +98,48 @@ describe('turn grouping', () => {
     store.ingest(image(other), 2000)
     store.ingest(image(), 3000)
     expect(store.recent().map(m => [m.sessionId, m.images!.length])).toEqual([['od-1', 2], ['cc-1', 1]])
+  })
+})
+
+describe('feedback', () => {
+  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
+  beforeEach(() => {
+    store.ingest({ kind: 'session', session: od }, 500)
+    store.ingest({ kind: 'session', session: cc }, 500)
+  })
+
+  test('queued feedback is claimed once, in order, with the hook point recorded', () => {
+    const first = store.queueFeedback('od-1', 'darker header', undefined, 1000)
+    store.queueFeedback('od-1', 'and a bigger title', undefined, 1100)
+    expect(first).toEqual({ id: first.id, sessionId: 'od-1', text: 'darker header', createdAt: 1000 })
+    const claimed = store.claimFeedback('od-1', 'post-tool-use', 2000)
+    expect(claimed.map(f => [f.text, f.deliveredAt, f.deliveredVia])).toEqual([
+      ['darker header', 2000, 'post-tool-use'],
+      ['and a bigger title', 2000, 'post-tool-use'],
+    ])
+    expect(store.claimFeedback('od-1', 'stop', 3000)).toEqual([])
+    expect(store.recentFeedback()).toEqual(claimed)
+  })
+
+  test('a claim leaves other sessions\' feedback queued', () => {
+    store.queueFeedback('od-1', 'for od', undefined, 1000)
+    store.queueFeedback('cc-1', 'for cc', undefined, 1000)
+    expect(store.claimFeedback('od-1', 'stop', 2000).map(f => f.text)).toEqual(['for od'])
+    expect(store.recentFeedback().find(f => f.sessionId === 'cc-1')).not.toHaveProperty('deliveredAt')
+    expect(store.claimFeedback('cc-1', 'user-prompt-submit', 3000).map(f => f.text)).toEqual(['for cc'])
+  })
+
+  test('image feedback resolves to the stored file, its capture time and session', () => {
+    const { message } = store.ingest(image(), 1500)
+    const url = message!.images![0]!.url
+    const feedback = store.queueFeedback('cc-1', 'cut off', url, 2000)
+    expect(feedback.image).toEqual({ url, path: join(dir, 'images', url.slice('/img/'.length)), at: 1500, sessionName: 'gollabara-spike' })
+    expect(store.queueFeedback('cc-1', 'bare name works too', url.slice('/img/'.length), 2100).image).toEqual(feedback.image)
+  })
+
+  test('an unknown session or image, or a path outside the image directory, is refused', () => {
+    expect(() => store.queueFeedback('nope', 'hi')).toThrow(FeedbackError)
+    for (const ref of ['/img/missing.png', '../stream.db', '/img/..'])
+      expect(() => store.queueFeedback('od-1', 'hi', ref)).toThrow('unknown image')
   })
 })

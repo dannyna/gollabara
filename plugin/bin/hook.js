@@ -55,6 +55,31 @@ function mapHook(input, session) {
       return null;
   }
 }
+var FEEDBACK_VIA = {
+  PostToolUse: "post-tool-use",
+  Stop: "stop",
+  UserPromptSubmit: "user-prompt-submit"
+};
+function feedbackVia(hookEventName) {
+  return FEEDBACK_VIA[hookEventName] ?? null;
+}
+function feedbackOutput(hookEventName, items) {
+  if (items.length === 0 || !feedbackVia(hookEventName))
+    return null;
+  const text = items.map(feedbackLine).join(`
+`);
+  if (hookEventName === "Stop")
+    return { decision: "block", reason: text };
+  return { hookSpecificOutput: { hookEventName, additionalContext: text } };
+}
+function feedbackLine(item) {
+  const about = item.image ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ""}` : "";
+  return `[gollabara] Feedback from the user while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
+}
+function clock(at) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 function recapOf(message) {
   if (!message)
     return null;
@@ -116,14 +141,22 @@ async function runHook() {
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, readBranch);
     const event = mapHook(input, session);
-    if (!event)
-      return;
-    await fetch(`${serverUrl()}/api/events`, {
+    const via = feedbackVia(input.hook_event_name);
+    const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
+    const post = (path, body) => fetch(`${serverUrl()}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(event),
-      signal: AbortSignal.timeout(POST_TIMEOUT_MS)
+      body: JSON.stringify(body),
+      signal
     });
+    const [, claimed] = await Promise.allSettled([
+      event ? post("/api/events", event) : null,
+      via ? post("/api/feedback/claim", { sessionId: session.id, via }).then((r) => r.ok ? r.json() : []) : []
+    ]);
+    const items = claimed.status === "fulfilled" && Array.isArray(claimed.value) ? claimed.value : [];
+    const output = feedbackOutput(input.hook_event_name, items);
+    if (output)
+      await Bun.write(Bun.stdout, JSON.stringify(output));
   } catch {}
 }
 function readBranch(cwd) {
