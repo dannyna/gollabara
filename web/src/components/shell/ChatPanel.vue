@@ -95,7 +95,6 @@ defineExpose({ reveal })
       </div>
       <div class="note">
         <span class="desktop-hint">@세션을 부르거나, 산출물에 답장해 보세요</span>
-        <span class="mobile-hint">메시지를 오른쪽으로 밀면 답장</span>
         <span>보내기는 준비 중이에요</span>
       </div>
     </div>
@@ -257,8 +256,11 @@ defineExpose({ reveal })
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* Sits beside the input on tablet; never squeeze 「@ 세션」 onto two lines */
+  flex: none;
 }
 .mention {
+  white-space: nowrap;
   min-height: 32px;
   padding: 0 4px;
   color: var(--muted);
@@ -290,10 +292,6 @@ defineExpose({ reveal })
   font-size: 9px;
   color: var(--muted);
 }
-.mobile-hint {
-  display: none;
-}
-
 @media (min-width: 768px) and (max-width: 1023px) {
   .chat-panel {
     border-radius: 20px;
@@ -366,9 +364,6 @@ defineExpose({ reveal })
   }
   .desktop-hint {
     display: none;
-  }
-  .mobile-hint {
-    display: inline;
   }
 }
 @media (max-width: 767px), (pointer: coarse) {
