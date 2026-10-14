@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { Thumb } from '../chat/ArtifactThumbs.vue'
-import type { ComposerSend } from '../chat/ChatComposer.vue'
+import type { SystemEvent } from '../chat/chat'
+import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
 import { computed, nextTick, ref, watch } from 'vue'
-import { artifactKey } from '../../artifacts'
+import { artifactKey, clock } from '../../artifacts'
+import { useMutedSessions } from '../../sessions'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
+import StateView from '../banner/StateView.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
 import { toTimeline } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
@@ -13,6 +16,8 @@ import DateLabel from '../chat/DateLabel.vue'
 import QuestionCard from '../chat/QuestionCard.vue'
 import SessionMessage from '../chat/SessionMessage.vue'
 import SystemLine from '../chat/SystemLine.vue'
+import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
+import { useImageViewer } from '../overlay/useImageViewer'
 
 const props = defineProps<{
   messages: StreamMessage[]
@@ -26,18 +31,62 @@ const props = defineProps<{
   selectedMessage?: number | null
   /** Delivery to sessions is wired elsewhere; until then the composer stays disabled */
   canSend?: boolean
+  /** Viewing one session rather than 「전체 세션」 */
+  scoped?: boolean
+  /** The scope is a muted session (unreachable today: muting the scope resets it) */
+  scopeMuted?: boolean
+  /** Every session is muted, so nothing is in view */
+  allMuted?: boolean
 }>()
-defineEmits<{
+const emit = defineEmits<{
   thumb: [key: string]
-  /** A paired thumbnail pressed again; the image viewer (#17) opens it */
+  /** A paired thumbnail pressed again; it also opens the image viewer */
   openImage: [image: Thumb]
   send: [payload: ComposerSend]
+  /** Open the session menu */
+  sessions: []
 }>()
 
 // Answering questions is not built yet: question cards are drawn inert.
 
 const feed = ref<HTMLElement>()
-const timeline = computed(() => toTimeline(props.messages, props.sessions))
+const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
+
+// Mute is a client filter with no history, so its lines exist only for changes made
+// while this page is open, and only in 「전체 세션」 (OD chat guide 05)
+const { muted } = useMutedSessions()
+const muteEvents = ref<SystemEvent[]>([])
+watch(muted, (next, prev) => {
+  const at = Date.now()
+  for (const id of next) {
+    if (!prev.has(id))
+      muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: `${nameOf(id)} 음소거함` })
+  }
+  for (const id of prev) {
+    if (!next.has(id))
+      muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
+  }
+})
+const timeline = computed(() => toTimeline(props.messages, props.sessions, props.scoped ? [] : muteEvents.value))
+
+// Chat thumbnails open the one app viewer at every width
+const { open } = useImageViewer()
+function openImage(image: Thumb) {
+  open(image.key)
+  emit('openImage', image)
+}
+
+// The viewer's 「이 이미지에 피드백 ↗」 sets the target; the composer shows it as its chip
+const { target, clearTarget } = useFeedbackTarget()
+const attachment = computed<ComposerAttachment | null>(() => target.value && {
+  url: target.value.imageUrl,
+  session: nameOf(target.value.sessionId),
+  caption: target.value.caption ?? clock(target.value.at),
+})
+function onAttachment(next: ComposerAttachment | null) {
+  if (!next)
+    clearTarget()
+}
 const recaps = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
 const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
 
@@ -83,11 +132,16 @@ defineExpose({ reveal })
     <NoticeLine v-if="offline">
       연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.
     </NoticeLine>
-    <div class="feed-box">
+    <StateView v-if="scopeMuted" title="음소거한 세션이에요." description="세션 목록에서 다시 표시할 수 있어요." />
+    <StateView
+      v-else-if="allMuted" title="모든 세션을 음소거했어요" description="세션 목록에서 다시 표시할 수 있어요."
+      action="세션 목록 열기" @action="emit('sessions')"
+    />
+    <div v-else class="feed-box">
       <div ref="feed" class="feed" role="log" aria-label="세션 메시지" tabindex="-1" @scroll.passive="onScroll">
         <template v-for="item in timeline" :key="item.key">
           <DateLabel v-if="item.type === 'date'" :label="item.label" />
-          <SystemLine v-else-if="item.type === 'start'" icon="start" :text="`${item.name} 시작`" />
+          <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text" />
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
@@ -97,7 +151,7 @@ defineExpose({ reveal })
             </p>
             <ArtifactThumbs
               v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
-              :active="selected" @pick="$emit('thumb', $event)" @open-image="$emit('openImage', $event)"
+              :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
             />
             <!-- Answering is not built yet; with several questions every card shows at once -->
             <QuestionCard
@@ -114,8 +168,8 @@ defineExpose({ reveal })
     <ChatComposer
       :can-send="canSend" hint="@세션을 부르거나, 산출물에 답장해 보세요"
       :blocked="offline ? { icon: 'plug', text: '다시 연결되면 보낼 수 있어요' } : undefined"
-      :note="canSend ? undefined : '보내기는 준비 중이에요'"
-      @send="$emit('send', $event)"
+      :note="canSend ? undefined : '보내기는 준비 중이에요'" :attachment="attachment"
+      @update:attachment="onAttachment" @send="$emit('send', $event)"
     />
   </section>
 </template>

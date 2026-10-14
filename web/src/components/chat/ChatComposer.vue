@@ -78,7 +78,7 @@ function onKeydown(e: KeyboardEvent) {
     <slot name="popover" />
     <div v-if="attachment" class="reply-context">
       <img :src="attachment.url" alt=""><span>↪ <b>{{ attachment.session }}</b> · {{ attachment.caption }}</span>
-      <button class="icon-button" type="button" aria-label="인용 취소" :disabled="!canSend" @click="emit('update:attachment', null)">
+      <button class="icon-button" type="button" aria-label="인용 취소" @click="emit('update:attachment', null)">
         <ChatIcon name="close" />
       </button>
     </div>

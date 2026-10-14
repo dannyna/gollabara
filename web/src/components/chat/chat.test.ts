@@ -40,9 +40,20 @@ describe('toTimeline', () => {
     const items = toTimeline(
       [msg(1, 'a', at(13, 10)), msg(2, 'b', at(14, 9)), msg(3, 'a', at(14, 11))],
       [session('a', at(12, 9)), session('b', at(14, 8)), session('c', at(14, 10))],
+      [],
       now,
     )
     expect(items.map(i => i.type === 'date' ? i.label : i.key)).toEqual(['어제', 'm-1', '오늘', 'start-b', 'm-2', 'm-3'])
+  })
+
+  it('places other system lines at their time, even for sessions out of view', () => {
+    const items = toTimeline(
+      [msg(1, 'a', at(14, 9)), msg(2, 'a', at(14, 11))],
+      [],
+      [{ key: 'mute-x', at: at(14, 10), icon: 'mute', text: 'x · main 음소거함' }],
+      at(14, 20),
+    )
+    expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'mute-x', 'm-2'])
   })
 
   it('labels older days with the date', () => {

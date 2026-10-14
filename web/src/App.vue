@@ -123,7 +123,8 @@ function onThumb(key: string) {
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
-        @thumb="onThumb"
+        :scoped="scope != null" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
+        @thumb="onThumb" @sessions="sessionsOpen = true"
       />
     </main>
     <SettingsSheet
