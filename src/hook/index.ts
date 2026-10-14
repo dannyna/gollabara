@@ -1,5 +1,5 @@
-// `golla hook` — Claude Code hook 진입점.
-// 세션 작업을 절대 막지 않는다: 짧은 타임아웃, 모든 오류 삼킴, 항상 exit 0.
+// `golla hook` — Claude Code hook entry point.
+// Never blocks the session: short timeout, swallow every error, always exit 0.
 
 import type { SessionInfo } from '../shared/types'
 import type { HookInput } from './map'
@@ -30,7 +30,7 @@ export async function runHook(): Promise<void> {
     })
   }
   catch {
-    // 서버가 꺼져 있어도 세션은 계속한다
+    // The session keeps going even if the server is down
   }
 }
 

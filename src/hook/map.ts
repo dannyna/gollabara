@@ -1,5 +1,5 @@
-// Claude Code hook 입력(stdin JSON)을 스트림 이벤트로 바꾼다.
-// 순수 함수로 두어 테스트하기 쉽게 한다. I/O 는 hook/index.ts 가 맡는다.
+// Turns Claude Code hook input (stdin JSON) into stream events.
+// Kept pure so it is easy to test. hook/index.ts handles I/O.
 import type { IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
 
 export interface HookInput {
@@ -30,7 +30,7 @@ export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent |
       return { kind: 'image', session, toolName: input.tool_name ?? '', images }
     }
     case 'PreToolUse': {
-      // 세션이 원래 하던 질문만 비춘다. 질문을 새로 만들지 않는다.
+      // Mirror only the session's own questions. Never invent new ones.
       if (input.tool_name !== 'AskUserQuestion')
         return null
       const questions = extractQuestions(input.tool_input)
@@ -45,7 +45,7 @@ export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent |
   }
 }
 
-/** 턴 마지막 답변에서 한 줄 리캡을 뽑는다 */
+/** Extracts a one-line recap from the turn's last reply */
 export function recapOf(message?: string): string | null {
   if (!message)
     return null
@@ -59,9 +59,9 @@ export function recapOf(message?: string): string | null {
 }
 
 /**
- * 도구 결과에서 이미지를 찾는다. 두 형태를 지원한다.
- * - 내장 Read: { type: 'image', file: { base64, type, dimensions } }
- * - MCP 콘텐츠 배열: [{ type: 'image', data, mimeType }]
+ * Finds images in a tool result. Two shapes are supported:
+ * - built-in Read: { type: 'image', file: { base64, type, dimensions } }
+ * - MCP content array: [{ type: 'image', data, mimeType }]
  */
 export function extractImages(response: unknown): IncomingImage[] {
   const out: IncomingImage[] = []

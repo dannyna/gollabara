@@ -15,7 +15,7 @@ switch (command) {
     process.exit(0)
     break
   default:
-    console.log(`사용법:
-  golla serve   스트림 서버를 띄운다
-  golla hook    Claude Code hook 입력(stdin)을 서버로 보낸다`)
+    console.log(`Usage:
+  golla serve   start the stream server
+  golla hook    send Claude Code hook input (stdin) to the server`)
 }

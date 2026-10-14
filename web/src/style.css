@@ -1,4 +1,4 @@
-/* 브랜드 방향 03 「구경 모드 · Quiet signal」 — gollabara-brand 보드의 토큰 */
+/* Brand direction 03 「구경 모드 · Quiet signal」 — tokens from the gollabara-brand board */
 :root {
   --bg: #f5f6f7;
   --surface: #ffffff;
@@ -6,7 +6,7 @@
   --line: #d3d7dc;
   --text: #22262a;
   --muted: #5b626a;
-  /* 강조 노랑은 면으로만 쓴다. 밝은 화면에서 글자로 쓸 때는 --accent-ink */
+  /* Accent yellow is for fills only. For text on light backgrounds use --accent-ink */
   --accent: #f4d34f;
   --accent-ink: #7a6200;
   --on-accent: #22262a;
