@@ -1,0 +1,11 @@
+{
+  "name": "gollabara",
+  "owner": { "name": "danny" },
+  "plugins": [
+    {
+      "name": "gollabara",
+      "source": "./plugin",
+      "description": "세션이 만든 스크린샷 · 리캡 · 질문을 Gollabara 스트림으로 흘려보낸다"
+    }
+  ]
+}

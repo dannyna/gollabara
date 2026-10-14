@@ -10,9 +10,10 @@
     "dev": "bun run --watch src/cli.ts serve",
     "dev:web": "vite --config web/vite.config.ts",
     "build:web": "vite build --config web/vite.config.ts",
-    "build": "bun run build:web && bun build --compile src/cli.ts --outfile dist/golla",
+    "build": "bun run build:hook && bun run build:web",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "test": "bun test"
+    "test": "bun test",
+    "build:hook": "bun build src/hook/entry.ts --target=bun --outfile plugin/bin/hook.js"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.10",
