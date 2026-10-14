@@ -1,0 +1,5 @@
+{
+  "name": "gollabara-spike",
+  "version": "0.0.1",
+  "description": "hook 입력 데이터를 파일로 남겨 포착 가능성을 확인하는 스파이크"
+}
