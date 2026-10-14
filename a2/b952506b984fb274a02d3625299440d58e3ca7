@@ -1,0 +1,23 @@
+README.ko.md
+  s_b7f30c572db9a8::t_97fb8df8b238fe 38
+.impeccable/design.json
+  s_b7f30c572db9a8::t_918bcd4ce4397b 3,393,415
+DESIGN.md
+  s_b7f30c572db9a8::t_93fb10d6325c18 172,279,334,342,359,363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2b952506b984fb274a02d3625299440d58e3ca7",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
