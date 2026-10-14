@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { MentionOption } from '../overlay/MentionList.vue'
 import type { ComposerAttachment, ComposerSend } from './ChatComposer.vue'
 import { ref } from 'vue'
 import ChatFrame from '../../gallery/ChatFrame.vue'
 import { IMG } from '../../gallery/fixtures'
 import GalleryCase from '../../gallery/GalleryCase.vue'
+import MentionList from '../overlay/MentionList.vue'
 import ChatComposer from './ChatComposer.vue'
-import SessionAvatar from './SessionAvatar.vue'
 
 const HERO_A: ComposerAttachment = { url: IMG.hero.url, session: 'od', caption: '히어로 A · 14:34' }
 
@@ -13,12 +14,11 @@ const HERO_A: ComposerAttachment = { url: IMG.hero.url, session: 'od', caption: 
 const attachment = ref<ComposerAttachment | null>(HERO_A)
 const sent = ref<ComposerSend[]>([])
 
-// The @세션 picker is an anchored list owned by the overlay components (#17);
-// it is sketched here only to show the composer state
-const MENTION = [
-  { name: 'piuda', state: '쉬는 중' },
-  { name: 'od', state: '작업 중' },
-  { name: 'client-e2e', state: '멈춤' },
+// The overlay's MentionList, anchored through the composer's popover slot
+const MENTION: MentionOption[] = [
+  { id: 'piuda', session: 'piuda', branch: 'desktop-shell' },
+  { id: 'od', session: 'od', branch: 'landing-hero' },
+  { id: 'e2e', session: 'client-e2e', branch: 'checkout' },
 ]
 </script>
 
@@ -38,19 +38,12 @@ const MENTION = [
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="03 · @세션 고르기">
-    <ChatFrame note="‘전체 세션’ 보기에서는 @로 대상을 고른다. 세션 상태를 오른쪽에. 목록 자체는 오버레이 컴포넌트(#17) 몫.">
+    <ChatFrame note="‘전체 세션’ 보기에서는 @로 대상을 고른다. 목록은 overlay의 MentionList를 popover 슬롯에 둔다.">
       <div class="mention-room" />
       <template #footer>
         <ChatComposer can-send text="@" note="보낼 세션을 골라 주세요">
           <template #popover>
-            <div class="mention-list" role="listbox" aria-label="멘션할 세션">
-              <div class="mention-title">
-                보낼 세션
-              </div>
-              <button v-for="s in MENTION" :key="s.name" type="button" role="option">
-                <SessionAvatar :name="s.name" /><span>{{ s.name }}</span><span>{{ s.state }}</span>
-              </button>
-            </div>
+            <MentionList :options="MENTION" />
           </template>
         </ChatComposer>
       </template>
@@ -102,38 +95,5 @@ const MENTION = [
 }
 .mention-room {
   min-height: 190px;
-}
-.mention-list {
-  position: absolute;
-  z-index: 5;
-  left: 20px;
-  right: 20px;
-  bottom: calc(100% - 3px);
-  padding: 7px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: 0 -8px 30px var(--shade);
-}
-.mention-title {
-  padding: 3px 8px 6px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.mention-list button {
-  width: 100%;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  text-align: left;
-}
-.mention-list button span:last-child {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--muted);
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { clock, splitSessionName } from '../../artifacts'
+import FloatingActions from '../overlay/FloatingActions.vue'
 import SessionAvatar from './SessionAvatar.vue'
 
 // Avatar · session · branch · time, then the body. Text without a surface; the
@@ -16,7 +17,9 @@ const parts = computed(() => splitSessionName(props.name))
 </script>
 
 <template>
-  <article class="message" :class="{ highlighted }">
+  <article class="message" :class="{ highlighted }" data-floating-host>
+    <!-- 답장 · 멈춤 on hover or focus; drawn disabled until intervention exists -->
+    <FloatingActions variant="message" />
     <div class="message-head">
       <SessionAvatar :name="name" />
       <strong>{{ parts.session }}<span v-if="parts.branch" class="branch"> · {{ parts.branch }}</span></strong>

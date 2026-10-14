@@ -111,9 +111,6 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
       <button v-else class="direct-reply" type="button" :disabled="inert">
         직접 답하기
       </button>
-      <div v-if="inert && state === 'open'" class="q-state">
-        <ChatIcon name="term" />앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
-      </div>
     </template>
     <div v-else-if="state === 'sending'" class="q-state">
       <span class="spin" aria-hidden="true" />{{ picked }}로 답하는 중
@@ -126,8 +123,12 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
     <div v-else-if="state === 'terminal'" class="q-state strong">
       <ChatIcon name="term" />{{ picked ? `터미널에서 ${picked}로 먼저 답했어요` : '터미널에서 먼저 답했어요' }}
     </div>
-    <div v-else-if="state === 'offline'" class="q-state">
+    <!-- Inert cards never promise an answer after reconnecting: the app cannot answer yet -->
+    <div v-else-if="state === 'offline' && !inert" class="q-state">
       <ChatIcon name="plug" />다시 연결되면 답할 수 있어요
+    </div>
+    <div v-if="inert && (state === 'open' || state === 'offline')" class="q-state">
+      <ChatIcon name="term" />앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
     </div>
   </div>
 </template>

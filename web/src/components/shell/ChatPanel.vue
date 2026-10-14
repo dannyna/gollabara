@@ -95,14 +95,19 @@ const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: ar
 const unseen = ref(0)
 const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
 let first = true
-watch(() => props.messages, async (list, prev) => {
+// Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
+// Scope changes and unmuting reveal older messages; those are not counted.
+let lastId = -Infinity
+watch(() => props.messages, async (list) => {
+  const arrived = list.filter(m => m.id > lastId).length
+  lastId = Math.max(lastId, ...list.map(m => m.id))
   const el = feed.value
   const atEnd = !el || isAtEnd(el)
   await nextTick()
   if (first || atEnd)
     feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: first ? 'instant' : 'smooth' })
-  else if (prev && list.length > prev.length)
-    unseen.value += list.length - prev.length
+  else
+    unseen.value += arrived
   if (props.messages.length)
     first = false
 }, { immediate: true })
