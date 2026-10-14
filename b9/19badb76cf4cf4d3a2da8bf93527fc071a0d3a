@@ -1,0 +1,100 @@
+web/src/components/overlay/ImageViewer.vue
+  s_b7f30c572db9a8::t_9c258bbd95420c 1-6,8-62,64-67,69,72-100,108-164,168-310
+  s_b7f30c572db9a8::t_fe8b0acda2457c 101-107
+  s_b7f30c572db9a8::t_1ccc81048d1a4f 165-167
+  s_b7f30c572db9a8::t_1799cbfbd818fe 7
+  s_b7f30c572db9a8::t_f7eef368c31891 68,70-71
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 63
+web/src/App.vue
+  s_b7f30c572db9a8::t_51a68adc0e211d 95-106
+  s_b7f30c572db9a8::t_22cc6c5e9fce02 4-9,14-15,20-22,24,26,28,31-50
+  s_b7f30c572db9a8::t_d3a99cd3714c52 115-120
+  s_b7f30c572db9a8::t_7ffba5a9799938 68-70
+  s_b7f30c572db9a8::t_5ce8c146c8b2ed 51
+web/src/components/overlay/FloatingActions.vue
+  s_b7f30c572db9a8::t_c000e255a2022a 1-17,19-46,48-52,54-64,66-72,74-78,80-91
+  s_b7f30c572db9a8::t_c5e2dba4578315 73
+  s_b7f30c572db9a8::t_4290d1b8bacd91 18,47,53,65,79
+web/src/components/overlay/SettingsSheet.gallery.vue
+  s_b7f30c572db9a8::t_ff4a4126f6152c 1-77
+web/src/components/overlay/FloatingActions.gallery.vue
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 6
+  s_b7f30c572db9a8::t_3b5596ab77e9b2 1-5,7-117
+web/src/components/overlay/useToast.ts
+  s_b7f30c572db9a8::t_6339f99e848454 1-18
+web/src/components/shell/AppBar.vue
+  s_b7f30c572db9a8::t_8f657c8cfc0996 2-3,15-18,31-41,119-123,203,205-207
+  s_b7f30c572db9a8::t_f7d585839b2919 199-202,204
+  s_b7f30c572db9a8::t_ff50fee0a7ed8b 124
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_89b024de925ef8 99
+  s_b7f30c572db9a8::t_95416c05c636ba 5
+  s_b7f30c572db9a8::t_5fc945eb7f2176 83
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_64aee62fca8c40 1-65
+web/src/components/overlay/gallery-samples.ts
+  s_b7f30c572db9a8::t_04c4b19ea45868 1-33
+web/src/settings.ts
+  s_b7f30c572db9a8::t_4f14ee1e318c32 1-64
+web/src/components/overlay/AppToast.vue
+  s_b7f30c572db9a8::t_66c68faacd7542 1-44
+web/src/components/overlay/MentionList.vue
+  s_b7f30c572db9a8::t_314ecd97c4c94f 1-111
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_35797300ffbc2a 1-28
+web/src/components/overlay/useImageViewer.ts
+  s_b7f30c572db9a8::t_3dde835caab6e5 1-19
+web/src/components/overlay/ConfirmDialog.gallery.vue
+  s_b7f30c572db9a8::t_6e3eb46d1f6801 1-10,12-71
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 11
+web/src/components/overlay/useOverlay.ts
+  s_b7f30c572db9a8::t_dab316104f7e52 1-137
+web/src/components/overlay/OverlayIcon.vue
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 2-3
+  s_b7f30c572db9a8::t_22f01380b459a8 1,4-22
+web/src/components/overlay/MentionList.gallery.vue
+  s_b7f30c572db9a8::t_5ca1dfcb1dbe1d 1-105
+web/src/components/overlay/AppToast.gallery.vue
+  s_b7f30c572db9a8::t_089edefc0d747e 1-7,11-30,32-45
+  s_b7f30c572db9a8::t_1974629fc4e44c 8-10
+  s_b7f30c572db9a8::t_da8dc0ef27b266 31
+web/src/components/overlay/ImageViewer.gallery.vue
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 9
+  s_b7f30c572db9a8::t_6fbf783986595d 1-8,10-60
+web/src/components/overlay/zoom.ts
+  s_b7f30c572db9a8::t_1c5959842a66c8 1-19
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_be994415f3ce4b 1-312
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_cef9da52c66ecf 1-254
+web/src/components/overlay/ConfirmDialog.vue
+  s_b7f30c572db9a8::t_cd2dca01670d6e 1-126
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_6bcb176b07e6d5 9
+  s_b7f30c572db9a8::t_9ca10ef180c84e 1-8,10-81
+web/src/style.css
+  s_b7f30c572db9a8::t_c864733aa127a2 17-25
+  s_b7f30c572db9a8::t_389a4e8e6082d4 111-171
+web/src/gallery/GalleryStage.vue
+  s_b7f30c572db9a8::t_980d1aa9bc2a35 1-59
+web/src/components/overlay/overlay.test.ts
+  s_b7f30c572db9a8::t_b0cd21e44a0c15 1-26
+web/src/components/overlay/useFeedbackTarget.ts
+  s_b7f30c572db9a8::t_acfc77ab30f2b8 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b919badb76cf4cf4d3a2da8bf93527fc071a0d3a",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
