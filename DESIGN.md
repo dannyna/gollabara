@@ -173,7 +173,7 @@ gollabara is a UX engineer's viewfinder for watching, from one step back, the ar
 
 The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
 
-gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. **In the current scope those controls are drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
+gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume because a later track will let you send to sessions. Feedback the user writes is being enabled first (#22): the server and hook deliver it, and the web wiring follows. **Everything else is drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
 
 **Key Characteristics:**
 
@@ -358,7 +358,7 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 
 #### Scope of the current build
 
-Sending anything to a session (replies, question answers, `@mention`, pause/resume) is a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
+Feedback delivery is being enabled (#22): text the user writes in the composer, optionally about one image from the stream, is queued and delivered to the session, and the UI reports it as queued, then delivered. The server and hook side ships first; the controls stay disabled until the web wiring lands. Answering a session's question and pause/resume remain a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
 
 ### State acceptance
 
