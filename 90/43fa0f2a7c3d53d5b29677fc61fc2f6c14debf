@@ -1,0 +1,48 @@
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_56571ef0738719 58-82,144-146,149-150,152-159
+src/hook/index.ts
+  s_b7f30c572db9a8::t_43e1f52803df68 3,5,11,22-25,28-29,31-39
+src/server/index.ts
+  s_b7f30c572db9a8::t_d69494c1564a84 3-4,8-9,13,38-71,90,100-101
+  s_b7f30c572db9a8::t_89455b2ad87d5c 102-103
+src/shared/types.ts
+  s_b7f30c572db9a8::t_ace0435bc038ba 76-118,121,126-127
+src/server/trusted.test.ts
+  s_b7f30c572db9a8::t_d7020a77c2a948 1-14
+src/hook/map.ts
+  s_b7f30c572db9a8::t_6b9ef7828bd9c0 3,68-104
+  s_b7f30c572db9a8::t_ef7c32431a465c 105
+plugin/hooks/hooks.json
+  s_b7f30c572db9a8::t_99d824fd52b3bf 6-7
+src/server/store.ts
+  s_b7f30c572db9a8::t_d67139ccb2fe39 6,201-202
+  s_b7f30c572db9a8::t_cb3b584b57dc52 3,5,35-53,81-93,153-200,203-215
+  s_b7f30c572db9a8::t_fcbd9a18923705 216
+src/server/trusted.ts
+  s_b7f30c572db9a8::t_2b74657a22ebf3 51
+  s_b7f30c572db9a8::t_324df1ab2b52b6 1-8,12-13,21-24,27-29,39-50,52-55
+  s_b7f30c572db9a8::t_285a8e2eb78303 9-11,14-20,25-26,30-38
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_cfed9e58f15551 13
+  s_b7f30c572db9a8::t_fad4478e7fcc79 126-165
+  s_b7f30c572db9a8::t_8641551c44d8f7 1
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_a88afe2891a29f 6
+  s_b7f30c572db9a8::t_3068145891de56 103-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9043fa0f2a7c3d53d5b29677fc61fc2f6c14debf",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
