@@ -1,0 +1,21 @@
+DESIGN.md
+  s_b7f30c572db9a8::t_afa937ad5739d7 176,361
+AGENTS.md
+  s_b7f30c572db9a8::t_090f47fa001ada 7,58-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ddad86350cf4194587228b4e80c449b4791a633",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
