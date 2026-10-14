@@ -1,0 +1,84 @@
+web/src/components/chat/ChatComposer.vue
+  s_b7f30c572db9a8::t_405dc6e2fbeb59 8-26,29,40-41,43-50,56-57,59-70,76,79-81,89,92-93,95,216-218
+  s_b7f30c572db9a8::t_3670b1e1b352bf 51,58
+  s_b7f30c572db9a8::t_e23f2fdc19d050 98
+  s_b7f30c572db9a8::t_fa9ecc57ec6c1c 1,5-7,27-28,30-31,33,35,39,71-75,77-78,82-88,94,96-97,99-102,111-203,204-215,219-294
+web/src/components/chat/QueueTray.vue
+  s_b7f30c572db9a8::t_7bda4143a4ee3b 1-134
+web/src/components/chat/DateLabel.vue
+  s_b7f30c572db9a8::t_d77fd8e6b98d9b 1-30
+web/src/components/chat/SessionMessage.vue
+  s_b7f30c572db9a8::t_d2ca4b812e67b5 1,3-14,16-90
+  s_b7f30c572db9a8::t_151a3e1d7607ab 2
+  s_b7f30c572db9a8::t_23dcd9a01a1af8 15
+web/src/components/chat/ChatIcon.vue
+  s_b7f30c572db9a8::t_ff662d5fb3a4ba 1-25
+web/src/components/chat/SessionAvatar.vue
+  s_b7f30c572db9a8::t_ef0cfccc5482e4 1-38
+web/src/components/chat/SystemLine.vue
+  s_b7f30c572db9a8::t_1e35e6020ce5ab 1-34
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_3553876aae3625 1-51
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_6cd3eddf092749 69,73-74,76,80,85
+  s_b7f30c572db9a8::t_3ceaf58ed9c5d7 1-68,70-72,75,77-79,81-84,86-88
+web/src/components/chat/icons.ts
+  s_b7f30c572db9a8::t_6fd927ec056f4c 1-20
+web/src/components/chat/MyMessage.vue
+  s_b7f30c572db9a8::t_69d315049c831b 1-4,9-15,17,19,22-34,36-37,39-42,45-146
+  s_b7f30c572db9a8::t_9d3de3172de25f 5-8,16,18,20-21,35,38,43-44
+web/src/gallery/ChatFrame.vue
+  s_b7f30c572db9a8::t_c963a0c5d593ac 1-39
+web/src/components/chat/QueueTray.gallery.vue
+  s_b7f30c572db9a8::t_6c8e54f81c41cc 1-18,20-32,34-51,53-66,68-78,80-90,92-99
+  s_b7f30c572db9a8::t_50f658a3e8951e 19,33,67,79
+web/src/components/chat/QuestionCard.vue
+  s_b7f30c572db9a8::t_af4881d389a274 1-393
+web/src/components/chat/SystemLine.gallery.vue
+  s_b7f30c572db9a8::t_8dad6f203f577c 1-33
+web/src/gallery/fixtures.ts
+  s_b7f30c572db9a8::t_8a10717203bb84 1-2,4-52
+  s_b7f30c572db9a8::t_1bf80579ed90ce 3
+web/src/components/chat/QuestionCard.gallery.vue
+  s_b7f30c572db9a8::t_c63f000f1a86ca 1-90
+web/src/components/chat/SessionMessage.gallery.vue
+  s_b7f30c572db9a8::t_33ccf87a630620 1-55
+web/src/components/chat/ArtifactThumbs.gallery.vue
+  s_b7f30c572db9a8::t_48a895466863e2 1-33
+web/src/components/chat/ChatComposer.gallery.vue
+  s_b7f30c572db9a8::t_71fd25dd814b06 1,4-9,18-28,30-35,37-43,45-61,63-67,76,78-80,83,85-87,95-97,103-139
+  s_b7f30c572db9a8::t_02d0e267bb02ad 2-3,10-15,29,36,44,68,70-75,77,81-82,84,98-102
+  s_b7f30c572db9a8::t_5eaa6fa339723c 16-17
+web/src/components/chat/ArtifactThumbs.vue
+  s_b7f30c572db9a8::t_284ddab890a61d 1-22,24-25,34-40,42-116
+  s_b7f30c572db9a8::t_fbed2a532a9f46 41
+  s_b7f30c572db9a8::t_b0c9295e67d52f 30
+  s_b7f30c572db9a8::t_70b4dcd54bca48 23
+  s_b7f30c572db9a8::t_39f95bc2d484d1 26-29,31-33
+web/src/components/chat/Timeline.gallery.vue
+  s_b7f30c572db9a8::t_35aed8bd8d8d9d 1-30,32-50,52-55
+  s_b7f30c572db9a8::t_50f658a3e8951e 31,51
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_8ba51cdf54be2c 2,5-6,9-15,19-20,40,42,114,119
+  s_b7f30c572db9a8::t_d1e62e85823e8b 3-4,27-30,32,37,118
+  s_b7f30c572db9a8::t_70b4dcd54bca48 31,33-34
+web/src/components/chat/MyMessage.gallery.vue
+  s_b7f30c572db9a8::t_50f658a3e8951e 9,11,14,19,21
+  s_b7f30c572db9a8::t_ed2ce15805a4e3 1-8,10,12-13,15-18,20,22-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b19ea075795fdef336f642f524c34a9af6fecfae",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
