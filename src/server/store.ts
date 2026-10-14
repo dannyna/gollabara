@@ -1,9 +1,9 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { IncomingEvent, Session, SessionInfo, StoredImage, StreamMessage } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, Session, SessionInfo, StoredImage, StreamMessage } from '../shared/types'
 import { Buffer } from 'node:buffer'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { imageSize } from './image-size'
 
@@ -30,6 +30,25 @@ interface SessionRow {
   last_seen_at: number
   open_turn: number | null
   last_turn: number | null
+}
+
+interface FeedbackRow {
+  id: number
+  session_id: string
+  text: string
+  image: string | null
+  image_at: number | null
+  image_session: string | null
+  created_at: number
+  delivered_at: number | null
+  delivered_via: FeedbackVia | null
+}
+
+/** Why feedback could not be queued */
+export class FeedbackError extends Error {
+  constructor(readonly status: 400 | 404, message: string) {
+    super(message)
+  }
 }
 
 export class Store {
@@ -59,6 +78,19 @@ export class Store {
       open_turn INTEGER,
       last_turn INTEGER
     )`)
+    // image: stored file name; image_at / image_session: when and where it was captured, looked up once at queue time
+    this.db.run(`CREATE TABLE IF NOT EXISTS feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      image TEXT,
+      image_at INTEGER,
+      image_session TEXT,
+      created_at INTEGER NOT NULL,
+      delivered_at INTEGER,
+      delivered_via TEXT
+    )`)
+    this.db.run('CREATE INDEX IF NOT EXISTS feedback_pending ON feedback (session_id) WHERE delivered_at IS NULL')
   }
 
   /** Upserts the event's session, then stores the event in its turn. message is null if there is nothing to stream */
@@ -116,6 +148,70 @@ export class Store {
   sessions(): Session[] {
     const rows = this.db.query('SELECT * FROM sessions ORDER BY last_seen_at DESC').all() as SessionRow[]
     return rows.map(toSession)
+  }
+
+  /** Queues the user's feedback for a session. Throws FeedbackError for an unknown session or image. */
+  queueFeedback(sessionId: string, text: string, image?: string, now = Date.now()): Feedback {
+    if (!this.db.query('SELECT 1 FROM sessions WHERE id = ?').get(sessionId))
+      throw new FeedbackError(404, 'unknown session')
+    let ref: { name: string, at: number, sessionName: string | null } | null = null
+    if (image) {
+      // Same sanitising as the /img/ route, so the ref cannot leave the image directory
+      const name = image.replace(/^\/img\//, '').replace(/[^\w.]/g, '')
+      const path = join(this.imageDir, name)
+      if (!name || name.startsWith('.') || !existsSync(path))
+        throw new FeedbackError(400, 'unknown image')
+      const capture = this.imageCapture(name)
+      ref = { name, at: capture?.at ?? Math.round(statSync(path).mtimeMs), sessionName: capture?.sessionName ?? null }
+    }
+    const row = this.db.query(`INSERT INTO feedback (session_id, text, image, image_at, image_session, created_at)
+      VALUES (?, ?, ?, ?, ?, ?) RETURNING *`).get(sessionId, text, ref?.name ?? null, ref?.at ?? null, ref?.sessionName ?? null, now) as FeedbackRow
+    return this.toFeedback(row)
+  }
+
+  /** Marks every queued item for the session delivered and returns them, oldest first. One statement, so two hooks never get the same item. */
+  claimFeedback(sessionId: string, via: FeedbackVia, now = Date.now()): Feedback[] {
+    const rows = this.db.query(`UPDATE feedback SET delivered_at = ?, delivered_via = ?
+      WHERE session_id = ? AND delivered_at IS NULL RETURNING *`).all(now, via, sessionId) as FeedbackRow[]
+    return rows.sort((a, b) => a.id - b.id).map(r => this.toFeedback(r))
+  }
+
+  recentFeedback(limit = 300): Feedback[] {
+    const rows = this.db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT ?').all(limit) as FeedbackRow[]
+    return rows.reverse().map(r => this.toFeedback(r))
+  }
+
+  /** There is no images table: the latest message holding the image says when and by whom it was captured */
+  private imageCapture(name: string): { at: number, sessionName: string } | null {
+    const url = `/img/${name}`
+    const rows = this.db.query('SELECT id, body FROM messages WHERE instr(body, ?) > 0 ORDER BY id DESC LIMIT 20').all(`"${url}"`) as { id: number, body: string }[]
+    for (const row of rows) {
+      const message = JSON.parse(row.body) as Omit<StreamMessage, 'id'>
+      const stored = message.images?.find(i => i.url === url)
+      if (stored)
+        return { at: stored.at ?? message.at, sessionName: message.sessionName }
+    }
+    return null
+  }
+
+  private toFeedback(row: FeedbackRow): Feedback {
+    const image: FeedbackImage | undefined = row.image
+      ? {
+          url: `/img/${row.image}`,
+          // Absolute even when GOLLABARA_DATA is relative: the session opens it from its own cwd
+          path: resolve(this.imageDir, row.image),
+          at: row.image_at ?? row.created_at,
+          ...(row.image_session ? { sessionName: row.image_session } : {}),
+        }
+      : undefined
+    return {
+      id: row.id,
+      sessionId: row.session_id,
+      text: row.text,
+      ...(image ? { image } : {}),
+      createdAt: row.created_at,
+      ...(row.delivered_at !== null ? { deliveredAt: row.delivered_at, deliveredVia: row.delivered_via! } : {}),
+    }
   }
 
   private upsertSession(info: SessionInfo, now: number): SessionRow {

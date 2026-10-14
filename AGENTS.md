@@ -4,7 +4,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Invariants
 
-1. **Observer, not mediator.** Never add features that ask a session for approval or invent questions. Mirror only the session's own questions (`AskUserQuestion`). No dedicated `post` / `ask` tools for agents to decide what to send.
+1. **Observer, not mediator.** gollabara never originates messages or questions and never asks a session for approval. Mirror only the session's own questions (`AskUserQuestion`). The one thing it sends to a session is feedback the user writes, delivered as-is. Answering `AskUserQuestion` and pausing a session remain out of scope. No dedicated `post` / `ask` tools for agents to decide what to send.
 2. **The hook never blocks a session.** 1.5 s timeout, swallow every error, always exit 0. If the server is down, exit quietly.
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
 4. **No judging, no diffing.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
@@ -55,12 +55,15 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 ## Capture (Claude Code)
 
-| hook                             | What lands in the stream                                         |
-| -------------------------------- | ---------------------------------------------------------------- |
-| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  |
-| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) |
-| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          |
-| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           |
+| hook                             | What lands in the stream                                         | Feedback delivered to the session               |
+| -------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------- |
+| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  | —                                               |
+| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) | `additionalContext` next to the tool result     |
+| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          | `additionalContext`, which continues the turn   |
+| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           | —                                               |
+| `UserPromptSubmit`               | Nothing                                                          | `additionalContext` alongside the user's prompt |
+
+Feedback is queued with `POST /api/feedback`, which accepts only loopback and tailnet sources. On the three hooks above, the hook claims the session's pending feedback with one `POST /api/feedback/claim` in parallel with its event, inside the same 1.5 s budget. The claim marks the items delivered atomically, so a Stop that continued the turn for feedback lets the re-entered Stop (`stop_hook_active`) end the turn. The hook prints one JSON object on stdout only when it claimed something, and nothing otherwise. Feedback about an image carries the stored file's absolute path, so the session can open it.
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
 
