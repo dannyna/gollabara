@@ -1,0 +1,31 @@
+src/hook/map.ts
+  s_b7f30c572db9a8::t_9fe7c655a454a8 28-34,37-38,40,44-45
+src/hook/index.test.ts
+  s_b7f30c572db9a8::t_6e93a9961b735a 1-3,5-50
+  s_b7f30c572db9a8::t_09ed87b38ea31c 4
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_8866ba3d7d6c29 6-7,26,30-31,141,161-169,171-179
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_bdc8e5e0877437 17-23
+  s_b7f30c572db9a8::t_32a4160322a8ca 69,75-84
+src/hook/index.ts
+  s_b7f30c572db9a8::t_52ee10180572dd 20
+  s_b7f30c572db9a8::t_74197ddec7eaa4 46-56,58-66
+  s_b7f30c572db9a8::t_e221d7e807731a 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "509d6d16733272fadbaf2080ad0e8ff05e9ef4c0",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
