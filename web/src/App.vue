@@ -27,7 +27,7 @@ const scope = ref<string | null>(null)
 const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value))
 const scopeLabel = computed(() => sessions.value.find(s => s.id === scope.value)?.name ?? '전체 세션')
 const visible = computed(() => inScope(messages.value, scope.value, muted.value))
-const artifacts = computed(() => toArtifacts(visible.value))
+const artifacts = computed(() => toArtifacts(messages.value, visible.value))
 
 const appBar = ref<InstanceType<typeof AppBar>>()
 const sessionsOpen = ref(false)
@@ -118,7 +118,7 @@ function onThumb(key: string) {
     <EmptyState v-if="showEmpty" :connected="connected" />
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
-        ref="stream" :artifacts="artifacts" :selected="selected" :scoped="scope != null" :all-muted="allMuted"
+        ref="stream" :artifacts="artifacts" :selected="selected" :scope="scope" :all-muted="allMuted"
         @select="select" @open="open" @sessions="sessionsOpen = true"
       />
       <ChatPanel
