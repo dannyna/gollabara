@@ -25,15 +25,24 @@ export function sessionName(cwd: string, branch?: string): string {
   return branch && branch !== 'main' && branch !== 'master' ? `${dir} · ${branch}` : dir
 }
 
+/** Filesystem lookups the session name needs. hook/index.ts supplies the real ones. */
+export interface GitLookup {
+  /** Nearest ancestor of cwd (or cwd itself) holding `.git`, or cwd when there is none */
+  projectRoot: (cwd: string) => string
+  readBranch: (root: string) => string | undefined
+}
+
 /**
  * Builds the session from hook input and env. Open Design runs set OD_PROJECT_ID;
- * those sessions are named after the project and skip the branch lookup.
+ * those sessions are named after the project and skip the git lookup.
+ * Others are named after the project root, not cwd, so a `cd` mid-session keeps the name.
  */
-export function sessionInfo(input: HookInput, env: HookEnv, readBranch: (cwd: string) => string | undefined): SessionInfo {
+export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): SessionInfo {
   const project = env.OD_PROJECT_ID
   if (project)
     return { id: input.session_id, name: project, harness: 'open-design', project, cwd: input.cwd }
-  return { id: input.session_id, name: sessionName(input.cwd, readBranch(input.cwd)), harness: 'claude-code', cwd: input.cwd }
+  const root = git.projectRoot(input.cwd)
+  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: 'claude-code', cwd: input.cwd }
 }
 
 export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent | null {
