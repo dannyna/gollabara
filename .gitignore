@@ -1,2 +1,4 @@
 node_modules/
-target/
+dist/
+web/dist/
+.DS_Store

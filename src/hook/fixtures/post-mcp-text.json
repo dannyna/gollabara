@@ -1,0 +1,28 @@
+{
+  "session_id": "e5a1bb05-adba-4857-b1cf-bc9341310357",
+  "transcript_path": "x",
+  "cwd": "/Users/me/IdeaProjects/piuda",
+  "prompt_id": "45ee7e90-7c8b-4ab8-815c-b526c4d55928",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "mcp__open-design__create_project",
+  "tool_input": {
+    "id": "gollabara-brand",
+    "name": "Gollabara brand"
+  },
+  "tool_response": [
+    {
+      "type": "text",
+      "text": "{\n  \"project\": {\n    \"id\": \"gollabara-brand\",\n    \"name\": \"Gollabara brand\",\n    \"skillId\": null,\n    \"designSystemId\": null,\n    \"metadata\": {\n      \"skipDiscoveryBrief\": true\n    },\n    \"createdAt\": 1791979656714,\n    \"updatedAt\": 1791979656714\n  },\n  \"conversationId\": \"ef3feec6-b127-4428-9f30-4a77d511540d\"\n}"
+    }
+  ],
+  "tool_use_id": "toolu_016wTBbA55dfjAj8jXEx7nKB",
+  "duration_ms": 23,
+  "mcp_server": {
+    "name": "open-design",
+    "source": "user"
+  }
+}

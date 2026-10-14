@@ -1,0 +1,15 @@
+{
+  "session_id": "41c2db5c-abc5-4950-8c1f-b72c42cbf0b3",
+  "transcript_path": "x",
+  "cwd": "/Users/me/IdeaProjects/piuda",
+  "prompt_id": "11d0f57c-050a-4fb9-b6d8-6f03bfd891cf",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "`echo hi` 결과는 `hi`였습니다.\n\n이미지는 오른쪽 위 모서리가 접힌 흰색 문서 아이콘 위에 회색 선으로 그려진 정육면체 와이어프레임이 중앙에 있는 macOS 스타일의 일반 파일 아이콘입니다.",
+  "background_tasks": [],
+  "session_crons": []
+}

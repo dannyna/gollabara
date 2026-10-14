@@ -1,0 +1,45 @@
+/* 임시 토큰 — 브랜딩 결과가 나오면 교체한다 */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --sunken: #f1efe9;
+  --line: #e4e1da;
+  --text: #1d1c1a;
+  --muted: #86827a;
+  --accent: #5b3fc4;
+  --accent-soft: #f4f0ff;
+  --accent-line: #e1d8ff;
+  --select: #b4552c;
+  --ok: #2f7d5b;
+  --me-bg: #1d1c1a;
+  --me-text: #ffffff;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161513;
+    --surface: #1f1e1b;
+    --sunken: #26241f;
+    --line: #34312b;
+    --text: #ecebe7;
+    --muted: #9a958b;
+    --accent: #a48cff;
+    --accent-soft: #241f38;
+    --accent-line: #3a3160;
+    --select: #e0865a;
+    --ok: #5fc495;
+    --me-bg: #ecebe7;
+    --me-text: #161513;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body, #app { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
