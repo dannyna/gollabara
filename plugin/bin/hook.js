@@ -68,8 +68,6 @@ function feedbackOutput(hookEventName, items) {
     return null;
   const text = items.map(feedbackLine).join(`
 `);
-  if (hookEventName === "Stop")
-    return { decision: "block", reason: text };
   return { hookSpecificOutput: { hookEventName, additionalContext: text } };
 }
 function feedbackLine(item) {

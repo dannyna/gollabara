@@ -81,9 +81,8 @@ export function feedbackOutput(hookEventName: string, items: Feedback[]): object
   if (items.length === 0 || !feedbackVia(hookEventName))
     return null
   const text = items.map(feedbackLine).join('\n')
-  // Stop needs `block` to keep the turn going; the claim already emptied the queue, so the re-entered Stop lets it end
-  if (hookEventName === 'Stop')
-    return { decision: 'block', reason: text }
+  // On Stop this keeps the turn going without the error notice `decision: block` shows;
+  // the claim already emptied the queue, so the re-entered Stop lets it end
   return { hookSpecificOutput: { hookEventName, additionalContext: text } }
 }
 

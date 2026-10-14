@@ -55,15 +55,15 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 ## Capture (Claude Code)
 
-| hook                             | What lands in the stream                                         | Feedback delivered to the session                 |
-| -------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
-| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  | —                                                 |
-| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) | `additionalContext` next to the tool result       |
-| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          | `decision: "block"` with the feedback as `reason` |
-| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           | —                                                 |
-| `UserPromptSubmit`               | Nothing                                                          | `additionalContext` alongside the user's prompt   |
+| hook                             | What lands in the stream                                         | Feedback delivered to the session               |
+| -------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------- |
+| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  | —                                               |
+| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) | `additionalContext` next to the tool result     |
+| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          | `additionalContext`, which continues the turn   |
+| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           | —                                               |
+| `UserPromptSubmit`               | Nothing                                                          | `additionalContext` alongside the user's prompt |
 
-Feedback is queued with `POST /api/feedback`, which accepts only loopback and tailnet sources. On the three hooks above, the hook claims the session's pending feedback with one `POST /api/feedback/claim` in parallel with its event, inside the same 1.5 s budget. The claim marks the items delivered atomically, so a Stop that blocked for feedback lets the re-entered Stop (`stop_hook_active`) end the turn. The hook prints one JSON object on stdout only when it claimed something, and nothing otherwise. Feedback about an image carries the stored file's absolute path, so the session can open it.
+Feedback is queued with `POST /api/feedback`, which accepts only loopback and tailnet sources. On the three hooks above, the hook claims the session's pending feedback with one `POST /api/feedback/claim` in parallel with its event, inside the same 1.5 s budget. The claim marks the items delivered atomically, so a Stop that continued the turn for feedback lets the re-entered Stop (`stop_hook_active`) end the turn. The hook prints one JSON object on stdout only when it claimed something, and nothing otherwise. Feedback about an image carries the stored file's absolute path, so the session can open it.
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
 

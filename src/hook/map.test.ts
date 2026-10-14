@@ -146,8 +146,8 @@ describe('feedback delivery', () => {
       expect(feedbackOutput(hookEventName, [plain])).toEqual({ hookSpecificOutput: { hookEventName, additionalContext: line } })
   })
 
-  test('Stop blocks with the feedback as the reason', () => {
-    expect(feedbackOutput('Stop', [plain])).toEqual({ decision: 'block', reason: expect.stringContaining('Make the header darker') })
+  test('Stop continues the turn with the feedback as additional context', () => {
+    expect(feedbackOutput('Stop', [plain])).toEqual({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: expect.stringContaining('Make the header darker') } })
   })
 
   test('image feedback names the stored file, its capture time and session; items join line by line', () => {
