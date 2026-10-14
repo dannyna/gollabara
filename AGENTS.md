@@ -57,12 +57,14 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 | hook                             | What lands in the stream                                         |
 | -------------------------------- | ---------------------------------------------------------------- |
-| `SessionStart`                   | Sent, but the server ignores it for now                          |
+| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  |
 | `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) |
 | `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          |
 | `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           |
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
+
+Open Design runs the same plugin. When the hook's env has `OD_PROJECT_ID`, the session is tagged `open-design` and named after that project id. The hook reads no other `OD_*` value, because the env also holds a tool token.
 
 ## Conventions
 
