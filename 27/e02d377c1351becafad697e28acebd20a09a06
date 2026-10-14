@@ -1,0 +1,64 @@
+web/src/components/shell/EmptyState.vue
+  s_b7f30c572db9a8::t_a5d6280ffdc6b0 6-7,10-11,13-15,30-32,35,38-39,41,43-45,49,52-71,138-146
+web/src/components/banner/notices.test.ts
+  s_b7f30c572db9a8::t_bb6d4f17899e61 1-32
+web/src/components/banner/Disconnected.gallery.vue
+  s_b7f30c572db9a8::t_c2c2bce8e7436f 1-78
+web/src/components/banner/NoticeLine.gallery.vue
+  s_b7f30c572db9a8::t_6ed4752ce5783a 7
+  s_b7f30c572db9a8::t_30924737d4de42 1-6,8-17,19-71
+  s_b7f30c572db9a8::t_e2ef9c5905afae 18
+web/src/components/banner/gallery-samples.ts
+  s_b7f30c572db9a8::t_807e49a2832f4e 1-48
+web/src/components/banner/NewPill.vue
+  s_b7f30c572db9a8::t_2d7a04e214fb1f 1-49
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_d4bb6c047fc665 7-37,43,53,71,82,86
+web/src/components/shell/EmptyState.gallery.vue
+  s_b7f30c572db9a8::t_0b268c6ab0201e 1-34
+web/src/components/banner/BannerIcon.vue
+  s_b7f30c572db9a8::t_aa61ab8d7b98d7 1-3,5-33
+  s_b7f30c572db9a8::t_d5cba6b502f8f9 4
+web/src/useStream.test.ts
+  s_b7f30c572db9a8::t_740ea809b34942 1-34
+web/src/App.vue
+  s_b7f30c572db9a8::t_cdf030a2a9fa12 4,12,37-43,75,80
+web/src/components/banner/ConnectionChip.gallery.vue
+  s_b7f30c572db9a8::t_126a747444b453 20
+  s_b7f30c572db9a8::t_cfd486446aee61 14
+  s_b7f30c572db9a8::t_4b1edbdf85e6c9 26
+  s_b7f30c572db9a8::t_25786f707c96cb 1-7,9-13,15-19,21-25,27-52
+  s_b7f30c572db9a8::t_5842e3c4541d20 8
+web/src/components/banner/InlineNote.vue
+  s_b7f30c572db9a8::t_750a8dc823460c 1-35
+web/src/components/banner/NewPill.gallery.vue
+  s_b7f30c572db9a8::t_7b91cdb7d11848 1-96
+web/src/components/banner/notices.ts
+  s_b7f30c572db9a8::t_1b1f9fc867a6d9 1-48
+web/src/components/banner/ConnectionChip.vue
+  s_b7f30c572db9a8::t_0c9153057d859b 1-36
+web/src/components/banner/NoticeLine.vue
+  s_b7f30c572db9a8::t_b19ad122b7a9a3 1-28
+web/src/components/banner/StateView.vue
+  s_b7f30c572db9a8::t_c664952d1a9eb7 1-83
+web/src/components/banner/StateView.gallery.vue
+  s_b7f30c572db9a8::t_89d0174e550cfe 1-45
+web/src/components/banner/InlineNote.gallery.vue
+  s_b7f30c572db9a8::t_6a0f70e27cfa22 1-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27e02d377c1351becafad697e28acebd20a09a06",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
