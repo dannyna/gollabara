@@ -13,6 +13,7 @@ switch (command) {
   case 'hook':
     await runHook()
     process.exit(0)
+    break
   default:
     console.log(`사용법:
   golla serve   스트림 서버를 띄운다

@@ -1,9 +1,10 @@
-import { describe, expect, test } from 'bun:test'
 import type { SessionInfo } from '../shared/types'
+import type { HookInput } from './map'
+import { describe, expect, test } from 'bun:test'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, mapHook, recapOf, sessionName, type HookInput } from './map'
+import { extractImages, mapHook, recapOf, sessionName } from './map'
 
 const session: SessionInfo = { id: 's1', name: 'piuda', cwd: '/Users/me/IdeaProjects/piuda' }
 

@@ -1,8 +1,9 @@
 // `golla serve` — 결과물을 받아 저장하고 열린 모든 화면에 흘린다.
+
+import type { IncomingEvent, ServerFrame } from '../shared/types'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { dataDir, serverPort } from '../shared/config'
-import type { IncomingEvent, ServerFrame } from '../shared/types'
 import { Store } from './store'
 
 const WEB_DIST = resolve(import.meta.dir, '../../web/dist')
@@ -58,7 +59,7 @@ export function startServer() {
 function serveWeb(pathname: string): Response {
   if (!existsSync(WEB_DIST))
     return new Response('web/dist 가 없습니다. `bun run build:web` 또는 `bun run dev:web` 을 쓰세요.', { status: 503 })
-  const safe = pathname.replace(/\.\.+/g, '')
+  const safe = pathname.replace(/\.{2,}/g, '')
   const file = Bun.file(join(WEB_DIST, safe === '/' ? 'index.html' : safe))
   return new Response(file.size > 0 ? file : Bun.file(join(WEB_DIST, 'index.html')))
 }

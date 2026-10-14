@@ -1,11 +1,11 @@
 // 서버 · hook · 화면이 함께 쓰는 스트림 타입
 
 /** hook 이 서버로 보내는 이벤트 */
-export type IncomingEvent =
-  | { kind: 'session'; session: SessionInfo }
-  | { kind: 'image'; session: SessionInfo; toolName: string; images: IncomingImage[] }
-  | { kind: 'recap'; session: SessionInfo; text: string }
-  | { kind: 'question'; session: SessionInfo; questions: Question[] }
+export type IncomingEvent
+  = | { kind: 'session', session: SessionInfo }
+    | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
+    | { kind: 'recap', session: SessionInfo, text: string }
+    | { kind: 'question', session: SessionInfo, questions: Question[] }
 
 export interface SessionInfo {
   /** Claude Code session_id */
@@ -26,7 +26,7 @@ export interface IncomingImage {
 export interface Question {
   question: string
   header?: string
-  options: { label: string; description?: string }[]
+  options: { label: string, description?: string }[]
   multiSelect?: boolean
 }
 
@@ -51,6 +51,6 @@ export interface StoredImage {
 }
 
 /** WebSocket 으로 화면에 보내는 프레임 */
-export type ServerFrame =
-  | { type: 'hello'; messages: StreamMessage[] }
-  | { type: 'message'; message: StreamMessage }
+export type ServerFrame
+  = | { type: 'hello', messages: StreamMessage[] }
+    | { type: 'message', message: StreamMessage }
