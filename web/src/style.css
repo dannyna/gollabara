@@ -1,42 +1,45 @@
-/* Brand direction 03 「구경 모드 · Quiet signal」 — tokens from the gollabara-brand board */
+/*
+ * Night Dock tokens (DESIGN.md). Dark is the default: index.html ships data-theme="dark".
+ * Light lives on :root so "system" can drop the attribute and follow prefers-color-scheme.
+ * Variable names match the Open Design gollabara-app files so guide CSS ports unchanged.
+ */
 :root {
-  --bg: #f5f6f7;
-  --surface: #ffffff;
-  --sunken: #eceef0;
-  --line: #d3d7dc;
-  --text: #22262a;
-  --muted: #5b626a;
-  /* Accent yellow is for fills only. For text on light backgrounds use --accent-ink */
-  --accent: #f4d34f;
-  --accent-ink: #7a6200;
-  --on-accent: #22262a;
-  --ok: #2f7d5b;
-  --me-bg: #22262a;
-  --me-text: #f2f4f6;
-  --font-display: 'Space Grotesk', 'Noto Sans KR', system-ui, sans-serif;
-  --font-body: 'Noto Sans KR', 'Apple SD Gothic Neo', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --bg: oklch(0.972666 0.001711 247.8392);
+  --surface: oklch(1 0 89.8756);
+  --fg: oklch(0.266235 0.009457 248.1828);
+  --muted: oklch(0.492867 0.015485 251.6888);
+  --border: oklch(0.877533 0.00814 253.8593);
+  --accent: oklch(0.871579 0.150779 94.9011);
+  --accent-hover: oklch(0.81 0.14 95);
+  --on-accent: oklch(0.267 0.009 250);
+  --ink: oklch(0.267 0.009 250);
+  --shade: oklch(0 0 0 / 0.2);
+  --display: 'Space Grotesk', 'Noto Sans KR', sans-serif;
+  --body: 'Noto Sans KR', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #181b1f;
-    --surface: #24282d;
-    --sunken: #1f2327;
-    --line: #41474f;
-    --text: #f2f4f6;
-    --muted: #adb5bf;
-    --accent-ink: #f4d34f;
-    --ok: #5fc495;
-    --me-bg: #f2f4f6;
-    --me-text: #181b1f;
+  :root:not([data-theme='light']) {
+    --bg: oklch(0.220704 0.009062 255.6084);
+    --surface: oklch(0.274908 0.010907 254.0192);
+    --fg: oklch(0.966197 0.003428 247.8584);
+    --muted: oklch(0.769881 0.016843 253.9307);
+    --border: oklch(0.395448 0.015664 255.6039);
     color-scheme: dark;
   }
+}
+:root[data-theme='dark'] {
+  --bg: oklch(0.220704 0.009062 255.6084);
+  --surface: oklch(0.274908 0.010907 254.0192);
+  --fg: oklch(0.966197 0.003428 247.8584);
+  --muted: oklch(0.769881 0.016843 253.9307);
+  --border: oklch(0.395448 0.015664 255.6039);
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
-  margin: 0;
 }
 html,
 body,
@@ -44,13 +47,61 @@ body,
   height: 100%;
 }
 body {
+  margin: 0;
   background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
+  color: var(--fg);
+  font: 13px/1.65 var(--body);
+  word-break: keep-all;
   -webkit-font-smoothing: antialiased;
 }
-button {
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
   font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button {
   color: inherit;
   cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+button:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--fg);
+}
+:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+}
+
+/* Machine-made values (times, sizes, sequence numbers) */
+.mono,
+time {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
 }

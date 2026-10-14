@@ -1,12 +1,13 @@
 // Connects to the server WebSocket for stream messages. Reconnects when dropped.
 
-import type { ServerFrame, StreamMessage } from '../../src/shared/types'
+import type { ServerFrame, Session, StreamMessage } from '../../src/shared/types'
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 const RETRY_MS = 2000
 
 export function useStream() {
   const messages = shallowRef<StreamMessage[]>([])
+  const sessions = shallowRef<Session[]>([])
   const connected = ref(false)
   let ws: WebSocket | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -20,10 +21,18 @@ export function useStream() {
     }
     ws.onmessage = (e) => {
       const frame = JSON.parse(e.data) as ServerFrame
-      if (frame.type === 'hello')
+      if (frame.type === 'hello') {
         messages.value = frame.messages
-      else if (frame.type === 'message' || frame.type === 'message-upsert')
+        sessions.value = frame.sessions
+      }
+      else if (frame.type === 'message' || frame.type === 'message-upsert') {
         messages.value = upsert(messages.value, frame.message)
+      }
+      else if (frame.type === 'session') {
+        sessions.value = sessions.value.some(s => s.id === frame.session.id)
+          ? sessions.value.map(s => s.id === frame.session.id ? frame.session : s)
+          : [...sessions.value, frame.session]
+      }
     }
     ws.onclose = () => {
       connected.value = false
@@ -39,7 +48,7 @@ export function useStream() {
     ws?.close()
   })
 
-  return { messages, connected }
+  return { messages, sessions, connected }
 }
 
 /** Turn messages change in place as images and recaps arrive, so replace by id */
