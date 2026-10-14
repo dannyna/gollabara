@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-14T12:43:48.051Z",
+  "generatedAt": "2026-10-14T13:00:27.343Z",
   "title": "Design System: gollabara",
   "extensions": {
     "colorMeta": {
@@ -248,23 +248,23 @@
     "typographyMeta": {
       "wordmark": {
         "displayName": "Wordmark",
-        "purpose": "헤더의 소문자 gollabara 워드마크에만."
+        "purpose": "Only the lowercase gollabara wordmark in the header."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "패널 제목."
+        "purpose": "Panel titles."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "리캡 · 질문 본문."
+        "purpose": "Recap and question text."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "칩 · 배지 · 발신자 · 메타."
+        "purpose": "Chips, badges, sender names, meta info."
       },
       "mono": {
         "displayName": "Mono",
-        "purpose": "시각 · 이미지 크기 · 개수."
+        "purpose": "Times, image sizes, counts."
       }
     },
     "shadows": [],
@@ -272,31 +272,31 @@
       {
         "name": "linked-highlight",
         "value": "background .2s",
-        "purpose": "이미지 칸과 연결된 채팅 메시지 강조 전환."
+        "purpose": "Highlight transition on the chat message linked to an image column."
       },
       {
         "name": "follow-scroll",
         "value": "scroll-behavior: smooth",
-        "purpose": "최신 따라가기 · 칸 ↔ 메시지 이동. 첫 로드는 즉시 이동."
+        "purpose": "Following latest and column ↔ message jumps; the first load jumps instantly."
       }
     ],
     "breakpoints": [
       {
         "name": "mobile",
         "value": "767px",
-        "purpose": "이하에서 채팅만 보이고 이미지는 전체 화면 뷰어로."
+        "purpose": "At or below this width only chat shows; images open in the full-screen viewer."
       },
       {
         "name": "chat-panel",
         "value": "440px",
-        "purpose": "데스크톱 채팅 패널 고정 너비."
+        "purpose": "Fixed width of the desktop chat panel."
       }
     ],
     "overlays": [
       {
         "name": "viewer-scrim",
         "value": "rgb(0 0 0 / .85)",
-        "purpose": "전체 화면 이미지 뷰어 바탕."
+        "purpose": "Backdrop of the full-screen image viewer."
       }
     ]
   },
@@ -305,7 +305,7 @@
       "name": "Observe Badge",
       "kind": "chip",
       "refersTo": "observe-badge",
-      "description": "화면이 「구경 중」임을 알리는 유일한 노랑 라벨.",
+      "description": "The only yellow label, announcing that the screen is \"watching\" (구경 중).",
       "html": "<span class=\"ds-observe\">구경 중</span>",
       "css": ".ds-observe { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--accent, #F4D34F); color: var(--on-accent, #22262A); font-family: \"Noto Sans KR\", system-ui, sans-serif; }"
     },
@@ -313,7 +313,7 @@
       "name": "Pill Button",
       "kind": "button",
       "refersTo": "pill-button",
-      "description": "「새 이미지 n →」처럼 드물게 등장하는 반전 알약 버튼.",
+      "description": "An inverted pill for rare actions like \"new images n →\".",
       "html": "<button class=\"ds-pill\">새 이미지 3 →</button>",
       "css": ".ds-pill { font: 12px \"Noto Sans KR\", system-ui, sans-serif; padding: 5px 12px; border-radius: 999px; border: 0; background: var(--text, #22262A); color: var(--bg, #F5F6F7); cursor: pointer; transition: opacity .15s; } .ds-pill:hover { opacity: .85; } .ds-pill:focus-visible { outline: 3px solid var(--accent, #F4D34F); outline-offset: 2px; }"
     },
@@ -321,7 +321,7 @@
       "name": "Filter Chips",
       "kind": "chip",
       "refersTo": "filter-chip",
-      "description": "세션 필터. 선택되면 잉크 면으로 반전.",
+      "description": "Session filter; inverts to an ink fill when selected.",
       "html": "<div class=\"ds-filters\"><button class=\"ds-flt ds-on\">전체</button><button class=\"ds-flt\">piuda · desktop-shell</button><button class=\"ds-flt\">od</button></div>",
       "css": ".ds-filters { display: flex; gap: 6px; } .ds-flt { font: 12px \"Noto Sans KR\", system-ui, sans-serif; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); color: var(--text, #22262A); white-space: nowrap; cursor: pointer; } .ds-flt:hover { border-color: var(--muted, #5B626A); } .ds-flt:focus-visible { outline: 2px solid var(--accent, #F4D34F); outline-offset: 1px; } .ds-flt.ds-on { background: var(--text, #22262A); color: var(--bg, #F5F6F7); border-color: var(--text, #22262A); }"
     },
@@ -329,7 +329,7 @@
       "name": "Question Card",
       "kind": "card",
       "refersTo": "question-card",
-      "description": "세션이 물은 질문을 비추기만 하는 카드. 선택지는 정적 라벨.",
+      "description": "A card that only mirrors a question the session asked; options are static labels.",
       "html": "<div class=\"ds-q\"><small>세션이 물은 질문</small>헤더 레이아웃을 어느 쪽으로 할까요?<div class=\"ds-opts\"><span class=\"ds-opt\">왼쪽 정렬</span><span class=\"ds-opt\">가운데 정렬</span></div></div>",
       "css": ".ds-q { background: var(--sunken, #ECEEF0); border: 1px solid var(--line, #D3D7DC); border-radius: 10px; padding: 10px 12px; font: 14px/1.5 \"Noto Sans KR\", system-ui, sans-serif; color: var(--text, #22262A); max-width: 360px; } .ds-q small { display: block; font-size: 11px; color: var(--accent-ink, #7A6200); margin-bottom: 4px; } .ds-opts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; } .ds-opt { font-size: 13px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); }"
     },
@@ -337,7 +337,7 @@
       "name": "Image Column",
       "kind": "custom",
       "refersTo": "image-column",
-      "description": "원본 비율을 따르는 이미지 칸. 선택되면 노랑 윤곽선.",
+      "description": "An image column that keeps the original ratio; a yellow outline when selected.",
       "html": "<figure class=\"ds-col ds-sel\"><figcaption><i></i><b>piuda</b><span>21:24 · 1280×800</span></figcaption><div class=\"ds-img\"></div></figure>",
       "css": ".ds-col { margin: 0; display: inline-flex; flex-direction: column; gap: 8px; font: 12px \"Noto Sans KR\", system-ui, sans-serif; color: var(--muted, #5B626A); } .ds-col figcaption { display: flex; align-items: center; gap: 8px; white-space: nowrap; } .ds-col i { width: 8px; height: 8px; border-radius: 3px; background: hsl(210 45% 42%); } .ds-col b { color: var(--text, #22262A); font-weight: 600; } .ds-col span { font: 11px \"IBM Plex Mono\", ui-monospace, monospace; } .ds-img { width: 256px; aspect-ratio: 1280 / 800; border-radius: 10px; border: 1px solid var(--line, #D3D7DC); background: var(--surface, #FFFFFF); } .ds-col.ds-sel .ds-img { outline: 3px solid var(--accent, #F4D34F); outline-offset: 2px; } .ds-col.ds-sel b { color: var(--accent-ink, #7A6200); }"
     },
@@ -345,7 +345,7 @@
       "name": "Stream Message",
       "kind": "custom",
       "refersTo": "session-avatar",
-      "description": "세션 아바타 + 발신자 · 시각 · 종류 + 리캡 본문.",
+      "description": "Session avatar, then sender, time, and kind, then the recap body.",
       "html": "<div class=\"ds-msg\"><div class=\"ds-av\">PI</div><div><div class=\"ds-who\">piuda<span>21:24 · 턴 끝</span></div><p>빌드 끝났어. 결과 화면 올려뒀어.</p></div></div>",
       "css": ".ds-msg { display: flex; gap: 10px; font-family: \"Noto Sans KR\", system-ui, sans-serif; color: var(--text, #22262A); } .ds-av { width: 30px; height: 30px; border-radius: 8px; flex: none; background: hsl(210 45% 42%); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; } .ds-who { font-size: 13px; font-weight: 700; } .ds-who span { font-weight: 400; color: var(--muted, #5B626A); margin-left: 6px; } .ds-msg p { margin: 2px 0 0; font-size: 14px; line-height: 1.5; }"
     },
@@ -353,68 +353,68 @@
       "name": "App Header",
       "kind": "nav",
       "refersTo": "app-header",
-      "description": "워드마크 + 구경 중 배지 + 모노 개수 + 따라가기 상태.",
+      "description": "Wordmark, watching badge, mono counts, and follow-latest status.",
       "html": "<header class=\"ds-head\"><span class=\"ds-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 512 512\" aria-hidden=\"true\"><path d=\"M198 120h-78v272h78m116-272h78v272h-78\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"44\"/><circle cx=\"256\" cy=\"256\" r=\"46\" fill=\"currentColor\"/></svg>gollabara</span><span class=\"ds-badge\">구경 중</span><span class=\"ds-count\">이미지 12 · 세션 3</span><span class=\"ds-sp\"></span><span class=\"ds-live\">최신을 따라가는 중</span></header>",
       "css": ".ds-head { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 24px; border-bottom: 1px solid var(--line, #D3D7DC); background: var(--bg, #F5F6F7); color: var(--text, #22262A); font: 14px \"Noto Sans KR\", system-ui, sans-serif; } .ds-brand { display: flex; align-items: center; gap: 8px; font: 700 16px \"Space Grotesk\", \"Noto Sans KR\", sans-serif; letter-spacing: -0.01em; } .ds-badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--accent, #F4D34F); color: var(--on-accent, #22262A); } .ds-count { font: 11px \"IBM Plex Mono\", ui-monospace, monospace; color: var(--muted, #5B626A); } .ds-sp { flex: 1; } .ds-live { font-size: 12px; color: var(--ok, #2F7D5B); display: flex; align-items: center; gap: 6px; } .ds-live::before { content: \"\"; width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #2F7D5B); }"
     }
   ],
   "narrative": {
     "northStar": "구경 모드 · Quiet signal",
-    "overview": "gollabara는 Open Design · Claude Code · Codex · Claude Design 세션이 내놓는 산출물을 한 발짝 밖에서 지켜보는 UX 엔지니어의 관측창입니다. 옆 모니터나 폰에 하루 종일 켜 두는 화면이므로, 표면은 거의 흑백인 개발 도구처럼 조용하고 스크린샷과 시안이 화면의 주인공이 됩니다. 색은 신호가 필요한 순간에만 등장합니다. 노랑 한 가지가 「지금 구경 중」과 「사용자가 고른 것」을 뜻하고, 나머지는 얇은 경계와 여백으로 구획합니다.\n\ngollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day, so the surface is as quiet as a near-monochrome developer tool and the screenshots and mockups take center stage. Color shows up only when there is a signal: a single yellow means \"watching now\" and \"what you picked,\" and everything else is divided by hairlines and whitespace.\n\n심볼은 열린 뷰파인더(좌우 대괄호 프레임) 안의 한 점입니다. 프레임은 관찰을, 점은 사용자가 고르는 순간을 뜻합니다. 이 두 의미가 시스템 전체로 이어집니다. 프레임처럼 비워 두는 표면, 점처럼 드물게 찍히는 노랑입니다.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. Both meanings run through the whole system: surfaces left open like the frame, and yellow placed as rarely as the dot.\n\ngollabara는 관찰자이지 중재자가 아닙니다. 화면도 그 태도를 따릅니다. 결정을 재촉하는 모달, 경고색, 큰 행동 유도 버튼을 두지 않습니다. 세션이 물은 질문도 비추기만 하므로, 눌러야 할 것처럼 보이지 않게 그립니다.\n\ngollabara is an observer, not a mediator, and the interface carries that stance. No modals, alarm colors, or big calls to action pushing you to decide. Questions from sessions are only mirrored, so they are drawn so they never look like something you must press.",
+    "overview": "gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day, so the surface is as quiet as a near-monochrome developer tool and the screenshots and mockups take center stage. Color shows up only when there is a signal: a single yellow means \"watching now\" and \"what you picked,\" and everything else is divided by hairlines and whitespace.\n\nThe symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. Both meanings run through the whole system: surfaces left open like the frame, and yellow placed as rarely as the dot.\n\ngollabara is an observer, not a mediator, and the interface carries that stance. No modals, alarm colors, or big calls to action pushing you to decide. Questions from sessions are only mirrored, so they are drawn so they never look like something you must press.",
     "keyCharacteristics": [
-      "거의 흑백인 무채색 표면 + 신호 노랑 한 가지 · Near-monochrome surfaces plus one signal yellow",
-      "그림자 없는 평면, 1px 경계와 한 단계 낮은 면으로만 깊이 표현 · Flat, shadowless; depth from 1px hairlines and one recessed tone",
-      "이미지 원본 비율이 칸 너비를 결정 · The image's own aspect ratio sets each column's width",
-      "숫자 · 시각 · 크기는 모노 서체 · Numbers, times, and sizes in monospace",
-      "라이트와 다크를 동등하게 지원(시스템 설정을 따름) · Light and dark as equals, following the system setting"
+      "Near-monochrome surfaces plus one signal yellow",
+      "Flat, shadowless; depth from 1px hairlines and one recessed tone",
+      "The image's own aspect ratio sets each column's width",
+      "Numbers, times, and sizes in monospace",
+      "Light and dark as equals, following the system setting"
     ],
     "rules": [
       {
         "name": "The Surface-Only Yellow Rule",
-        "body": "노랑은 면과 윤곽선으로만 씁니다. 밝은 화면에서 노랑 글자는 쓰지 않고 Signal Ink로 대신합니다. / Yellow is only ever a fill or an outline. Never yellow text on a light screen; use Signal Ink instead.",
+        "body": "Yellow is only ever a fill or an outline. Never yellow text on a light screen; use Signal Ink instead.",
         "section": "colors"
       },
       {
         "name": "The One Signal Rule",
-        "body": "한 화면에서 노랑이 칠해지는 곳은 「구경 중」 배지와 현재 선택 하나뿐입니다. 노랑이 드물어야 「사용자가 고른 것」이라는 뜻이 살아납니다. / On any screen, yellow marks only the \"watching\" badge and the current selection. Its rarity is what makes it mean \"you picked this.\"",
+        "body": "On any screen, yellow marks only the \"watching\" badge and the current selection. Its rarity is what makes it mean \"you picked this.\"",
         "section": "colors"
       },
       {
         "name": "The Mono Numbers Rule",
-        "body": "시각 · 크기 · 개수처럼 기계가 만든 숫자는 모노 서체로 씁니다. 숫자에 세리프 서체를 쓰지 않습니다. / Machine-made numbers (times, sizes, counts) are set in monospace. Never set numbers in a serif.",
+        "body": "Machine-made numbers (times, sizes, counts) are set in monospace. Never set numbers in a serif.",
         "section": "typography"
       },
       {
         "name": "The Latin Name Rule",
-        "body": "서비스명은 영문으로만 쓰고 한글 표기를 두지 않습니다. 워드마크는 항상 소문자 `gollabara`입니다. / The service name is written in Latin letters only, never in Korean. The wordmark is always lowercase `gollabara`.",
+        "body": "The service name is written in Latin letters only, never in Korean. The wordmark is always lowercase `gollabara`.",
         "section": "typography"
       },
       {
         "name": "The Image Sets the Width Rule",
-        "body": "이미지 트랙의 칸은 원본 비율을 그대로 따르며 잘라내지 않습니다(`object-fit: contain`). 썸네일만 예외로 `cover`를 허용합니다. / Track columns keep the original aspect ratio and are never cropped (`object-fit: contain`). Only thumbnails may use `cover`.",
+        "body": "Track columns keep the original aspect ratio and are never cropped (`object-fit: contain`). Only thumbnails may use `cover`.",
         "section": "layout"
       },
       {
         "name": "The Flat-By-Default Rule",
-        "body": "카드, 칩, 패널에 `box-shadow`를 쓰지 않습니다. 구분이 더 필요하면 면의 단계를 바꾸거나 Hairline을 더합니다. / No `box-shadow` on cards, chips, or panels. If you need more separation, change the tonal layer or add a Hairline.",
+        "body": "No `box-shadow` on cards, chips, or panels. If you need more separation, change the tonal layer or add a Hairline.",
         "section": "elevation & depth"
       }
     ],
     "dos": [
-      "**Do** 노랑은 「구경 중」 배지와 현재 선택에만 면 · 윤곽선으로 씁니다. / Use yellow only as a fill or outline, for the \"watching\" badge and the current selection.",
-      "**Do** 밝은 화면에서 노랑 계열 글자가 필요하면 Signal Ink(`#7A6200`)를 씁니다. / Use Signal Ink (`#7A6200`) when a light screen needs yellow-family text.",
-      "**Do** 시각 · 크기 · 개수는 IBM Plex Mono로 씁니다. / Set times, sizes, and counts in IBM Plex Mono.",
-      "**Do** 이미지 칸의 너비는 원본 비율에 맡기고 잘라내지 않습니다. / Let the original ratio set image column width, uncropped.",
-      "**Do** 새 색을 더하기 전에 면의 단계(Paper · Card · Recess)와 Hairline으로 해결할 수 있는지 먼저 봅니다. / Before adding a color, try the tonal layers (Paper, Card, Recess) and the Hairline.",
-      "**Do** 새 토큰은 `web/src/style.css`의 라이트와 다크 양쪽에 함께 정의합니다. / Define new tokens for both light and dark in `web/src/style.css`."
+      "**Do** use yellow only as a fill or outline, for the \"watching\" badge and the current selection.",
+      "**Do** use Signal Ink (`#7A6200`) when a light screen needs yellow-family text.",
+      "**Do** set times, sizes, and counts in IBM Plex Mono.",
+      "**Do** let the original ratio set image column width, uncropped.",
+      "**Do** try the tonal layers (Paper, Card, Recess) and the Hairline before adding a color.",
+      "**Do** define new tokens for both light and dark in `web/src/style.css`."
     ],
     "donts": [
-      "**Don't** 왼쪽 테두리에 강조색 띠를 두른 카드를 쓰지 않습니다. / Don't use cards with an accent stripe on the left border.",
-      "**Don't** 숫자에 세리프 서체를 쓰지 않습니다. / Don't set numbers in a serif.",
-      "**Don't** 카드 · 칩 · 패널에 그림자를 쓰지 않습니다. / Don't put shadows on cards, chips, or panels.",
-      "**Don't** 세션의 질문 선택지를 누를 수 있는 버튼처럼 그리지 않습니다. 비추기만 합니다. / Don't draw a session's question options as pressable buttons; they are only mirrored.",
-      "**Don't** 사용자에게 승인이나 결정을 재촉하는 모달 · 경고색 · 큰 기본 버튼을 만들지 않습니다. / Don't build modals, alarm colors, or big primary buttons that push the user to approve or decide.",
-      "**Don't** 서비스명을 한글로 표기하지 않습니다. / Don't write the service name in Korean."
+      "**Don't** use cards with an accent stripe on the left border.",
+      "**Don't** set numbers in a serif.",
+      "**Don't** put shadows on cards, chips, or panels.",
+      "**Don't** draw a session's question options as pressable buttons; they are only mirrored.",
+      "**Don't** build modals, alarm colors, or big primary buttons that push the user to approve or decide.",
+      "**Don't** write the service name in Korean."
     ]
   }
 }
