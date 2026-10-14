@@ -1,0 +1,27 @@
+.gitignore
+  s_5842d4fa5b8ccf::t_0c46fd884de0a2 1-2
+spike/plugin/.claude-plugin/plugin.json
+  s_5842d4fa5b8ccf::t_e2cbbf1d8b1680 1-5
+spike/plugin/hooks/dump.sh
+  s_5842d4fa5b8ccf::t_5d1d0536502b7f 1-10
+spike/plugin/hooks/hooks.json
+  s_5842d4fa5b8ccf::t_c2fb92b1639bc4 1-9
+spike/summarize.sh
+  s_5842d4fa5b8ccf::t_c1fac5e4c25917 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d96c349324d12dc61df07814ed876342817b8967",
+  "prompts": {},
+  "sessions": {
+    "s_5842d4fa5b8ccf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84c7e3a5-ed31-4a76-a589-663c9d00d71e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
