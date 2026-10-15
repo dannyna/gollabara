@@ -1,17 +1,17 @@
 <script setup lang="ts">
 // The stream's bottom row (OD stream guide 01, banner guide 06): a muted standing note on
-// the left, the follow state on the right. Always in the same place, never yellow.
+// the left, the follow state (or the pin) on the right. Always in the same place, never yellow.
 
 import type { Follow } from './follow'
-import { FOLLOW_TEXT } from './follow'
+import { followText } from './follow'
 
-defineProps<{ follow: Follow }>()
+defineProps<{ follow: Follow, pinned?: boolean }>()
 </script>
 
 <template>
   <div class="stream-footer">
     <span><i class="dot" />이미지는 원래 비율 그대로</span>
-    <span class="mono">{{ FOLLOW_TEXT[follow] }}</span>
+    <span class="mono">{{ followText(follow, !!pinned) }}</span>
   </div>
 </template>
 

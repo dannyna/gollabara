@@ -9,14 +9,23 @@ const last = artifacts.at(-1)!.key
 const heroC = artifacts.find(a => a.label?.startsWith('히어로 C'))!.key
 
 const selected = ref<string | null>(last)
+const pinned = ref<string | null>(null)
 const centered = ref<InstanceType<typeof StreamPanel>>()
 onMounted(() => centered.value?.reveal(heroC, 'instant'))
 </script>
 
 <template>
-  <GalleryCase title="최신 위치 · 따라가는 중 · 마지막 셀 선택 (다시 누르면 뷰어)">
+  <GalleryCase title="최신 위치 · 따라가는 중 · 누르면 선택하고 고정, 다시 누르면 풀기 (더블클릭 · 확대 ↗는 뷰어)">
     <div class="frame">
-      <StreamPanel :artifacts="artifacts" :selected="selected" @select="selected = $event" />
+      <StreamPanel
+        :artifacts="artifacts" :selected="selected" :pinned="pinned"
+        @select="selected = $event" @pin="pinned = $event"
+      />
+    </div>
+  </GalleryCase>
+  <GalleryCase title="히어로 C 고정 · 새 산출물 2 · 바닥은 고정됨">
+    <div class="frame">
+      <StreamPanel :artifacts="artifacts" :selected="heroC" :pinned="heroC" :preview="{ unseen: 2 }" />
     </div>
   </GalleryCase>
   <GalleryCase title="이전 산출물을 보는 중 · 새 산출물 2 · 바닥은 일시 정지">

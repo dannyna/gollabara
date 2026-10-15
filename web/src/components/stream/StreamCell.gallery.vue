@@ -44,6 +44,11 @@ const tryCell = one('hero-b')
       <StreamCell :artifact="one('hero-b')" selected />
     </div>
   </GalleryCase>
+  <GalleryCase title="고정 · 선택 테두리 + 왼쪽 위 핀 표시 (bg 바탕 fg 아이콘, 노랑 아님)">
+    <div class="solo">
+      <StreamCell :artifact="one('hero-b')" selected pinned />
+    </div>
+  </GalleryCase>
   <GalleryCase title="선택 + 포커스 · accent 바깥에 fg 링">
     <div class="solo">
       <StreamCell :artifact="one('hero-b')" selected preview="focus" />
@@ -84,7 +89,7 @@ const tryCell = one('hero-b')
     <div class="solo">
       <StreamCell
         :artifact="tryCell" :selected="picked === tryCell.key"
-        @select="picked = tryCell.key" @open="picked = null" @reply="setTarget(feedbackTargetOf(tryCell))"
+        @select="picked = picked === tryCell.key ? null : tryCell.key" @reply="setTarget(feedbackTargetOf(tryCell))"
       />
     </div>
     <p class="readout mono">

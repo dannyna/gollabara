@@ -32,3 +32,55 @@ export const lastArrival = (artifacts: Artifact[]) => artifacts.reduce((n, a) =>
  * neither do arrivals from muted or out-of-scope sessions, which are not in the list at all.
  */
 export const arrivedSince = (seen: number, artifacts: Artifact[]) => artifacts.filter(a => a.arrival > seen).length
+
+/** Footer text while a pin holds the rail, in place of the follow state */
+export const PINNED_TEXT = '고정됨 · 클릭해서 풀기'
+
+export const followText = (follow: Follow, pinned: boolean) => pinned ? PINNED_TEXT : FOLLOW_TEXT[follow]
+
+/** Clicking a cell pins it; clicking the pinned cell again unpins. One pin at a time. */
+export const togglePin = (pinned: string | null, key: string) => pinned === key ? null : key
+
+/**
+ * The pin while its cell is on the rail, else null. A pin whose cell is muted, out of
+ * scope, or gone stays stored but holds nothing: the rail follows as usual.
+ */
+export const activePin = (pinned: string | null | undefined, keys: ReadonlySet<string>) => pinned && keys.has(pinned) ? pinned : null
+
+/**
+ * The cell to hold in place when captures arrive: the pin, unless a new capture of it
+ * just moved its cell to the end. Then, like without a pin, null asks for the first cell
+ * in view that did not move, so the reader stays where they were instead of being
+ * carried to the end with it.
+ */
+export const holdKey = (pin: string | null, moved: ReadonlySet<string>) => pin && !moved.has(pin) ? pin : null
+
+/**
+ * What the rail does after its list changed:
+ * - `reveal`: put `key` on the anchor (a new scope, or muting reshuffled the cells)
+ * - `latest`: scroll to the right end and follow
+ * - `hold`: keep the view where it was; 「새 산출물 n →」 counts the arrivals
+ * - `none`: nothing arrived and nothing moved
+ */
+export type ListMove = { move: 'reveal', key: string } | { move: 'latest' | 'hold' | 'none' }
+
+export function listMove(c: {
+  scopeChanged: boolean
+  reshuffled: boolean
+  arrived: number
+  follow: Follow
+  /** The active pin (activePin) in the new list */
+  pin: string | null
+  selected: string | null
+  keys: ReadonlySet<string>
+}): ListMove {
+  if (c.scopeChanged)
+    return c.pin ? { move: 'reveal', key: c.pin } : { move: 'latest' }
+  // Muting keeps the reader on the cell they pinned, or else the one they picked
+  const keep = c.pin ?? (c.selected && c.keys.has(c.selected) ? c.selected : null)
+  if (c.reshuffled && keep)
+    return { move: 'reveal', key: keep }
+  if (!c.arrived)
+    return { move: 'none' }
+  return c.follow !== 'paused' && !c.pin ? { move: 'latest' } : { move: 'hold' }
+}

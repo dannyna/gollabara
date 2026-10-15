@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Desktop's left work surface and tablet's top band (OD stream guide): heading, rail,
 // footer. It follows the latest artifact while the rail sits at the right end and holds
-// its place once the reader scrolls back, raising 「새 산출물 n →」 instead.
+// its place once the reader scrolls back, raising 「새 산출물 n →」 instead. A pinned cell
+// stops following altogether: arrivals only raise the pill, wherever the rail sits.
 
 import type { Artifact } from '../../artifacts'
 import type { Follow } from '../stream/follow'
@@ -9,13 +10,15 @@ import { computed, nextTick, ref, watch } from 'vue'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { arrivedSince, atLatest, lastArrival } from '../stream/follow'
+import { activePin, arrivedSince, atLatest, holdKey, lastArrival, listMove, togglePin } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
   selected?: string | null
+  /** The pinned cell's key; it holds nothing while its cell is not in `artifacts` */
+  pinned?: string | null
   /** Session in view, or null for every session */
   scope?: string | null
   /** Every session is muted: the empty view points back to the session menu */
@@ -23,10 +26,19 @@ const props = defineProps<{
   /** Gallery: open scrolled back to the start with this many arrivals waiting */
   preview?: { unseen: number }
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string], sessions: [] }>()
+const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [] }>()
 
 const rail = ref<InstanceType<typeof StreamRail>>()
 const track = computed(() => rail.value?.el)
+
+const keysOf = (list: Artifact[]) => new Set(list.map(a => a.key))
+const pin = computed(() => activePin(props.pinned, keysOf(props.artifacts)))
+
+/** A click on a cell selects it and pins it, or unpins it when it was the pinned one */
+function onSelect(key: string) {
+  emit('pin', togglePin(props.pinned ?? null, key))
+  emit('select', key)
+}
 
 const follow = ref<Follow>('start')
 const unseen = ref(0)
@@ -50,7 +62,9 @@ function onStep(left: number) {
 function onScroll() {
   const el = track.value!
   if (atLatest(el)) {
-    follow.value = 'following'
+    // A pin keeps the rail from following even at the right end
+    if (!pin.value)
+      follow.value = 'following'
     unseen.value = 0
   }
   else if (Date.now() < userIntentUntil) {
@@ -61,6 +75,9 @@ function toLatest(behavior: ScrollBehavior) {
   track.value?.scrollTo({ left: track.value.scrollWidth, behavior })
 }
 function jumpToLatest() {
+  // The way back to the latest also lets go of the pin, so following resumes
+  if (props.pinned)
+    emit('pin', null)
   toLatest('smooth')
   // The pill goes away, so focus lands on the track it led back to
   track.value?.focus({ preventScroll: true })
@@ -76,15 +93,19 @@ function reveal(key: string, behavior?: ScrollBehavior) {
 defineExpose({ reveal })
 
 /**
- * The first cell in view that a new capture will not move, and where it sits. Read before
- * the DOM updates: a re-captured screen moves its cell to the end, and the cells after its
- * old place close up under a reader who is browsing.
+ * The cell to hold and where it sits: `prefer` (the pin) when given, else the first cell
+ * in view that a new capture will not move. Read before the DOM updates: a re-captured
+ * screen moves its cell to the end, and the cells after its old place close up under a
+ * reader who is browsing.
  */
-function holdView(moved: Set<string>) {
+function holdView(moved: Set<string>, prefer: string | null) {
   const el = track.value
   if (!el)
     return null
   const left = el.getBoundingClientRect().left
+  const pinned = prefer && el.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(prefer)}"]`)
+  if (pinned)
+    return { key: prefer, offset: pinned.getBoundingClientRect().left - left }
   for (const cell of el.querySelectorAll<HTMLElement>(':scope > [data-key]')) {
     const box = cell.getBoundingClientRect()
     if (box.right > left && !moved.has(cell.dataset.key!))
@@ -101,27 +122,33 @@ function restoreView(hold: { key: string, offset: number } | null) {
 
 watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevList, prevScope]) => {
   const arrived = arrivedSince(seen, list)
-  const hold = arrived && follow.value === 'paused' ? holdView(new Set(list.filter(a => a.arrival > seen).map(a => a.key))) : null
+  const now = keysOf(list)
+  const pinNow = activePin(props.pinned, now)
+  const moved = new Set(list.filter(a => a.arrival > seen).map(a => a.key))
+  const hold = arrived && (follow.value === 'paused' || pinNow) ? holdView(moved, holdKey(pinNow, moved)) : null
   seen = Math.max(seen, lastArrival(list))
   // Cells that only appeared or vanished: a session muted or unmuted
-  const before = new Set(prevList.map(a => a.key))
-  const now = new Set(list.map(a => a.key))
+  const before = keysOf(prevList)
   const reshuffled = prevList.some(a => !now.has(a.key)) || list.some(a => !before.has(a.key) && a.arrival <= lastArrival(prevList))
   await nextTick()
-  if (scope !== prevScope) {
-    // A new scope starts at its latest artifact
-    follow.value = 'following'
+  const scopeChanged = scope !== prevScope
+  const next = listMove({ scopeChanged, reshuffled, arrived, follow: follow.value, pin: pinNow, selected: props.selected ?? null, keys: now })
+  if (scopeChanged) {
+    // A new scope starts at its latest artifact, or on the pin when it is in that scope
+    follow.value = pinNow ? 'paused' : 'following'
     unseen.value = 0
-    toLatest('instant')
+    if (next.move === 'reveal')
+      rail.value?.align(next.key, 'instant')
+    else
+      toLatest('instant')
   }
-  else if (reshuffled && props.selected && list.some(a => a.key === props.selected)) {
-    // Muting keeps the reader on the cell they picked
-    reveal(props.selected, 'instant')
+  else if (next.move === 'reveal') {
+    reveal(next.key, 'instant')
   }
-  else if (arrived && follow.value !== 'paused') {
+  else if (next.move === 'latest') {
     toLatest('smooth')
   }
-  else if (arrived) {
+  else if (next.move === 'hold') {
     // Holding the view by setting scrollLeft would cut a step's smooth scroll short
     if (!rail.value?.realign())
       restoreView(hold)
@@ -129,13 +156,28 @@ watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevLis
   }
 })
 
-// The rail mounts at the latest, also when the first artifact ends an empty state
+// Pinning stops following; letting go follows again only from the right end
+watch(() => props.pinned, () => {
+  if (pin.value)
+    follow.value = 'paused'
+  else if (track.value)
+    follow.value = atLatest(track.value) ? 'following' : 'paused'
+})
+
+// The rail mounts at the latest, also when the first artifact ends an empty state, or on
+// the pin restored from the last visit
 watch(track, (el) => {
   if (!el)
     return
   if (props.preview) {
     follow.value = 'paused'
     unseen.value = props.preview.unseen
+    if (pin.value)
+      rail.value?.align(pin.value, 'instant')
+  }
+  else if (pin.value) {
+    follow.value = 'paused'
+    rail.value?.align(pin.value, 'instant')
   }
   else {
     toLatest('instant')
@@ -159,13 +201,13 @@ const { setTarget } = useFeedbackTarget()
     />
     <StateView v-else-if="!artifacts.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
     <StreamRail
-      v-else ref="rail" :artifacts="artifacts" :selected="selected"
-      @select="emit('select', $event)" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
+      v-else ref="rail" :artifacts="artifacts" :selected="selected" :pinned="pin"
+      @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"
     />
     <NewPill v-if="follow === 'paused' && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />
-    <StreamFooter :follow="follow" />
+    <StreamFooter :follow="follow" :pinned="!!pin" />
   </section>
 </template>
 

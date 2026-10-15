@@ -19,6 +19,11 @@ import StreamFooter from './StreamFooter.vue'
       <StreamFooter follow="paused" />
     </div>
   </GalleryCase>
+  <GalleryCase title="셀 고정 · 따라가지 않음, 고정한 셀을 다시 누르거나 Esc로 풀기">
+    <div class="frame">
+      <StreamFooter follow="paused" pinned />
+    </div>
+  </GalleryCase>
 </template>
 
 <style scoped>

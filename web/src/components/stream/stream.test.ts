@@ -2,7 +2,7 @@ import type { Artifact } from '../../artifacts'
 import type { Wheel } from './step'
 import { describe, expect, it } from 'bun:test'
 import { feedbackTargetOf } from '../overlay/useFeedbackTarget'
-import { arrivedSince, atLatest, lastArrival } from './follow'
+import { activePin, arrivedSince, atLatest, FOLLOW_TEXT, followText, holdKey, lastArrival, listMove, togglePin } from './follow'
 import { alignTarget, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 
 function cell(seq: number, extra: Partial<Artifact> = {}): Artifact {
@@ -34,6 +34,52 @@ describe('follow', () => {
     // Unmuted cells 2 and 3 are older than what was seen; 5 is new
     expect(arrivedSince(lastArrival(before), [cell(1), cell(2), cell(3), cell(4), cell(5)])).toBe(1)
     expect(arrivedSince(lastArrival(before), before)).toBe(0)
+  })
+})
+
+describe('pin', () => {
+  const keys = new Set(['1-0', '2-0', '3-0'])
+  const base = { scopeChanged: false, reshuffled: false, arrived: 0, follow: 'following' as const, pin: null, selected: null, keys }
+
+  it('pins a clicked cell, moves the pin to another, and lets go on the pinned one', () => {
+    expect(togglePin(null, '2-0')).toBe('2-0')
+    expect(togglePin('2-0', '3-0')).toBe('3-0')
+    expect(togglePin('2-0', '2-0')).toBeNull()
+  })
+
+  it('holds nothing while its cell is not on the rail', () => {
+    expect(activePin('2-0', keys)).toBe('2-0')
+    expect(activePin('9-0', keys)).toBeNull()
+    expect(activePin(null, keys)).toBeNull()
+  })
+
+  it('holds the view on arrivals instead of following, even from the right end', () => {
+    expect(listMove({ ...base, arrived: 1 })).toEqual({ move: 'latest' })
+    expect(listMove({ ...base, arrived: 1, pin: '2-0' })).toEqual({ move: 'hold' })
+    expect(listMove({ ...base, arrived: 1, follow: 'paused' })).toEqual({ move: 'hold' })
+    expect(listMove({ ...base, pin: '2-0' })).toEqual({ move: 'none' })
+  })
+
+  it('holds the pinned cell, or the reader\'s place when a re-capture moved it to the end', () => {
+    expect(holdKey('2-0', new Set(['3-0']))).toBe('2-0')
+    expect(holdKey('2-0', new Set(['2-0']))).toBeNull()
+    expect(holdKey(null, new Set())).toBeNull()
+  })
+
+  it('opens a new scope on the pin when it is there, else at the latest', () => {
+    expect(listMove({ ...base, scopeChanged: true, pin: '2-0' })).toEqual({ move: 'reveal', key: '2-0' })
+    expect(listMove({ ...base, scopeChanged: true, selected: '1-0' })).toEqual({ move: 'latest' })
+  })
+
+  it('keeps the pinned cell, else the selected one, in view when muting reshuffles the rail', () => {
+    expect(listMove({ ...base, reshuffled: true, pin: '2-0', selected: '1-0' })).toEqual({ move: 'reveal', key: '2-0' })
+    expect(listMove({ ...base, reshuffled: true, selected: '1-0' })).toEqual({ move: 'reveal', key: '1-0' })
+    expect(listMove({ ...base, reshuffled: true, selected: '9-0', arrived: 1 })).toEqual({ move: 'latest' })
+  })
+
+  it('says it is pinned in the footer', () => {
+    expect(followText('following', true)).toBe('고정됨 · 클릭해서 풀기')
+    expect(followText('paused', false)).toBe(FOLLOW_TEXT.paused)
   })
 })
 
