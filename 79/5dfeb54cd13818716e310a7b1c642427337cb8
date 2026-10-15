@@ -1,0 +1,25 @@
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_68fab3bf3eac61 71-94,97
+  s_b7f30c572db9a8::t_55c4ad50fe0d36 118
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_92d8ce6b2c573f 154-163,165-166,170-179
+  s_b7f30c572db9a8::t_0e19a328d44bdf 164
+  s_b7f30c572db9a8::t_7e13763f288a03 34-40
+  s_b7f30c572db9a8::t_3c5c0ceb303c09 60-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "795dfeb54cd13818716e310a7b1c642427337cb8",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
