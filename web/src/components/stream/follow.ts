@@ -33,17 +33,18 @@ export const lastArrival = (artifacts: Artifact[]) => artifacts.reduce((n, a) =>
  */
 export const arrivedSince = (seen: number, artifacts: Artifact[]) => artifacts.filter(a => a.arrival > seen).length
 
-/** Footer text while a pin holds the rail, in place of the follow state */
-export const PINNED_TEXT = '고정됨 · 클릭해서 풀기'
-
-export const followText = (follow: Follow, pinned: boolean) => pinned ? PINNED_TEXT : FOLLOW_TEXT[follow]
+/**
+ * Footer text while a pin holds the rail, in place of the follow state (OD message-state
+ * guide 04): what is held, then how to let go. Touch screens have no Esc.
+ */
+export const PINNED_TEXT = { lead: '고정한 산출물', key: 'Esc로 풀기', touch: '다시 눌러 풀기' } as const
 
 /** Clicking a cell pins it; clicking the pinned cell again unpins. One pin at a time. */
 export const togglePin = (pinned: string | null, key: string) => pinned === key ? null : key
 
 /**
- * The pin while its cell is on the rail, else null. A pin whose cell is muted, out of
- * scope, or gone stays stored but holds nothing: the rail follows as usual.
+ * The pin while its cell is on the rail, else null. A pin whose cell left the rail (a new
+ * scope, a muted session, gone after a reload) is let go: the rail follows as usual.
  */
 export const activePin = (pinned: string | null | undefined, keys: ReadonlySet<string>) => pinned && keys.has(pinned) ? pinned : null
 

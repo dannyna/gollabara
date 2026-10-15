@@ -14,6 +14,7 @@ import AppBar from './components/shell/AppBar.vue'
 import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
+import { activePin } from './components/stream/follow'
 import { usePin } from './pin'
 import { inScope, toSessionRows, useMutedSessions } from './sessions'
 import { putServerSettings, useSettings } from './settings'
@@ -108,10 +109,15 @@ function select(key: string) {
 }
 // A pinned cell holds the rail; the pin survives a reload while its cell is still there
 const { pinned, setPin } = usePin()
-// A restored pin comes back selected, as it was left
 watch(artifacts, (list) => {
-  if (selected.value == null && pinned.value && list.some(a => a.key === pinned.value))
-    selected.value = pinned.value
+  // Before the server's hello the list is empty, not missing the pinned cell
+  if (!messages.value.length || !pinned.value)
+    return
+  // A cell that left the rail (a new scope, a muted session, gone) lets go of its pin
+  if (!activePin(pinned.value, new Set(list.map(a => a.key))))
+    setPin(null)
+  // A restored pin comes back selected, as it was left
+  else selected.value ??= pinned.value
 }, { immediate: true })
 // Esc lets go of the pin, unless it already closed something (overlays prevent default,
 // and run first on document) or is meant for a text field

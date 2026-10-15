@@ -19,7 +19,7 @@ import StreamFooter from './StreamFooter.vue'
       <StreamFooter follow="paused" />
     </div>
   </GalleryCase>
-  <GalleryCase title="셀 고정 · 따라가지 않음, 고정한 셀을 다시 누르거나 Esc로 풀기">
+  <GalleryCase title="셀 고정 · 푸는 방법은 fg (터치 화면은 「다시 눌러 풀기」)">
     <div class="frame">
       <StreamFooter follow="paused" pinned />
     </div>

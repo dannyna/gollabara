@@ -45,7 +45,8 @@ function title(t: Thumb, count: number) {
   return parts.length ? parts.join(' · ') : undefined
 }
 
-// Like a stream cell: the first press pairs it with the stream, pressing the paired one opens it
+// The first press pairs it with the stream, pressing the paired one opens it. Stream cells
+// pin instead, so this is the viewer's way in besides a cell's 확대 ↗.
 function press(t: Thumb) {
   if (isActive(t))
     emit('openImage', t)

@@ -15,7 +15,7 @@ onMounted(() => centered.value?.reveal(heroC, 'instant'))
 </script>
 
 <template>
-  <GalleryCase title="최신 위치 · 따라가는 중 · 누르면 선택하고 고정, 다시 누르면 풀기 (더블클릭 · 확대 ↗는 뷰어)">
+  <GalleryCase title="최신 위치 · 따라가는 중 · 누르면 선택하고 고정, 다시 누르면 풀기 (뷰어는 확대 ↗)">
     <div class="frame">
       <StreamPanel
         :artifacts="artifacts" :selected="selected" :pinned="pinned"
@@ -23,7 +23,7 @@ onMounted(() => centered.value?.reveal(heroC, 'instant'))
       />
     </div>
   </GalleryCase>
-  <GalleryCase title="히어로 C 고정 · 새 산출물 2 · 바닥은 고정됨">
+  <GalleryCase title="히어로 C 고정 · 새 산출물 2는 버튼에만 · 바닥은 고정한 산출물">
     <div class="frame">
       <StreamPanel :artifacts="artifacts" :selected="heroC" :pinned="heroC" :preview="{ unseen: 2 }" />
     </div>

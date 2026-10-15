@@ -2,7 +2,7 @@ import type { Artifact } from '../../artifacts'
 import type { Wheel } from './step'
 import { describe, expect, it } from 'bun:test'
 import { feedbackTargetOf } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, FOLLOW_TEXT, followText, holdKey, lastArrival, listMove, togglePin } from './follow'
+import { activePin, arrivedSince, atLatest, holdKey, lastArrival, listMove, PINNED_TEXT, togglePin } from './follow'
 import { alignTarget, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 
 function cell(seq: number, extra: Partial<Artifact> = {}): Artifact {
@@ -77,9 +77,9 @@ describe('pin', () => {
     expect(listMove({ ...base, reshuffled: true, selected: '9-0', arrived: 1 })).toEqual({ move: 'latest' })
   })
 
-  it('says it is pinned in the footer', () => {
-    expect(followText('following', true)).toBe('고정됨 · 클릭해서 풀기')
-    expect(followText('paused', false)).toBe(FOLLOW_TEXT.paused)
+  it('tells how to let go in the footer: Esc with a keyboard, a tap on touch', () => {
+    expect(`${PINNED_TEXT.lead} · ${PINNED_TEXT.key}`).toBe('고정한 산출물 · Esc로 풀기')
+    expect(`${PINNED_TEXT.lead} · ${PINNED_TEXT.touch}`).toBe('고정한 산출물 · 다시 눌러 풀기')
   })
 })
 

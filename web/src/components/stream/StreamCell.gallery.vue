@@ -44,7 +44,7 @@ const tryCell = one('hero-b')
       <StreamCell :artifact="one('hero-b')" selected />
     </div>
   </GalleryCase>
-  <GalleryCase title="고정 · 선택 테두리 + 왼쪽 위 핀 표시 (bg 바탕 fg 아이콘, 노랑 아님)">
+  <GalleryCase title="고정 · 선택 테두리 + 왼쪽 위 핀 배지(ink 원, 흰 2px 테두리) + 캡션 순번 앞 핀">
     <div class="solo">
       <StreamCell :artifact="one('hero-b')" selected pinned />
     </div>
