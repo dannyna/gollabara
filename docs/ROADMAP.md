@@ -12,11 +12,10 @@ The MVP is done when one person can, on their own machines:
 4. **See every harness they use, at a stated level.** Each harness has a capability row (recap, question, images, feedback route) that the UI shows as it is:
    - **Claude Code**, including Open Design runs: everything, with idle wake.
    - **Codex CLI**: session, recap, and feedback at turn end and at the next tool call are required. Images and questions come as far as the spike proves.
-   - **Antigravity CLI** (Google): at the level the spike proves, with at least the session plus either recaps or images.
 5. **Use it every day.** First-run and empty states, ended sessions, history beyond today, retention that really deletes, and settings shared across devices.
 6. **Trust it.** Hooks never block a session on any harness (checked per adapter). Requests from other origins, hosts or tailnet users are refused. Schema and plugin versions upgrade cleanly, and failures show up in `golla doctor`.
 
-The invariants in AGENTS.md hold throughout, with one proposed amendment to invariant 5 for D1.
+The invariants in AGENTS.md hold throughout, with one approved amendment to invariant 5 for D1.
 
 ## Done: M0 foundation (Claude Code)
 
@@ -36,7 +35,7 @@ The harness spikes start right away, in parallel with M1 and M2, and each one ha
 
 ### M1 · Remote and trust
 
-The owner's first goal. Needs the decision on D1 before the notification issue starts.
+The owner's first goal.
 
 - **Schema migrations** (#60). `PRAGMA user_version` with ordered migrations. Comes first because M1 adds tables. _Done when_ a v0 database fixture opens, upgrades and keeps its data, tested in CI.
 - **Serve spike** (#61). `tailscale serve --bg` in front of 127.0.0.1:4747. _Done when_ all three are true or a fallback is chosen:
@@ -70,7 +69,7 @@ Has to land before a second harness ships.
 
 ### M3 · Harness spikes
 
-About a week, in parallel with M1 and M2. Precondition: an Antigravity Pro subscription is available. Without one, Antigravity moves to After MVP. The output is a capability row and a never-block checklist result for each harness: Codex (#69), Antigravity (#70).
+About a week, in parallel with M1 and M2. The output is a capability row and a never-block checklist result for Codex (#69). Antigravity moved to After MVP (D6); its rows stay here for when it returns (#70).
 
 | Unknown                                                           | Fallback if the spike fails                                      |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -90,12 +89,9 @@ About a week, in parallel with M1 and M2. Precondition: an Antigravity Pro subsc
   - _Done when_ the never-block checklist passes as `bun test` against recorded payloads: a hard deadline, exit 0 on every path, nothing breaks when the server is down, a loop guard, and p95 under 300 ms.
   - _Done when_ a live Codex session appears next to a Claude Code session.
 
-### M5 · Antigravity adapter
+- **Shared hook core** (#74). Extract it once two adapters exist (Claude Code and Codex). _Done when_ every adapter's tests pass unchanged on top of it.
 
-- **Antigravity adapter** (#73). At the level M3 proved, with the same checklist and a live check.
-- **Shared hook core** (#74). Extract it once three adapters exist. _Done when_ every adapter's tests pass unchanged on top of it.
-
-### M6 · Daily-use baseline
+### M5 · Daily-use baseline
 
 - **First run** (#75). _Done when_ an empty stream names the connected harnesses and what to run next.
 - **Session lifecycle** (#76). Ended sessions fade out, and feedback to an ended session is refused with a clear message. _Done when_ a session that ended is marked within a minute.
@@ -107,6 +103,7 @@ About a week, in parallel with M1 and M2. Precondition: an Antigravity Pro subsc
 
 ## After MVP
 
+- Antigravity CLI (Google): the spike (#70) and adapter (#73), once a Pro subscription is available.
 - Adapters for Gemini CLI (Enterprise only), Cursor, GitHub Copilot CLI and opencode (#81).
 - Claude Design, observed only through its Claude Code handoff (#83).
 - Idle wake for harnesses other than Claude Code (Codex app-server, Cursor `followup_message`) (#82).
@@ -115,8 +112,9 @@ About a week, in parallel with M1 and M2. Precondition: an Antigravity Pro subsc
 
 ## Decisions
 
-- **D1 Notifications:** In the MVP, as opt-in, content-free Web Push. This needs the owner to approve an amendment to invariant 5: only an encrypted ping with no content leaves the machine. Triggers are session questions, plus the first recap after feedback was delivered to that session (Codex may have no question mirror). The issue stays blocked until the owner approves.
+- **D1 Notifications:** In the MVP, as opt-in, content-free Web Push. The owner approved an amendment to invariant 5 (2026-10-15): only an encrypted ping with no content leaves the machine. Triggers are session questions, plus the first recap after feedback was delivered to that session (Codex may have no question mirror).
 - **D2 Gemini CLI:** After the MVP.
 - **D3 Distribution:** npm and bunx before the MVP. bun stays the runtime.
 - **D4 Remote feedback:** Allowed, for the owner's identity only.
 - **D5 Hook token:** Not added. The local-versus-proxied rule plus the Origin and Host checks cover it, and a token would silently break plugins that are already installed.
+- **D6 Antigravity:** After the MVP. No Pro subscription is available for the spike, so the MVP's harnesses are Claude Code (with Open Design runs) and Codex CLI.
