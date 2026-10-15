@@ -1,0 +1,61 @@
+web/src/push.ts
+  s_b7f30c572db9a8::t_4fd892bae54541 1-133
+README.md
+  s_b7f30c572db9a8::t_28a603311c501e 61
+  s_b7f30c572db9a8::t_32be1e200a9614 46
+web/src/push.test.ts
+  s_b7f30c572db9a8::t_06b1e768ee901c 1-23
+README.ko.md
+  s_b7f30c572db9a8::t_c181ec3d8fa2b0 46
+  s_b7f30c572db9a8::t_ee48e00220c78c 61
+src/server/push.test.ts
+  s_b7f30c572db9a8::t_1456868fd1ee50 164-165
+  s_b7f30c572db9a8::t_537e2757a782e3 1-31,33-34,36-163,166-211
+  s_b7f30c572db9a8::t_f43a4a42d40cb8 32,35
+web/src/App.vue
+  s_b7f30c572db9a8::t_a28a31ebb1a825 20,74-87,191-192
+src/server/store.ts
+  s_b7f30c572db9a8::t_fef27e10891339 3
+  s_b7f30c572db9a8::t_42c105661d2285 127-141
+src/shared/types.ts
+  s_b7f30c572db9a8::t_6e095d7d0fcf2c 176-191
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_a81d9b22f93052 78-87
+DESIGN.md
+  s_b7f30c572db9a8::t_24289af2b9e648 356
+src/server/push.ts
+  s_b7f30c572db9a8::t_0cf49cf4e7189b 1-39,50-91,93-97,99-105,107-111,113-120,122-213
+  s_b7f30c572db9a8::t_f43a4a42d40cb8 40-42,48-49,92,98,106,112,121
+  s_b7f30c572db9a8::t_7029d3fb4c231f 43-47
+web/sw.js
+  s_b7f30c572db9a8::t_d73e06c09f67a9 5
+  s_b7f30c572db9a8::t_e887775b508906 49-79
+AGENTS.md
+  s_b7f30c572db9a8::t_dbad342372d0d7 125-134
+  s_b7f30c572db9a8::t_6675636cdad7a5 11
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_2157e315ec194a 50-51,53-54
+  s_b7f30c572db9a8::t_47afc20d38bc67 3,6,17-20,38-39,52,55-60,181-194
+  s_b7f30c572db9a8::t_d75fd94734816e 195
+web/src/components/overlay/SettingsSheet.gallery.vue
+  s_b7f30c572db9a8::t_0de7f4f60938bf 3,19-20,25-29,31-37,62-65
+  s_b7f30c572db9a8::t_f3ad32488907e7 66-68
+src/server/index.ts
+  s_b7f30c572db9a8::t_c23fc4730f8ff0 15,43-46,88-89,113-134,277-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f10260a77f5a1558a59474beaa84e55e50e629b1",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
