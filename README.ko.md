@@ -59,7 +59,7 @@ gollabara는 「골라 봐라」를 소리 나는 대로 적은 이름이고, �
 - **개입**: 세션에 답장할 수 있고, 이미지 하나를 짚어 보낼 수도 있습니다. 피드백은 세션의 다음 단계에 닿고, 쉬고 있는 세션은 깨워서 전달합니다. 세션을 음소거하거나 한 세션만 골라 볼 수도 있습니다.
 - **tailnet으로 폰에서**: Tailscale tailnet 안의 기기라면 어디서든 흐름을 열 수 있습니다.
 
-다음에 무엇을 어떤 순서로 하는지는 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다. Tailscale Serve를 통한 원격 접속과 홈 화면 앱, 세션이 질문할 때 오는 알림, 그다음 Codex와 Antigravity입니다.
+다음에 무엇을 어떤 순서로 하는지는 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다. Tailscale Serve를 통한 원격 접속과 홈 화면 앱, 세션이 질문할 때 오는 알림, 그다음 Codex입니다. Antigravity와 다른 도구는 MVP 이후에 이어집니다.
 
 ## 써 보기
 

@@ -9,7 +9,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
 4. **Never judge artifacts.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing of images. A perceptual hash (dHash) is used only to group near-identical re-captures of one file (`src/shared/stacks.ts`); it is never shown and never used to judge an image. Triage of chat text (whether a recap line is shown, and its state) is allowed, opt-in, and off by default. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
 5. **Local only.** Data lives in local SQLite and image files. No third-party storage, no public internet exposure. The one exception is opt-in: with triage on, recap and question text, and the text of the user's latest feedback to that session, go to the model behind the user's own `claude` or `codex` CLI. Images never do.
-6. **Multi-harness by design.** Only the Claude Code plugin exists today, and Open Design runs go through it. Codex and Antigravity come next, and Claude Design later ([docs/ROADMAP.md](docs/ROADMAP.md)). Keep the event types in `src/shared/types.ts` free of Claude-Code-only concepts.
+6. **Multi-harness by design.** Only the Claude Code plugin exists today, and Open Design runs go through it. Codex comes next; Antigravity, other harnesses and Claude Design follow after the MVP ([docs/ROADMAP.md](docs/ROADMAP.md)). Keep the event types in `src/shared/types.ts` free of Claude-Code-only concepts.
 
 ## Layout
 

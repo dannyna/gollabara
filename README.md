@@ -59,7 +59,7 @@ Early stage. What works today:
 - **Stepping in:** reply to a session, about one image or in general. Your feedback reaches it at its next step, and an idle session wakes up for it. Mute a session, or narrow the view to one.
 - **Your phone over the tailnet:** open the stream from any device on your Tailscale tailnet.
 
-What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): remote access through Tailscale Serve with a home-screen app, notifications when a session asks something, then Codex and Antigravity.
+What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): remote access through Tailscale Serve with a home-screen app, notifications when a session asks something, then Codex. Antigravity and other harnesses follow after the MVP.
 
 ## Try it
 
