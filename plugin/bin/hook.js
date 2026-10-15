@@ -25,7 +25,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.2.0",
+  version: "0.3.0",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -247,6 +247,7 @@ function mapHook(input, session, opener = "unknown", fileRole) {
       return input.stop_hook_active && opener !== "rewake" ? { kind: "recap", session, text, continuation: true } : { kind: "recap", session, text };
     }
     case "SessionEnd":
+      return { kind: "session-end", session };
     default:
       return null;
   }

@@ -66,6 +66,19 @@ function toggleMute(name: string) {
       </div>
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="03b · 끝난 세션 · 머리줄과 메뉴">
+    <ChatFrame note="세션이 끝나면(SessionEnd, 또는 프로세스가 사라지면) 아바타는 점선 테두리, 이름과 본문은 muted, 이름 뒤에 ‘끝남’. 이미지는 받은 그대로. 메뉴 첫 줄도 ‘끝남’을 말한다.">
+      <SessionMessage :name="S.api" :at="time(14, 20)" ended>
+        쿼터 리필 배치 정리하고 종료.
+      </SessionMessage>
+      <div class="stage">
+        <div class="anchor">
+          <SessionAvatar :name="S.api" ended /><strong class="faded"><SessionName :name="S.api" /></strong>
+          <SessionMenu preview :name="S.api" ended :items="sessionMenuItems(false, false)" />
+        </div>
+      </div>
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="04 · 음소거한 세션 · 시스템 줄에서">
     <ChatFrame note="음소거한 세션의 메시지는 대화에 없으므로 시스템 줄의 작은 아바타가 진입점. ‘이 세션만 보기’는 세션 메뉴처럼 꺼진다.">
       <div class="stage">
@@ -88,6 +101,9 @@ function toggleMute(name: string) {
   align-items: center;
   gap: 8px;
   font-size: 11px;
+}
+.faded {
+  color: var(--muted);
 }
 .centred {
   justify-content: center;

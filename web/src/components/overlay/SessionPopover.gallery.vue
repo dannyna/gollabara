@@ -39,6 +39,15 @@ function mute(id: string) {
       </AppBar>
     </GalleryStage>
   </GalleryCase>
+  <GalleryCase title="끝난 세션 · client-e2e는 흐려지고 ‘끝남’ (고를 수는 있다)">
+    <GalleryStage :height="760">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => s.id === 'client-e2e' ? { ...s, ended: true } : s)" :scope="null" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
   <GalleryCase title="세션 하나를 보는 중 · od">
     <GalleryStage :height="760">
       <AppBar scope-label="od · landing-hero" sessions-open>

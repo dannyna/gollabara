@@ -261,8 +261,9 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       // A wake-up's Stop also comes as `stop_hook_active`, but the turn is new: the session sat idle before it
       return input.stop_hook_active && opener !== 'rewake' ? { kind: 'recap', session, text, continuation: true } : { kind: 'recap', session, text }
     }
-    // Codex's SessionEnd: ended sessions are not tracked yet (#76), so it posts nothing
+    // Claude Code and Codex both send it as the session closes; the server refuses feedback to it from then on
     case 'SessionEnd':
+      return { kind: 'session-end', session }
     default:
       return null
   }

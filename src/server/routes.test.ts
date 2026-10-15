@@ -91,3 +91,21 @@ describe('deleting a session', () => {
     ws.close()
   })
 })
+
+describe('ended sessions', () => {
+  test('a session end refuses feedback with 409 and drops the routes; the next event brings it back', async () => {
+    const post = (path: string, body: unknown) => fetch(`${url}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    await start('gone', 'claude-code')
+    await post('/api/events', { kind: 'session-end', session: { id: 'gone', name: 'gone', harness: 'claude-code', cwd: '/a' } })
+    const listed = (await (await fetch(`${url}/api/sessions`)).json() as Session[]).find(s => s.id === 'gone')
+    expect(listed).toMatchObject({ endedAt: expect.any(Number), routes: [] })
+    const refused = await post('/api/feedback', { sessionId: 'gone', text: 'hello?' })
+    expect([refused.status, await refused.text()]).toEqual([409, 'session ended'])
+    // A waiter for it steps aside at once
+    const waited = await fetch(`${url}/api/channel/wait?session=gone&waiter=1`)
+    expect([waited.status, await waited.text()]).toEqual([410, 'ended'])
+
+    await start('gone', 'claude-code')
+    expect((await post('/api/feedback', { sessionId: 'gone', text: 'hello' })).status).toBe(200)
+  })
+})

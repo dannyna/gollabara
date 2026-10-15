@@ -14,6 +14,8 @@ export interface QueueGroup {
   route?: string
   /** Marks the first item 「다음」 */
   next?: boolean
+  /** The session ended: its items stay but fade, since nothing will pick them up unless it resumes */
+  ended?: boolean
 }
 
 const props = withDefaults(defineProps<{
@@ -30,9 +32,9 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
     <div class="qt-h">
       <ChatIcon name="clock" /><span><b>대기 {{ total }}건</b> · {{ note }}</span>
     </div>
-    <div v-for="g in groups" :key="g.session" class="qt-group">
+    <div v-for="g in groups" :key="g.session" class="qt-group" :class="{ ended: g.ended }">
       <div class="qt-who">
-        <SessionAvatar :name="g.session" small />{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
+        <SessionAvatar :name="g.session" small :ended="g.ended" />{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
       </div>
       <div v-for="(text, i) in g.items" :key="i" class="qi" :class="{ next: g.next && i === 0 }">
         <p>{{ text }}</p>
@@ -104,6 +106,9 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
   -webkit-box-orient: vertical;
   font-size: 12px;
   line-height: 1.6;
+}
+.ended .qi p {
+  color: var(--muted);
 }
 .qi.next p::before {
   content: '다음';

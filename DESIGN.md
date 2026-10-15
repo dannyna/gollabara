@@ -297,7 +297,7 @@ Component structure is provisional. An atomic component system comes later; toda
 
 - **Identity:** Logo symbol plus wordmark. 「다시 연결 중」 appears next to it in muted text **only** while disconnected. No image or session counts and no always-on 「구경 중」 badge.
 - **Session menu button:** A single `--bg` button in the dock showing 「전체 세션」 or the selected session's name, with a muted chevron. Hover and open state add an inset `--muted` ring. Do not split it back into a segmented filter plus a separate manage button.
-- **Session menu:** A popover titled 「표시할 세션」 with the hint 「볼 세션을 고르거나, 음소거해 숨길 수 있어요.」. First row is 「전체 세션」 (「음소거한 세션은 숨겨요」); then one row per session with a check mark, name, branch, state (「작업 중」, 「쉬는 중」, 「음소거」), 「음소거」/「음소거 해제」, and mono 「마지막 활동 hh:mm」. The current row gets a `--bg` fill.
+- **Session menu:** A popover titled 「표시할 세션」 with the hint 「볼 세션을 고르거나, 음소거해 숨길 수 있어요.」. First row is 「전체 세션」 (「음소거한 세션은 숨겨요」); then one row per session with a check mark, name, branch, state (「작업 중」, 「쉬는 중」, 「음소거」, 「끝남」), 「음소거」/「음소거 해제」, and mono 「마지막 활동 hh:mm」. The current row gets a `--bg` fill.
   - Selecting a session changes the stream scope and closes the menu.
   - Muted sessions stay listed so they can be unmuted, but they cannot be selected.
   - Muting the selected session returns the scope to 「전체 세션」.
@@ -314,6 +314,17 @@ An image on `--surface` in a 12px cell with a 2px transparent border and the ima
 ### Chat message and thumbnails
 
 A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. The name is one line: the dir is never cut, only a long branch ends in 「…」, and the full name is in the tooltip. Session start rows use the same rule; the stream cell name follows it in a later change. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」. Pausing a session is out of scope, so there is no 「멈춤」 anywhere. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
+
+### Ended sessions
+
+A session ends when its harness says so or its process goes away. An ended session fades with `--muted` colour, never with opacity. A plain 10px muted 「끝남」 says why, so the change does not depend on colour. Images are never faded: the stream shows what it received.
+
+- **Chat message:** the avatar loses its `--bg` fill for a 1px dashed `--border` outline, the same outline a start row's square has, and its initial turns `--muted`. The name and the body text turn `--muted`, and 「끝남」 follows the name. Thumbnails and state boxes keep their own colours.
+- **Avatar menu:** the button fades like the head. The menu's first row reads 「session · 끝남」, and every row still works.
+- **Artifact cell:** the run's session name turns `--muted`, followed by 「끝남」. The image, the meta line and the caption are unchanged.
+- **Session menu:** the row's name turns `--muted`, and the state slot reads 「끝남」 (「음소거 · 끝남」 when it is also muted). An ended session can still be selected, so its history stays easy to read.
+- **Composer:** with an ended target, sending is blocked with 「끝난 세션이에요」, like the other blocked reasons. The draft stays. `@` does not offer ended sessions. A send the server refuses because the session ended reads the same on the failed bubble.
+- **Queue tray:** items queued before the session ended stay in the tray, faded to `--muted` with a dashed avatar. In place of a route, the group says 「끝나서 전달할 수 없어요」. When every waiting session has ended, the header says 「끝난 세션이라 전달할 수 없어요」. A session that resumes picks the items up as usual.
 
 ### Triage
 

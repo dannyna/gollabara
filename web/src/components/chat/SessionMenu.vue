@@ -11,6 +11,8 @@ import ChatIcon from './ChatIcon.vue'
 const props = defineProps<{
   /** `<dir>` or `<dir> · <branch>`, the first row */
   name: string
+  /** The session ended: the first row says so */
+  ended?: boolean
   items: SessionMenuItem[]
   /** The button that opened it: pressing it again toggles rather than counting as outside */
   trigger?: HTMLElement
@@ -65,7 +67,7 @@ defineExpose({ focusFirst })
 <template>
   <div ref="panel" class="session-menu" role="menu" :aria-label="`${name} 세션 메뉴`" @keydown="onKeydown">
     <div class="menu-head" aria-hidden="true">
-      {{ name }}
+      {{ ended ? `${name} · 끝남` : name }}
     </div>
     <button
       v-for="item in items" :key="item.action" type="button" role="menuitem" tabindex="-1"

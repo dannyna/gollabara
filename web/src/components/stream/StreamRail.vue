@@ -22,6 +22,8 @@ const props = defineProps<{
   folds?: Fold[]
   selected?: string | null
   pinned?: string | null
+  /** Sessions that ended; their cells fade their names */
+  ended?: ReadonlySet<string>
   bare?: boolean
 }>()
 
@@ -161,7 +163,7 @@ defineExpose({ el, align, realign, latestAlign })
     />
     <template v-for="a in artifacts" :key="a.key">
       <StreamCell
-        :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key"
+        :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key" :ended="ended?.has(a.sessionId)"
         @select="emit('select', a.key)" @open="emit('open', a.key)" @reply="emit('reply', a)"
       />
       <ReferenceFold

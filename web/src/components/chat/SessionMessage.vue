@@ -14,17 +14,19 @@ defineProps<{
   highlighted?: boolean
   /** The view is scoped to this session: the menu offers 「전체 세션 보기」 */
   scoped?: boolean
+  /** The session ended: the head and the text fade to muted; images keep their own colours */
+  ended?: boolean
 }>()
 
 defineEmits<{ scope: [], mute: [], delete: [] }>()
 </script>
 
 <template>
-  <article class="message" :class="{ highlighted }" data-floating-host>
+  <article class="message" :class="{ highlighted, ended }" data-floating-host>
     <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
     <FloatingActions variant="message" />
     <div class="message-head">
-      <SessionMenuButton :name="name" :scoped="scoped" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
+      <SessionMenuButton :name="name" :scoped="scoped" :ended="ended" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
       <time>{{ clock(at) }}</time>
     </div>
     <div class="message-body">
@@ -44,6 +46,9 @@ defineEmits<{ scope: [], mute: [], delete: [] }>()
   background: var(--bg);
   outline: 1px solid var(--border);
   outline-offset: 8px;
+}
+.message.ended .message-body {
+  color: var(--muted);
 }
 .message-head {
   display: flex;

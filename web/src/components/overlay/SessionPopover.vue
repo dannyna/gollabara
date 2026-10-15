@@ -57,7 +57,7 @@ useOverlay({
         <span><strong>전체 세션</strong><small>음소거한 세션은 숨겨요</small></span>
       </button>
 
-      <div v-for="s in sessions" :key="s.id" class="session-row" :class="{ 'is-current': scope === s.id }">
+      <div v-for="s in sessions" :key="s.id" class="session-row" :class="{ 'is-current': scope === s.id, 'ended': s.ended }">
         <!-- A muted session stays listed so it can be unmuted, but it cannot be picked -->
         <button
           class="session-pick" type="button" :disabled="s.muted" :aria-pressed="scope === s.id"
@@ -65,7 +65,7 @@ useOverlay({
         >
           <span class="scope-check" aria-hidden="true">{{ scope === s.id ? '✓' : '' }}</span>
           <span class="scope-name"><strong>{{ s.session }}</strong><small v-if="s.branch">{{ s.branch }}</small></span>
-          <span v-if="s.muted" class="session-state">음소거</span>
+          <span v-if="s.muted || s.ended" class="session-state">{{ [s.muted && '음소거', s.ended && '끝남'].filter(Boolean).join(' · ') }}</span>
         </button>
         <div class="session-ops">
           <button type="button" :aria-pressed="s.muted" @click="emit('mute', s.id)">
@@ -174,6 +174,10 @@ useOverlay({
 .scope-name strong,
 .scope-name small {
   overflow-wrap: anywhere;
+}
+/* An ended session stays listed and selectable; its name fades to muted */
+.session-row.ended .scope-name strong {
+  color: var(--muted);
 }
 .session-state {
   flex: none;

@@ -52,6 +52,8 @@ interface SessionRow {
   open_turn: number | null
   last_turn: number | null
   pid: number | null
+  ended_at: number | null
+  pid_at: number | null
 }
 
 interface FeedbackRow {
@@ -66,9 +68,16 @@ interface FeedbackRow {
   delivered_via: FeedbackVia | null
 }
 
+/** A session's harness process, as its latest SessionStart linked it: `at` is when, null on links from before #76 */
+export interface PidLink {
+  id: string
+  pid: number
+  at: number | null
+}
+
 /** Why feedback could not be queued */
 export class FeedbackError extends Error {
-  constructor(readonly status: 400 | 404, message: string) {
+  constructor(readonly status: 400 | 404 | 409, message: string) {
     super(message)
   }
 }
@@ -236,7 +245,8 @@ export class Store {
 
   private ingestInTx(event: IncomingEvent, saved: StoredImage[], now: number): Ingested {
     const prev = this.db.query('SELECT * FROM sessions WHERE id = ?').get(event.session.id) as SessionRow | null
-    const row = this.upsertSession(event.session, now)
+    // Any event from an ended session means it is running again (a resume); a session-end ends it
+    const row = this.upsertSession(event.session, now, event.kind === 'session-end' ? now : null)
     const session = toSession(row)
     let openTurn = prev && prev.open_turn !== null && now - prev.last_seen_at <= TURN_IDLE_MS ? prev.open_turn : null
     let lastTurn = prev?.last_turn ?? null
@@ -245,8 +255,14 @@ export class Store {
 
     if (event.kind === 'session' && event.pid) {
       // /clear and resume start a new session in the same process: the latest SessionStart owns the pid
-      this.db.run('UPDATE sessions SET pid = NULL WHERE pid = ? AND id != ?', [event.pid, session.id])
-      this.db.run('UPDATE sessions SET pid = ? WHERE id = ?', [event.pid, session.id])
+      // The session that held it no longer runs there, so it ended, even when its own session-end never came
+      this.db.run('UPDATE sessions SET pid = NULL, ended_at = coalesce(ended_at, ?) WHERE pid = ? AND id != ?', [now, event.pid, session.id])
+      this.db.run('UPDATE sessions SET pid = ?, pid_at = ? WHERE id = ?', [event.pid, now, session.id])
+    }
+    else if (event.kind === 'session-end') {
+      // The process is leaving, and a later process may get its pid; a turn left open closes
+      this.db.run('UPDATE sessions SET pid = NULL WHERE id = ?', [session.id])
+      openTurn = null
     }
     else if (event.kind === 'question') {
       // Questions stand alone; they neither join nor close a turn
@@ -296,16 +312,34 @@ export class Store {
     return row ? toSession(row) : null
   }
 
+  /** Running sessions that know their harness process, for the liveness sweep */
+  pidLinks(): PidLink[] {
+    const rows = this.db.query('SELECT id, pid, pid_at FROM sessions WHERE pid IS NOT NULL AND ended_at IS NULL').all() as { id: string, pid: number, pid_at: number | null }[]
+    return rows.map(r => ({ id: r.id, pid: r.pid, at: r.pid_at }))
+  }
+
+  /** Marks running sessions ended (their process is gone) and returns them; sessions already ended are left alone */
+  endSessions(ids: string[], now = Date.now()): Session[] {
+    return ids.flatMap((id) => {
+      const row = this.db.query('UPDATE sessions SET ended_at = ?, pid = NULL WHERE id = ? AND ended_at IS NULL RETURNING *').get(now, id) as SessionRow | null
+      return row ? [toSession(row)] : []
+    })
+  }
+
   /** The session running in the harness process `pid`, or null before its SessionStart arrived */
   sessionForPid(pid: number): string | null {
     const row = this.db.query('SELECT id FROM sessions WHERE pid = ?').get(pid) as { id: string } | null
     return row?.id ?? null
   }
 
-  /** Queues the user's feedback for a session. Throws FeedbackError for an unknown session or image. */
+  /** Queues the user's feedback for a session. Throws FeedbackError for an unknown or ended session, or an unknown image. */
   queueFeedback(sessionId: string, text: string, image?: string, now = Date.now()): Feedback {
-    if (!this.db.query('SELECT 1 FROM sessions WHERE id = ?').get(sessionId))
+    const session = this.db.query('SELECT ended_at FROM sessions WHERE id = ?').get(sessionId) as { ended_at: number | null } | null
+    if (!session)
       throw new FeedbackError(404, 'unknown session')
+    // Nothing would ever pick it up; a resume makes the session reachable again
+    if (session.ended_at !== null)
+      throw new FeedbackError(409, 'session ended')
     let ref: { name: string, at: number, sessionName: string | null } | null = null
     if (image) {
       // Same sanitising as the /img/ route, so the ref cannot leave the image directory
@@ -373,12 +407,13 @@ export class Store {
     }
   }
 
-  private upsertSession(info: SessionInfo, now: number): SessionRow {
+  private upsertSession(info: SessionInfo, now: number, endedAt: number | null): SessionRow {
     // Resumes reuse the session id, so startedAt keeps its first value. Older hooks send no harness.
-    return this.db.query(`INSERT INTO sessions (id, name, harness, project, cwd, started_at, last_seen_at)
-      VALUES ($id, $name, $harness, $project, $cwd, $now, $now)
-      ON CONFLICT(id) DO UPDATE SET name = $name, harness = $harness, project = $project, cwd = $cwd, last_seen_at = $now
+    return this.db.query(`INSERT INTO sessions (id, name, harness, project, cwd, started_at, last_seen_at, ended_at)
+      VALUES ($id, $name, $harness, $project, $cwd, $now, $now, $ended)
+      ON CONFLICT(id) DO UPDATE SET name = $name, harness = $harness, project = $project, cwd = $cwd, last_seen_at = $now, ended_at = $ended
       RETURNING *`).get({
+      $ended: endedAt,
       $id: info.id,
       $name: info.name,
       $harness: info.harness ?? 'claude-code',
@@ -441,5 +476,6 @@ function toSession(row: SessionRow): Session {
     cwd: row.cwd,
     startedAt: row.started_at,
     lastSeenAt: row.last_seen_at,
+    ...(row.ended_at !== null ? { endedAt: row.ended_at } : {}),
   }
 }

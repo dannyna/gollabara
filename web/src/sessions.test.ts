@@ -1,6 +1,6 @@
 import type { Session, StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { inScope, toSessionRows } from './sessions'
+import { endedSessions, inScope, toSessionRows } from './sessions'
 
 const msg = (id: number, sessionId: string, at: number): StreamMessage => ({ id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn' })
 const session = (id: string, lastSeenAt: number): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt })
@@ -18,11 +18,16 @@ describe('inScope', () => {
 })
 
 describe('toSessionRows', () => {
-  it('lists recorded and message-only sessions, most recent first, with mute marked', () => {
-    const rows = toSessionRows([session('a', 10)], [msg(1, 'a', 30), msg(2, 'old', 20)], new Set(['old']))
+  it('lists recorded and message-only sessions, most recent first, with mute and end marked', () => {
+    const rows = toSessionRows([session('a', 10), { ...session('b', 5), endedAt: 6 }], [msg(1, 'a', 30), msg(2, 'old', 20)], new Set(['old']))
     expect(rows).toEqual([
-      { id: 'a', session: 'a', lastSeenAt: 30, muted: false },
-      { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true },
+      { id: 'a', session: 'a', lastSeenAt: 30, muted: false, ended: false },
+      { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true, ended: false },
+      { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true },
     ])
+  })
+
+  it('collects the ended sessions', () => {
+    expect([...endedSessions([session('a', 1), { ...session('b', 1), endedAt: 2 }])]).toEqual(['b'])
   })
 })
