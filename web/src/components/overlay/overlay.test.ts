@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { validateSettings } from '../../settings'
+import { legacySettings, sheetSettings, shortensRetention, validateSettings } from '../../settings'
 import { clampPan, setZoom, wheelZoom, zoomAt, zoomLabel } from './zoom'
 
 describe('setZoom', () => {
@@ -22,6 +22,25 @@ describe('validateSettings', () => {
       server: 'http:// 또는 https://로 시작하는 주소를 입력하세요',
       phone: '폰용 주소는 https://로 시작해야 해요',
     })
+  })
+})
+
+describe('server settings', () => {
+  it('reads an unset retention as 「계속 보관」, which is what the server does with it', () => {
+    expect(sheetSettings('http://127.0.0.1:4747', { triage: 'off' })).toEqual({ server: 'http://127.0.0.1:4747', phone: '', retention: 'forever' })
+  })
+
+  it('asks before a shorter window only', () => {
+    expect(shortensRetention('forever', '30')).toBe(true)
+    expect(shortensRetention('30', '7')).toBe(true)
+    expect(shortensRetention('7', 'forever')).toBe(false)
+    expect(shortensRetention('30', '30')).toBe(false)
+  })
+
+  it('seeds the server with what this browser kept; a window that deletes waits for a confirm', () => {
+    expect(legacySettings({ server: 'http://a', phone: 'https://mac.ts.net', retention: '7' })).toEqual({ seed: { phone: 'https://mac.ts.net', seed: true }, confirm: '7' })
+    expect(legacySettings({ retention: 'forever' })).toEqual({ seed: { retention: 'forever', seed: true }, confirm: null })
+    expect(legacySettings({ server: 'http://a' })).toEqual({ seed: null, confirm: null })
   })
 })
 

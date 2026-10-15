@@ -42,7 +42,7 @@ const { toast } = useToast()
 function onSave(next: Settings) {
   live.value = next
   open.value = false
-  toast('이 브라우저에 설정을 저장했어요')
+  toast('설정을 저장했어요')
 }
 </script>
 
@@ -73,7 +73,7 @@ function onSave(next: Settings) {
   </GalleryCase>
   <GalleryCase title="저장됨 · 시트를 닫고 토스트">
     <GalleryStage :height="200">
-      <AppToast text="이 브라우저에 설정을 저장했어요" />
+      <AppToast text="설정을 저장했어요" />
     </GalleryStage>
   </GalleryCase>
   <GalleryCase title="모바일 · 오른쪽 시트 그대로 (지금 앱의 대안, 390에서 확인)">

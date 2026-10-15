@@ -36,6 +36,22 @@ export function inScope(messages: StreamMessage[], scope: string | null, muted: 
   return messages.filter(m => !muted.has(m.sessionId) && (scope == null || m.sessionId === scope))
 }
 
+/** 「이 세션 데이터 삭제」: the server drops the rows and tells every view; throws Error with the message to show */
+export async function deleteSessionData(id: string, fetcher: typeof fetch = fetch): Promise<void> {
+  let res: Response
+  try {
+    // An empty body still says JSON: the server refuses other API mutations
+    res = await fetcher(`/api/sessions/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'content-type': 'application/json' } })
+  }
+  catch {
+    throw new Error('서버에 연결하지 못했어요')
+  }
+  if (res.status === 403)
+    throw new Error('이 Mac이나 tailnet에서만 지울 수 있어요')
+  if (!res.ok)
+    throw new Error('세션 데이터를 지우지 못했어요')
+}
+
 const STORAGE_KEY = 'gollabara-muted'
 
 function readStored(): Set<string> {

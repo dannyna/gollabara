@@ -59,3 +59,35 @@ describe('session delivery routes', () => {
     await waiting
   })
 })
+
+const json = { 'content-type': 'application/json' }
+
+describe('settings', () => {
+  test('a PUT changes only the keys it names; a seed never overwrites a stored value', async () => {
+    const put = async (body: unknown) => fetch(`${url}/api/settings`, { method: 'PUT', headers: json, body: JSON.stringify(body) })
+    expect(await (await put({ retention: '7' })).json()).toMatchObject({ triage: 'off', retention: '7' })
+    expect(await (await put({ retention: '30', phone: 'https://mac.ts.net', seed: true })).json()).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
+    expect((await put({ phone: 'http://mac.local' })).status).toBe(400)
+    expect((await put({ retention: '1' })).status).toBe(400)
+    expect(await (await fetch(`${url}/api/settings`)).json()).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
+  })
+})
+
+describe('deleting a session', () => {
+  test('removes its data and tells every view', async () => {
+    await start('gone', 'claude-code')
+    await fetch(`${url}/api/events`, { method: 'POST', headers: json, body: JSON.stringify({ kind: 'recap', session: { id: 'gone', name: 'gone', harness: 'claude-code', cwd: '/a' }, text: 'done' }) })
+    const ws = new WebSocket(`${url.replace('http', 'ws')}/ws`)
+    const frames: { type: string }[] = []
+    ws.onmessage = e => frames.push(JSON.parse(e.data as string))
+    await new Promise(resolve => ws.onopen = resolve)
+
+    const res = await fetch(`${url}/api/sessions/gone`, { method: 'DELETE', headers: json })
+    expect(await res.json()).toMatchObject({ ok: true, messages: 1 })
+    for (let i = 0; i < 50 && !frames.some(f => f.type === 'deleted'); i++)
+      await Bun.sleep(10)
+    expect(frames.find(f => f.type === 'deleted')).toMatchObject({ sessionIds: ['gone'], feedbackIds: [] })
+    expect((await routes()).gone).toBeUndefined()
+    ws.close()
+  })
+})

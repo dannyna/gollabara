@@ -148,7 +148,7 @@ async function save() {
           </option>
         </select>
         <p :id="`${id}-retention-note`" class="description">
-          화면 설정만 저장돼요. 실제 파일은 삭제하지 않아요.
+          기간이 지난 메시지와 이미지, 피드백을 이 Mac에서 지워요. 모든 기기에 함께 적용돼요.
         </p>
 
         <p :id="`${id}-theme`" class="label">

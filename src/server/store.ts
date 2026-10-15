@@ -1,8 +1,8 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, Harness, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, Harness, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, Retention, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { hookOutdated } from '../shared/version'
@@ -13,6 +13,15 @@ import { migrate } from './migrations'
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
+export const RETENTIONS: Retention[] = ['7', '30', 'forever']
+
+/** What a prune or a session delete removed: the rows for the views to drop, and the image files */
+export interface Purged {
+  messageIds: number[]
+  feedbackIds: number[]
+  sessionIds: string[]
+  files: string[]
+}
 
 /**
  * Larger captures are not decoded for a dHash; they still group by identical bytes.
@@ -78,13 +87,28 @@ export class Store {
   }
 
   settings(): ServerSettings {
-    const row = this.db.query('SELECT value FROM settings WHERE key = ?').get('triage') as { value: string } | null
-    const triage = row && (TRIAGE_ENGINES as string[]).includes(row.value) ? row.value as TriageEngine : 'off'
-    return { triage }
+    const rows = this.db.query('SELECT key, value FROM settings').all() as { key: string, value: string }[]
+    const stored = new Map(rows.map(r => [r.key, r.value]))
+    const triage = stored.get('triage')
+    const retention = stored.get('retention')
+    const phone = stored.get('phone')
+    return {
+      triage: triage && (TRIAGE_ENGINES as string[]).includes(triage) ? triage as TriageEngine : 'off',
+      ...(retention && (RETENTIONS as string[]).includes(retention) ? { retention: retention as Retention } : {}),
+      ...(phone !== undefined ? { phone } : {}),
+    }
   }
 
-  saveSettings(next: ServerSettings): ServerSettings {
-    this.db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['triage', next.triage])
+  /** Stores the given keys. With `seed`, only keys never saved: a stale device can't overwrite another's choice. */
+  saveSettings(patch: Partial<ServerSettings>, seed = false): ServerSettings {
+    const write = this.db.query(`INSERT INTO settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO ${seed ? 'NOTHING' : 'UPDATE SET value = excluded.value'}`)
+    this.db.transaction(() => {
+      for (const [key, value] of Object.entries(patch)) {
+        if (value !== undefined)
+          write.run(key, value)
+      }
+    })()
     return this.settings()
   }
 
@@ -137,6 +161,58 @@ export class Store {
   pushSubscriptions(): PushSubscriptionKeys[] {
     const rows = this.db.query('SELECT endpoint, p256dh, auth FROM push_subscriptions ORDER BY created_at').all() as { endpoint: string, p256dh: string, auth: string }[]
     return rows.map(r => ({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }))
+  }
+
+  /**
+   * Retention: deletes messages and feedback from before `before`, their triage, and sessions not seen
+   * since, then the image files nothing left references.
+   */
+  prune(before: number): Purged {
+    return this.purge({ messages: 'at < $key', feedback: 'created_at < $key', sessions: 'last_seen_at < $key' }, before)
+  }
+
+  /** 「이 세션 데이터 삭제」: the session, its messages, feedback and triage, and images no other row references */
+  deleteSession(id: string): Purged {
+    return this.purge({ messages: `json_extract(body, '$.sessionId') = $key`, feedback: 'session_id = $key', sessions: 'id = $key' }, id)
+  }
+
+  /**
+   * Images are shared by hash, so a file goes only when no remaining message or feedback names it.
+   * Synchronous throughout: ingest writes a file and then inserts its message without yielding, so no
+   * prune can fall between the two and take a file a new message is about to use.
+   */
+  private purge(where: Record<'messages' | 'feedback' | 'sessions', string>, key: string | number): Purged {
+    const params = { $key: key }
+    const { purged, orphans } = this.db.transaction(() => {
+      const messages = this.db.query(`DELETE FROM messages WHERE ${where.messages} RETURNING id, body`).all(params) as { id: number, body: string }[]
+      const feedback = this.db.query(`DELETE FROM feedback WHERE ${where.feedback} RETURNING id, image`).all(params) as { id: number, image: string | null }[]
+      const sessions = this.db.query(`DELETE FROM sessions WHERE ${where.sessions} RETURNING id`).all(params) as { id: string }[]
+      if (messages.length)
+        this.db.run('DELETE FROM triage WHERE message_id NOT IN (SELECT id FROM messages)')
+      const candidates = new Set([...messages.flatMap(m => imageNames(m.body)), ...feedback.flatMap(f => f.image ? [f.image] : [])])
+      if (candidates.size) {
+        const rows = this.db.query(`SELECT body FROM messages WHERE instr(body, '"/img/') > 0`).all() as { body: string }[]
+        for (const row of rows) {
+          for (const name of imageNames(row.body)) candidates.delete(name)
+        }
+        const quoted = this.db.query('SELECT image FROM feedback WHERE image IS NOT NULL').all() as { image: string }[]
+        for (const row of quoted) candidates.delete(row.image)
+      }
+      return {
+        purged: { messageIds: messages.map(m => m.id), feedbackIds: feedback.map(f => f.id), sessionIds: sessions.map(s => s.id) },
+        orphans: [...candidates],
+      }
+    })()
+    const files = orphans.filter((name) => {
+      try {
+        unlinkSync(join(this.imageDir, name))
+        return true
+      }
+      catch {
+        return false
+      }
+    })
+    return { ...purged, files }
   }
 
   /** One stored message, or null */
@@ -344,6 +420,11 @@ export class Store {
     const dhash = size.width * size.height <= DHASH_MAX_PIXELS ? dHash(bytes, mime) : null
     return { url: `/img/${name}`, ...size, source, ...(dhash ? { dhash } : {}), ...kept }
   }
+}
+
+/** Stored image names a message body refers to (`"/img/<name>"`) */
+function imageNames(body: string): string[] {
+  return [...body.matchAll(/"\/img\/([\w.]+)"/g)].map(m => m[1]!)
 }
 
 function withRecap<T extends Omit<StreamMessage, 'id'>>(message: T, text: string): T {

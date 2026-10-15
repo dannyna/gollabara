@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { TriageEngine } from '../../src/shared/types'
+import type { Settings } from './settings'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { cellKeys, toArtifacts } from './artifacts'
 import { useCaptures } from './captures'
 import { resolveNotices } from './components/banner/notices'
 import StateView from './components/banner/StateView.vue'
 import AppToast from './components/overlay/AppToast.vue'
+import ConfirmDialog from './components/overlay/ConfirmDialog.vue'
 import ImageViewer from './components/overlay/ImageViewer.vue'
 import SessionPopover from './components/overlay/SessionPopover.vue'
 import SettingsSheet from './components/overlay/SettingsSheet.vue'
+import { useFeedbackTarget } from './components/overlay/useFeedbackTarget'
 import { useImageViewer } from './components/overlay/useImageViewer'
 import { useToast } from './components/overlay/useToast'
 import AppBar from './components/shell/AppBar.vue'
@@ -18,8 +21,8 @@ import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { usePin } from './pin'
 import { usePush } from './push'
-import { inScope, toSessionRows, useMutedSessions } from './sessions'
-import { putServerSettings, useSettings } from './settings'
+import { deleteSessionData, inScope, toSessionRows, useMutedSessions } from './sessions'
+import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
@@ -54,16 +57,41 @@ function mute(id: string) {
 }
 
 const settingsOpen = ref(false)
-const { settings, save } = useSettings()
-function saveSettings(next: typeof settings.value) {
-  save(next)
-  settingsOpen.value = false
-  toast('이 브라우저에 설정을 저장했어요')
+// The server address stays in this browser; the rest comes from the server, so every device agrees
+const { server, saveServer } = useSettings()
+const settings = computed(() => sheetSettings(server.value, serverSettings.value))
+const RETENTION_LABEL = { 7: '7일', 30: '30일', forever: '계속 보관' } as const
+/** A save that shortens retention, waiting for 「줄이고 지우기」 */
+const shortening = ref<Settings | null>(null)
+function saveSettings(next: Settings) {
+  if (shortensRetention(settings.value.retention, next.retention))
+    shortening.value = next
+  else
+    commitSettings(next)
+}
+async function commitSettings(next: Settings) {
+  shortening.value = null
+  saveServer(next.server)
+  const prev = settings.value
+  // Only what changed, so this device's copy never overwrites another device's newer choice
+  const patch = {
+    ...(next.phone !== prev.phone ? { phone: next.phone } : {}),
+    ...(next.retention !== prev.retention ? { retention: next.retention } : {}),
+  }
+  try {
+    if (Object.keys(patch).length)
+      serverSettings.value = await putServerSettings(patch)
+    settingsOpen.value = false
+    toast('설정을 저장했어요')
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
 }
 async function setEngine(engine: TriageEngine) {
   try {
     // The server broadcasts the change too, so every open view follows
-    serverSettings.value = await putServerSettings({ ...serverSettings.value, triage: engine })
+    serverSettings.value = await putServerSettings({ triage: engine })
     toast(engine === 'off' ? '대화 정리를 껐어요' : '대화 정리를 켰어요. 새 메시지부터 적용돼요')
   }
   catch (error) {
@@ -91,6 +119,27 @@ async function setPush(on: boolean) {
 // First-connection guide once the server's hello says there is nothing yet
 const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
+// Settings this browser kept from before the server stored them seed it once, after the first hello.
+// A kept window that deletes (7 or 30 days) asks first, like any shorter window.
+const legacyRetention = ref<'7' | '30' | null>(null)
+watch(ready, async () => {
+  legacyRetention.value = await migrateLocalSettings(serverSettings.value).catch(() => null)
+}, { once: true })
+async function seedRetention(ok: boolean) {
+  const retention = legacyRetention.value
+  legacyRetention.value = null
+  if (ok && retention) {
+    try {
+      serverSettings.value = await putServerSettings({ retention, seed: true })
+    }
+    catch (error) {
+      // Kept locally, so it asks again on the next load
+      toast((error as Error).message)
+      return
+    }
+  }
+  forgetLegacyRetention()
+}
 const showEmpty = computed(() => !messages.value.length && ready.value)
 // No hello yet and the server does not answer (the installed app opened offline): the shell
 // says so instead of a blank stream
@@ -146,6 +195,38 @@ function unpinOnEscape(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', unpinOnEscape))
 onBeforeUnmount(() => window.removeEventListener('keydown', unpinOnEscape))
 
+// 「이 세션 데이터 삭제」 from an avatar menu, after the app's own confirmation
+const deleting = ref<string | null>(null)
+const deletingName = computed(() => deleting.value && (sessions.value.find(s => s.id === deleting.value)?.name
+  ?? messages.value.find(m => m.sessionId === deleting.value)?.sessionName ?? deleting.value))
+async function deleteSession() {
+  const id = deleting.value
+  deleting.value = null
+  if (!id)
+    return
+  try {
+    // The server's broadcast drops the rows from every open view, this one included
+    await deleteSessionData(id)
+    toast('세션 데이터를 지웠어요')
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
+// Rows deleted anywhere (retention, another device) leave nothing pointing at them. The viewer
+// closes and the pin lets go on their own once their cell is gone.
+const { target, clearTarget } = useFeedbackTarget()
+watch([messages, sessions], ([list, known]) => {
+  const ids = new Set(list.map(m => m.id))
+  if (selected.value && !ids.has(Number.parseInt(selected.value)))
+    selected.value = null
+  if (target.value && !list.some(m => m.images?.some(i => i.url === target.value!.imageUrl)))
+    clearTarget()
+  const exists = (id: string) => known.some(s => s.id === id) || list.some(m => m.sessionId === id)
+  if (scope.value && !exists(scope.value))
+    scope.value = null
+})
+
 function onThumb(key: string) {
   // Mobile has no stream surface: a thumbnail opens the viewer directly
   if (matchMedia('(max-width: 767px)').matches) {
@@ -183,7 +264,7 @@ function onThumb(key: string) {
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
         :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals"
-        @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute"
+        @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
       />
     </main>
     <SettingsSheet
@@ -191,6 +272,24 @@ function onThumb(key: string) {
       :push="pushState" :push-busy="pushBusy"
       @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine" @update:push="setPush"
     />
+    <ConfirmDialog
+      v-if="shortening" :title="`보관 기간을 ${RETENTION_LABEL[shortening.retention]}로 줄일까요?`" confirm-label="줄이고 지우기" over-sheet
+      @cancel="shortening = null" @confirm="commitSettings(shortening)"
+    >
+      <b>{{ RETENTION_LABEL[shortening.retention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
+    </ConfirmDialog>
+    <ConfirmDialog
+      v-else-if="legacyRetention" :title="`보관 기간을 ${RETENTION_LABEL[legacyRetention]}로 줄일까요?`" confirm-label="줄이고 지우기"
+      @cancel="seedRetention(false)" @confirm="seedRetention(true)"
+    >
+      이 브라우저에 저장해 둔 보관 기간이에요. 이제 서버가 정말 지워요. <b>{{ RETENTION_LABEL[legacyRetention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요. 취소하면 계속 보관해요.
+    </ConfirmDialog>
+    <ConfirmDialog
+      v-if="deleting" :title="`${deletingName} 세션의 데이터를 지울까요?`" confirm-label="지우기"
+      @cancel="deleting = null" @confirm="deleteSession"
+    >
+      이 세션의 메시지와 피드백, 다른 세션과 같이 쓰지 않는 이미지가 이 Mac에서 지워지고, 되돌릴 수 없어요.
+    </ConfirmDialog>
     <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="viewerItems" />
     <AppToast />
   </div>

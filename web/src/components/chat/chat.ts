@@ -78,15 +78,15 @@ export interface SystemEvent {
 
 /** One row of the avatar menu. `why` disables it and says why at its right end. */
 export interface SessionMenuItem {
-  action: 'scope' | 'mute'
+  action: 'scope' | 'mute' | 'delete'
   icon: IconName
   label: string
   why?: string
 }
 
 /**
- * The avatar menu's two rows (OD chat guide 07). Each flips with the state it changes, and a
- * muted session cannot become the scope, as in the session menu.
+ * The avatar menu's rows (OD chat guide 07). Scope and mute flip with the state they change, and a
+ * muted session cannot become the scope, as in the session menu. Delete asks first (ConfirmDialog).
  */
 export function sessionMenuItems(scoped: boolean, muted: boolean): SessionMenuItem[] {
   return [
@@ -96,6 +96,7 @@ export function sessionMenuItems(scoped: boolean, muted: boolean): SessionMenuIt
     muted
       ? { action: 'mute', icon: 'sound', label: '음소거 해제' }
       : { action: 'mute', icon: 'mute', label: '음소거' },
+    { action: 'delete', icon: 'trash', label: '이 세션 데이터 삭제' },
   ]
 }
 

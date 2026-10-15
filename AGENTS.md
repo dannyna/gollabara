@@ -81,6 +81,20 @@ The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs n
 
 It also holds `hook-health.jsonl`, the hook health log (see below). The hook writes it under its own `GOLLABARA_DATA`, so a session whose env doesn't match the server's logs elsewhere.
 
+### Retention and deleting a session
+
+「보관 기간」 (`retention`: `7`, `30` or `forever`) is a server setting (`src/server/retention.ts`). The server prunes at start, every hour, and right after the window changes: messages whose `at` is older than the window, feedback whose `created_at` is, the triage rows of those messages, and sessions last seen before it. A window never chosen prunes nothing, so an upgrade deletes nothing until a device seeds the value it kept locally (see Settings). The settings sheet asks with the app's own `ConfirmDialog` (「줄이고 지우기」) before a shorter window is saved.
+
+「이 세션 데이터 삭제」 in a session's avatar menu asks the same way, then sends `DELETE /api/sessions/<id>` (loopback and tailnet only, like settings). It removes the session record, its messages, its feedback, their triage rows and the image files no other row uses. A live session comes back with its next event.
+
+Images are named by content hash, so one file can back several messages. Both paths (`Store.prune`, `Store.deleteSession`) delete rows in one transaction and collect the files those rows named. A file is unlinked only when no remaining message body names it (`"/img/<name>"`) and no remaining feedback row quotes it. The work is synchronous: ingest writes a file and inserts its message without yielding, so a prune can't remove a file a new message is about to use. Each deletion goes out as one `deleted` frame (`messageIds`, `feedbackIds`, `sessionIds`), and open views drop those rows; the viewer, the pin, the selection, a reply target and a scope that pointed at them let go. `triage_cache` (normalized hide-verdict text) is not pruned.
+
+### Settings
+
+Every setting except the theme and the server address is stored on the server, in the `settings` key/value table, so the phone and the desktop agree: 「대화 정리」 (`triage`), 「보관 기간」 (`retention`) and 「폰용 주소」 (`phone`). `GET /api/settings` and the `hello` frame return them; a key never saved is absent. `PUT /api/settings` (loopback and tailnet only) takes any subset and validates each key it names (`phone` is https or empty); with `seed: true` it writes only keys that have no value yet. Every change goes out as a `settings` frame.
+
+The settings used to live in this browser (`gollabara-settings`). After the first `hello`, a browser that still has `phone` or `retention` there sends them with `seed: true` and then keeps only `server`, so the first device seeds the server and a stale one never overwrites it. A kept window of 7 or 30 days was saved while the sheet promised to delete nothing, so it seeds only after that device confirms 「줄이고 지우기」; cancelling drops it and the server keeps everything. Per device by design: the theme (`gollabara-theme`), the server address, 「알림 받기」 (the browser's own push subscription), and view state (muted sessions, the pinned cell, captures split off with 「따로 보기」).
+
 ## Install and the login service
 
 `golla setup` (`bunx gollabara setup` from npm, `bun src/cli.ts setup` from a built checkout) is idempotent:

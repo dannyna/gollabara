@@ -68,6 +68,8 @@ const emit = defineEmits<{
   scope: [id: string | null]
   /** From a session's avatar menu: mute or unmute it */
   mute: [id: string]
+  /** From a session's avatar menu: 「이 세션 데이터 삭제」, which App confirms first */
+  delete: [id: string]
 }>()
 
 // Answering questions is not built yet: question cards are drawn inert.
@@ -338,6 +340,7 @@ defineExpose({ reveal })
               <SessionMenuButton
                 small :name="nameOf(item.sessionId)" :muted="muted.has(item.sessionId)"
                 :scoped="scope === item.sessionId" @scope="toggleScope(item.sessionId)" @mute="emit('mute', item.sessionId)"
+                @delete="emit('delete', item.sessionId)"
               />
             </template>
           </SystemLine>
@@ -363,6 +366,7 @@ defineExpose({ reveal })
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
             :scoped="scope === item.message.sessionId"
             @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
+            @delete="emit('delete', item.message.sessionId)"
           >
             <template v-for="part in viewOf.get(item.message.id)?.parts" :key="part.type === 'line' ? part.line.index : part.key">
               <RecapLine

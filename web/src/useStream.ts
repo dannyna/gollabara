@@ -120,6 +120,15 @@ export function useStream() {
       else if (frame.type === 'settings') {
         settings.value = frame.settings
       }
+      else if (frame.type === 'deleted') {
+        const gone = new Set(frame.messageIds)
+        const feedbackGone = new Set(frame.feedbackIds)
+        const sessionsGone = new Set(frame.sessionIds)
+        messages.value = messages.value.filter(m => !gone.has(m.id))
+        feedback.value = feedback.value.filter(f => !feedbackGone.has(f.id))
+        sessions.value = sessions.value.filter(s => !sessionsGone.has(s.id))
+        triage.value = new Map([...triage.value].filter(([, t]) => !gone.has(t.messageId)))
+      }
       else if (frame.type === 'feedback') {
         feedback.value = mergeFeedback(feedback.value, frame.feedback)
       }

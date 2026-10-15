@@ -5,8 +5,8 @@ import GalleryStage from '../../gallery/GalleryStage.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import SettingsSheet from './SettingsSheet.vue'
 
-// Not used in the app yet: nothing there deletes files. This is the shape for when
-// a shorter retention actually removes artifacts.
+// The app asks this before a shorter 보관 기간 deletes (over the sheet), and before
+// 「이 세션 데이터 삭제」 (on its own scrim)
 const saved = { server: 'http://127.0.0.1:4747', phone: '', retention: '30' as const }
 function noop() {}
 
@@ -24,14 +24,14 @@ function decide(ok: boolean) {
     <GalleryStage :height="600">
       <SettingsSheet :settings="saved" theme="dark" preview @close="noop" />
       <ConfirmDialog title="보관 기간을 7일로 줄일까요?" confirm-label="줄이고 지우기" over-sheet preview>
-        <b>7일보다 오래된 산출물</b>이 이 기기에서 지워지고, 되돌릴 수 없어요. 세션 대화의 리캡과 질문은 남아요.
+        <b>7일보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
       </ConfirmDialog>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="단독 · 스크림 (≤767px에서는 아래에 붙고 버튼이 세로로)">
+  <GalleryCase title="단독 · 스크림 (≤767px에서는 아래에 붙고 버튼이 세로로) · 아바타 메뉴의 세션 데이터 삭제">
     <GalleryStage :height="420">
-      <ConfirmDialog title="보관 기간을 7일로 줄일까요?" confirm-label="줄이고 지우기" preview>
-        <b>7일보다 오래된 산출물</b>이 이 기기에서 지워지고, 되돌릴 수 없어요.
+      <ConfirmDialog title="gollabara · feat/retention 세션의 데이터를 지울까요?" confirm-label="지우기" preview>
+        이 세션의 메시지와 피드백, 다른 세션과 같이 쓰지 않는 이미지가 이 Mac에서 지워지고, 되돌릴 수 없어요.
       </ConfirmDialog>
     </GalleryStage>
   </GalleryCase>
@@ -51,7 +51,7 @@ function decide(ok: boolean) {
           v-if="confirmOpen" title="보관 기간을 7일로 줄일까요?" confirm-label="줄이고 지우기" over-sheet
           @cancel="decide(false)" @confirm="decide(true)"
         >
-          <b>7일보다 오래된 산출물</b>이 이 기기에서 지워지고, 되돌릴 수 없어요.
+          <b>7일보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
         </ConfirmDialog>
       </template>
     </GalleryStage>

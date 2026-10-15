@@ -25,6 +25,8 @@ const emit = defineEmits<{
   /** 「이 세션만 보기」, or 「전체 세션 보기」 while scoped */
   scope: []
   mute: []
+  /** 「이 세션 데이터 삭제」: the parent asks before anything is deleted */
+  delete: []
 }>()
 
 const open = ref(false)
@@ -61,8 +63,10 @@ function choose(item: SessionMenuItem) {
   open.value = false
   if (item.action === 'scope')
     emit('scope')
-  else
+  else if (item.action === 'mute')
     emit('mute')
+  else
+    emit('delete')
 }
 
 function onKeydown(e: KeyboardEvent) {
