@@ -10,8 +10,9 @@
 // container, for a rail without heading or footer (the component gallery).
 
 import type { Artifact } from '../../artifacts'
+import type { Wheel } from './step'
 import { onBeforeUnmount, ref } from 'vue'
-import { alignTarget, SETTLE_FALLBACK_MS, stepTarget, WHEEL_QUIET_MS, WHEEL_STEP_PX, wheelDelta } from './step'
+import { alignTarget, SETTLE_FALLBACK_MS, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 import StreamCell from './StreamCell.vue'
 
 defineProps<{
@@ -19,48 +20,64 @@ defineProps<{
   selected?: string | null
   bare?: boolean
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [] }>()
+const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
 
 const el = ref<HTMLElement>()
 
 function geometry() {
   const rail = el.value!
   const box = rail.getBoundingClientRect()
-  const starts = [...rail.querySelectorAll<HTMLElement>(':scope > .cell')].map(c => c.getBoundingClientRect().left - box.left + rail.scrollLeft)
-  return { rail, starts, anchor: Number.parseFloat(getComputedStyle(rail).paddingLeft) || 0, max: rail.scrollWidth - rail.clientWidth }
+  const cells = [...rail.querySelectorAll<HTMLElement>(':scope > .cell')]
+  const starts = cells.map(c => c.getBoundingClientRect().left - box.left + rail.scrollLeft)
+  return { rail, cells, starts, anchor: Number.parseFloat(getComputedStyle(rail).paddingLeft) || 0, max: rail.scrollWidth - rail.clientWidth }
 }
 
 const behavior = (): ScrollBehavior => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
 
-// One step per gesture: input is ignored until the scroll settles and the wheel goes quiet
-let locked = false
-let travel = 0
-let lastWheel = 0
+// The cell a step is scrolling to, until its scroll settles. A step taken meanwhile goes
+// on from this cell rather than from the half-way scroll position, so it is never lost.
+let aim: string | undefined
+let wheel: Wheel | undefined
 let timer: ReturnType<typeof setTimeout> | undefined
+
+function aimLeft() {
+  const cell = aim && el.value?.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(aim)}"]`)
+  if (!cell)
+    return null
+  const { rail, anchor, max } = geometry()
+  return alignTarget(cell.getBoundingClientRect().left - rail.getBoundingClientRect().left + rail.scrollLeft, anchor, max)
+}
+
 function settle() {
   clearTimeout(timer)
-  el.value?.removeEventListener('scrollend', settle)
-  const wait = WHEEL_QUIET_MS - (performance.now() - lastWheel)
-  if (wait > 0)
-    timer = setTimeout(settle, wait)
-  else
-    locked = false
+  el.value?.removeEventListener('scrollend', onScrollEnd)
+  aim = undefined
+  // Wheel input that keeps coming, other than a momentum tail, may step again
+  wheel = wheelSettled(wheel)
+}
+function onScrollEnd() {
+  // Another scroll (a cell arriving, a realign) can end first; the step settles on its cell
+  const left = aimLeft()
+  if (left === null || Math.abs(el.value!.scrollLeft - left) <= 1)
+    settle()
+}
+function track(left: number) {
+  el.value!.addEventListener('scrollend', onScrollEnd)
+  clearTimeout(timer)
+  timer = setTimeout(settle, SETTLE_FALLBACK_MS)
+  el.value!.scrollTo({ left, behavior: behavior() })
 }
 
 function step(dir: 1 | -1) {
   if (!el.value)
     return
-  const { rail, starts, anchor, max } = geometry()
-  const left = stepTarget(rail.scrollLeft, starts, dir, anchor, max)
+  const { rail, cells, starts, anchor, max } = geometry()
+  const left = stepTarget(aimLeft() ?? rail.scrollLeft, starts, dir, anchor, max)
   if (left === null)
     return
-  locked = true
-  travel = 0
-  emit('step')
-  rail.addEventListener('scrollend', settle, { once: true })
-  clearTimeout(timer)
-  timer = setTimeout(settle, SETTLE_FALLBACK_MS)
-  rail.scrollTo({ left, behavior: behavior() })
+  aim = cells[starts.findIndex(s => Math.abs(alignTarget(s, anchor, max) - left) <= 1)]?.dataset.key
+  emit('step', left)
+  track(left)
 }
 
 function onWheel(e: WheelEvent) {
@@ -68,23 +85,28 @@ function onWheel(e: WheelEvent) {
   if (e.ctrlKey)
     return
   e.preventDefault()
-  const now = performance.now()
-  if (now - lastWheel > WHEEL_QUIET_MS)
-    travel = 0
-  lastWheel = now
-  if (locked)
-    return
-  travel += wheelDelta(e, el.value!.clientWidth)
-  if (Math.abs(travel) >= WHEEL_STEP_PX)
-    step(travel > 0 ? 1 : -1)
+  const read = wheelInput(wheel, performance.now(), wheelDelta(e, el.value!.clientWidth))
+  wheel = read.wheel
+  if (read.dir)
+    step(read.dir)
 }
 
 function onKeydown(e: KeyboardEvent) {
   if (e.target !== el.value || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight'))
     return
   e.preventDefault()
-  if (!locked)
+  // A held key repeats faster than a step scrolls: one step at a time
+  if (aim === undefined)
     step(e.key === 'ArrowRight' ? 1 : -1)
+}
+
+/** Cells moved under a step in flight (an arrival): carries it on to its cell. False when none is */
+function realign() {
+  const left = aimLeft()
+  if (left === null)
+    return false
+  track(left)
+  return true
 }
 
 /** Puts one cell on the anchor, e.g. when its chat thumbnail is picked */
@@ -98,7 +120,7 @@ function align(key: string, how: ScrollBehavior = behavior()) {
 }
 
 onBeforeUnmount(() => clearTimeout(timer))
-defineExpose({ el, align })
+defineExpose({ el, align, realign })
 </script>
 
 <template>
