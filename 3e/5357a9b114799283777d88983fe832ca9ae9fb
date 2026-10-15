@@ -1,0 +1,48 @@
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_e5da021060531e 6-7,22,35-51,68-69,157,159-160,165-166,185-204
+src/hook/fixtures/transcript-monitor.jsonl
+  s_b7f30c572db9a8::t_ac95b645c69f9b 1-11
+AGENTS.md
+  s_b7f30c572db9a8::t_7898c19b0f0fc5 59-65,69
+  s_b7f30c572db9a8::t_e5da021060531e 50-55
+  s_b7f30c572db9a8::t_5c7bc35f0bd658 70
+src/hook/fixtures/transcript-task-notification.jsonl
+  s_b7f30c572db9a8::t_ac95b645c69f9b 1-13
+src/hook/map.ts
+  s_b7f30c572db9a8::t_3352c3482d0101 59-81
+  s_b7f30c572db9a8::t_c20f502991b2a6 14,17-25
+  s_b7f30c572db9a8::t_f71a0880468a19 99-102
+  s_b7f30c572db9a8::t_84bdd6cf24184b 26
+src/hook/index.ts
+  s_b7f30c572db9a8::t_ffa5ca528d5966 62-72
+  s_b7f30c572db9a8::t_62efef9cee9ece 6,8,12,15-16,19-21,27-29,54-61,73-77
+  s_b7f30c572db9a8::t_540f873899b76c 7
+  s_b7f30c572db9a8::t_74459fdc0f7686 78
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_5d45ad1ac04659 3-4,15,110-145
+  s_b7f30c572db9a8::t_256ba398dc2de0 146-147
+src/hook/fixtures/transcript-human.jsonl
+  s_b7f30c572db9a8::t_ac95b645c69f9b 1,3-13
+  s_b7f30c572db9a8::t_d2787eaee39ddc 2
+src/hook/index.test.ts
+  s_b7f30c572db9a8::t_540f873899b76c 57
+  s_b7f30c572db9a8::t_5d45ad1ac04659 4,6-8,53-56,58-110
+src/hook/fixtures/transcript-sdk.jsonl
+  s_b7f30c572db9a8::t_ac95b645c69f9b 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e5357a9b114799283777d88983fe832ca9ae9fb",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
