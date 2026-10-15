@@ -1,0 +1,117 @@
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_af6dd4d463af86 419-420
+  s_b7f30c572db9a8::t_4cdda5df5fe993 301,307-311,317-322,324-331,333-334,336,339,343,348-384,387-388,395-398,401,405-410,413
+  s_b7f30c572db9a8::t_36d2ce22b322c9 67-70
+  s_b7f30c572db9a8::t_4c5ad7edd5f36b 456
+  s_b7f30c572db9a8::t_523a1ce250d1bd 619-620
+  s_b7f30c572db9a8::t_304fc2c1f02514 167-171,173
+  s_b7f30c572db9a8::t_a07ce21eee9dac 5
+  s_b7f30c572db9a8::t_3d0e04abd8b647 429-438
+  s_b7f30c572db9a8::t_7f9e8c910ff70a 522-523
+  s_b7f30c572db9a8::t_a6346a388c2036 84-90
+  s_b7f30c572db9a8::t_cf346c2284cc66 22
+  s_b7f30c572db9a8::t_dd967dd028dd5f 578-607
+  s_b7f30c572db9a8::t_a218c99ea16e9d 385-386,389-393,400
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_96361adddcee52 134-136,138-139,147
+  s_b7f30c572db9a8::t_46aeef0cea89ff 113-114,164
+src/server/index.ts
+  s_b7f30c572db9a8::t_21e87a1e974f6f 4-5,33-51,303-308,328
+web/src/components/stream/follow.ts
+  s_b7f30c572db9a8::t_30c9b7e1024809 22-24
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_04243614bf0494 99-104,107
+  s_b7f30c572db9a8::t_8ccaec7e62638d 204-205
+  s_b7f30c572db9a8::t_f3d5a919379956 7-9,13,42-43,45-49,83-98,108-114,131-135,181-203,206-208,210-220,279-282,310-316,318
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_ba1cde47c5b2bb 151-179
+  s_b7f30c572db9a8::t_8ddea061e9627a 39-43
+  s_b7f30c572db9a8::t_f0ae2da4d1bfa7 22-24
+  s_b7f30c572db9a8::t_c0506f8de5d0bc 3,5
+  s_b7f30c572db9a8::t_e4da0bae4fbdff 68-76
+web/src/history.test.ts
+  s_b7f30c572db9a8::t_2501a16e5c47f4 1-84,86-87
+  s_b7f30c572db9a8::t_0449f92361ed55 85
+web/src/components/banner/NewPill.gallery.vue
+  s_b7f30c572db9a8::t_124ed63cf2549b 30-47
+web/src/components/stream/StreamFooter.vue
+  s_b7f30c572db9a8::t_30c9b7e1024809 6,8-9,16
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_effe5c29ca03f3 3-4,7,89-97,120-126,129-130,144-145,154-158,195-269,289
+web/src/components/chat/icons.ts
+  s_b7f30c572db9a8::t_9cea3cc481b2da 27-28
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_e9df813fdc22f6 60-77
+web/src/components/overlay/DayPopover.vue
+  s_b7f30c572db9a8::t_f1796b95997827 1-191
+src/shared/types.ts
+  s_b7f30c572db9a8::t_bb0b95a4456edc 220-239,242-243
+src/server/store.ts
+  s_b7f30c572db9a8::t_0b23ade168d266 3,78-84,356-357,380
+  s_b7f30c572db9a8::t_323dd68cbfb51c 324-355,358-379,381-384
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_f6d2057df4506c 360-425
+  s_b7f30c572db9a8::t_122a63b187ba58 5
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_1f0734b9d73b8c 30-37
+  s_b7f30c572db9a8::t_defd2741cba9cb 3
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_47ebc388ea7c82 36-41
+web/src/components/overlay/DayPopover.gallery.vue
+  s_b7f30c572db9a8::t_583996c971915c 1-54,62,73,84-133,137-138
+  s_b7f30c572db9a8::t_f2865b40c819d8 55-61,63-72,74-83,134-136
+web/src/components/shell/StreamPanel.gallery.vue
+  s_b7f30c572db9a8::t_7a52ec2fa6759b 38-47
+  s_b7f30c572db9a8::t_197caafdfe58be 4
+web/src/App.vue
+  s_b7f30c572db9a8::t_0364d4fb4275ac 344
+  s_b7f30c572db9a8::t_38efe6663a0762 254-257,259,265
+  s_b7f30c572db9a8::t_89c905d172c3ee 338
+  s_b7f30c572db9a8::t_848a53cc7c7dcb 2,11,24,32,192-197,258,260-264,266-306,339,346-354
+web/src/components/banner/NewPill.vue
+  s_b7f30c572db9a8::t_30c9b7e1024809 9-11,22
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_97da3687d579a0 102-106
+  s_b7f30c572db9a8::t_fd65b5a57c853e 100-101
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_b88fec98c02611 2,95-109
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_1c7b883a2cc017 66,70-73
+  s_b7f30c572db9a8::t_e96de6873d1429 67-69
+web/src/components/stream/StreamFooter.gallery.vue
+  s_b7f30c572db9a8::t_b01e4d9f3d11e6 27-31
+web/src/history.ts
+  s_b7f30c572db9a8::t_748427564cd1ca 1-122
+DESIGN.md
+  s_b7f30c572db9a8::t_c6bde26118ae02 304-305,390-405
+AGENTS.md
+  s_12a8976d90126c::t_8a1939a8b486ec 80,98-107
+README.ko.md
+  s_12a8976d90126c::t_778946075988dc 61
+README.md
+  s_12a8976d90126c::t_948b5bf3a33482 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d86c79d2244e96a1be928574cbcd492da1d985e",
+  "prompts": {},
+  "sessions": {
+    "s_12a8976d90126c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2f7e9996a3d17153",
+        "model": "unknown"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    },
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
