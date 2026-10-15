@@ -77,38 +77,65 @@ export function useSettings() {
   return { server, saveServer }
 }
 
-/** What this browser kept from before the server stored settings, as a seed; null when nothing is left */
-export function legacySettings(stored: Partial<Settings>): SettingsPatch | null {
+export interface LegacySettings {
+  /** Sent at once: the phone address, and a retention that deletes nothing */
+  seed: SettingsPatch | null
+  /**
+   * A window that deletes. It was saved while the sheet said nothing is deleted, so it seeds only
+   * after this device confirms, like any shorter window.
+   */
+  confirm: '7' | '30' | null
+}
+
+/** What this browser kept from before the server stored settings */
+export function legacySettings(stored: Partial<Settings>): LegacySettings {
   const patch: SettingsPatch = {}
-  if (stored.retention === '7' || stored.retention === '30' || stored.retention === 'forever')
+  if (stored.retention === 'forever')
     patch.retention = stored.retention
   if (typeof stored.phone === 'string')
     patch.phone = stored.phone
-  return Object.keys(patch).length ? { ...patch, seed: true } : null
+  return {
+    seed: Object.keys(patch).length ? { ...patch, seed: true } : null,
+    confirm: stored.retention === '7' || stored.retention === '30' ? stored.retention : null,
+  }
+}
+
+/** Keeps only the server address, and the retention still waiting for its confirm */
+function keepLocal(server: string | undefined, retention: Retention | null) {
+  try {
+    if (server || retention)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...(server ? { server } : {}), ...(retention ? { retention } : {}) }))
+    else
+      localStorage.removeItem(STORAGE_KEY)
+  }
+  catch {}
 }
 
 /**
  * Moves this browser's phone address and retention to the server, once. The server writes only keys it
  * has no value for, so a stale device never overwrites another's choice. Kept locally if the server refuses.
+ * Returns a retention that deletes and waits for the user's confirm, or null.
  */
-export async function migrateLocalSettings(fetcher: typeof fetch = fetch): Promise<void> {
+export async function migrateLocalSettings(current: ServerSettings, fetcher: typeof fetch = fetch): Promise<'7' | '30' | null> {
   const stored = readStored()
-  const seed = legacySettings(stored)
-  if (!seed)
-    return
-  try {
-    await putServerSettings(seed, fetcher)
+  const { seed, confirm } = legacySettings(stored)
+  if (seed) {
+    try {
+      await putServerSettings(seed, fetcher)
+    }
+    catch {
+      return null
+    }
   }
-  catch {
-    return
-  }
-  try {
-    if (stored.server)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ server: stored.server }))
-    else
-      localStorage.removeItem(STORAGE_KEY)
-  }
-  catch {}
+  // The server already has a window from another device: this one's old choice is moot
+  const pending = current.retention ? null : confirm
+  keepLocal(stored.server, pending)
+  return pending
+}
+
+/** The confirm for a legacy retention was answered: it never asks again */
+export function forgetLegacyRetention() {
+  keepLocal(readStored().server, null)
 }
 
 /** Changes a server-side setting; throws Error with the message to show */

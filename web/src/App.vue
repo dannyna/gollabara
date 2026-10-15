@@ -22,7 +22,7 @@ import { activePin } from './components/stream/follow'
 import { usePin } from './pin'
 import { usePush } from './push'
 import { deleteSessionData, inScope, toSessionRows, useMutedSessions } from './sessions'
-import { migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
+import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
@@ -73,9 +73,14 @@ async function commitSettings(next: Settings) {
   shortening.value = null
   saveServer(next.server)
   const prev = settings.value
+  // Only what changed, so this device's copy never overwrites another device's newer choice
+  const patch = {
+    ...(next.phone !== prev.phone ? { phone: next.phone } : {}),
+    ...(next.retention !== prev.retention ? { retention: next.retention } : {}),
+  }
   try {
-    if (next.phone !== prev.phone || next.retention !== prev.retention)
-      serverSettings.value = await putServerSettings({ phone: next.phone, retention: next.retention })
+    if (Object.keys(patch).length)
+      serverSettings.value = await putServerSettings(patch)
     settingsOpen.value = false
     toast('설정을 저장했어요')
   }
@@ -86,7 +91,7 @@ async function commitSettings(next: Settings) {
 async function setEngine(engine: TriageEngine) {
   try {
     // The server broadcasts the change too, so every open view follows
-    serverSettings.value = await putServerSettings({ ...serverSettings.value, triage: engine })
+    serverSettings.value = await putServerSettings({ triage: engine })
     toast(engine === 'off' ? '대화 정리를 껐어요' : '대화 정리를 켰어요. 새 메시지부터 적용돼요')
   }
   catch (error) {
@@ -114,8 +119,27 @@ async function setPush(on: boolean) {
 // First-connection guide once the server's hello says there is nothing yet
 const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
-// Settings this browser kept from before the server stored them seed it once, after the first hello
-watch(ready, () => migrateLocalSettings().catch(() => {}), { once: true })
+// Settings this browser kept from before the server stored them seed it once, after the first hello.
+// A kept window that deletes (7 or 30 days) asks first, like any shorter window.
+const legacyRetention = ref<'7' | '30' | null>(null)
+watch(ready, async () => {
+  legacyRetention.value = await migrateLocalSettings(serverSettings.value).catch(() => null)
+}, { once: true })
+async function seedRetention(ok: boolean) {
+  const retention = legacyRetention.value
+  legacyRetention.value = null
+  if (ok && retention) {
+    try {
+      serverSettings.value = await putServerSettings({ retention, seed: true })
+    }
+    catch (error) {
+      // Kept locally, so it asks again on the next load
+      toast((error as Error).message)
+      return
+    }
+  }
+  forgetLegacyRetention()
+}
 const showEmpty = computed(() => !messages.value.length && ready.value)
 // No hello yet and the server does not answer (the installed app opened offline): the shell
 // says so instead of a blank stream
@@ -198,7 +222,8 @@ watch([messages, sessions], ([list, known]) => {
     selected.value = null
   if (target.value && !list.some(m => m.images?.some(i => i.url === target.value!.imageUrl)))
     clearTarget()
-  if (scope.value && !known.some(s => s.id === scope.value) && !list.some(m => m.sessionId === scope.value))
+  const exists = (id: string) => known.some(s => s.id === id) || list.some(m => m.sessionId === id)
+  if (scope.value && !exists(scope.value))
     scope.value = null
 })
 
@@ -252,6 +277,12 @@ function onThumb(key: string) {
       @cancel="shortening = null" @confirm="commitSettings(shortening)"
     >
       <b>{{ RETENTION_LABEL[shortening.retention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
+    </ConfirmDialog>
+    <ConfirmDialog
+      v-else-if="legacyRetention" :title="`보관 기간을 ${RETENTION_LABEL[legacyRetention]}로 줄일까요?`" confirm-label="줄이고 지우기"
+      @cancel="seedRetention(false)" @confirm="seedRetention(true)"
+    >
+      이 브라우저에 저장해 둔 보관 기간이에요. 이제 서버가 정말 지워요. <b>{{ RETENTION_LABEL[legacyRetention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요. 취소하면 계속 보관해요.
     </ConfirmDialog>
     <ConfirmDialog
       v-if="deleting" :title="`${deletingName} 세션의 데이터를 지울까요?`" confirm-label="지우기"

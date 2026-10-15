@@ -37,9 +37,10 @@ describe('server settings', () => {
     expect(shortensRetention('30', '30')).toBe(false)
   })
 
-  it('seeds the server with what this browser kept, and nothing once it is gone', () => {
-    expect(legacySettings({ server: 'http://a', phone: 'https://mac.ts.net', retention: '7' })).toEqual({ phone: 'https://mac.ts.net', retention: '7', seed: true })
-    expect(legacySettings({ server: 'http://a' })).toBeNull()
+  it('seeds the server with what this browser kept; a window that deletes waits for a confirm', () => {
+    expect(legacySettings({ server: 'http://a', phone: 'https://mac.ts.net', retention: '7' })).toEqual({ seed: { phone: 'https://mac.ts.net', seed: true }, confirm: '7' })
+    expect(legacySettings({ retention: 'forever' })).toEqual({ seed: { retention: 'forever', seed: true }, confirm: null })
+    expect(legacySettings({ server: 'http://a' })).toEqual({ seed: null, confirm: null })
   })
 })
 
