@@ -25,7 +25,7 @@ verdict:
 Judge the new line itself; earlier lines are context only. Between signal and progress, prefer signal.
 Never call a failure, an error, a blocker or a question noise.
 
-advice: only for signal lines and questions, one short Korean sentence (at most 80 characters) telling the developer how to respond. Leave it "" when there is nothing for the developer to do, and otherwise for progress and noise.
+advice: only for signal lines and questions, exactly one short Korean sentence (at most 60 characters) with the action the developer should take. Do not restate the line. Bad: "결제 e2e 2건 실패입니다. 원인을 확인하세요." Good: "확인 버튼 활성 조건부터 보게 하세요." Leave it "" when there is nothing for the developer to do (a plain success), and for progress and noise.
 draft: only for signal lines and questions, and only when a reply would help: a short Korean message the developer could send to the session, in the developer's own voice, as an instruction, answer or request (for example "실패한 2건 로그부터 보여 주고 원인을 고쳐 줘"). Never write it in the session's voice. Otherwise "".
 Answer with the JSON object only.`
 
