@@ -15,6 +15,7 @@ import type { Artifact } from '../../artifacts'
 import { computed, ref, watch } from 'vue'
 import { middleTruncate } from '../../../../src/shared/stacks'
 import { artifactCaption, clock, day, sourceName, versionsHint } from '../../artifacts'
+import SessionName from '../chat/SessionName.vue'
 import FloatingActions from '../overlay/FloatingActions.vue'
 
 const props = defineProps<{
@@ -45,6 +46,8 @@ const fileParts = computed(() => {
   return dot > 0 ? { stem: short.slice(0, dot), ext: short.slice(dot) } : { stem: short, ext: '' }
 })
 const name = computed(() => `${a.value.session} ${clock(a.value.at)} ${file.value ?? caption.value}`)
+// Rejoined so the cell shares the chat's rule: the dir stays whole, only the branch gives way
+const sessionName = computed(() => a.value.branch ? `${a.value.session} · ${a.value.branch}` : a.value.session)
 
 // The size is stored with the image, so the cell holds its place before the pixels
 // arrive and the rail never shifts when they do
@@ -60,14 +63,14 @@ const state = computed(() => props.face ?? loaded.value)
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
-      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }">{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
+      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" /></strong>
       <p class="meta-line mono">
         <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
         <!-- Narrow cells shorten the stem and keep the extension, so the cut lands mid-name -->
         <span v-if="fileParts" class="file" :title="a.source">
           <span class="stem">{{ fileParts.stem }}</span><span>{{ fileParts.ext }}</span>
         </span>
-        <span>{{ sizeLabel ?? `${a.width} × ${a.height}` }}</span>
+        <span class="size">{{ sizeLabel ?? `${a.width} × ${a.height}` }}</span>
       </p>
     </div>
     <button v-if="reference" class="hit" type="button" :aria-label="`참고 이미지 ${name} 크게 보기`" @click="emit('open')">
@@ -165,7 +168,7 @@ const state = computed(() => props.face ?? loaded.value)
   font-size: 10px;
   color: var(--muted);
 }
-/* time · file · size; only the file's stem gives way in a narrow cell */
+/* time · file · size; the file's stem gives way in a narrow cell, then the size */
 .meta-line {
   display: flex;
   min-width: 0;
@@ -181,10 +184,19 @@ const state = computed(() => props.face ?? loaded.value)
 .meta-line time {
   font-size: inherit;
 }
+/* Floor: the separator, the stem's 1.5em and a short extension; past that the size gives
+   way. Clipped, so a longer extension never paints over the size. */
 .meta-line .file {
   flex: 0 1 auto;
   display: flex;
+  min-width: calc(2.5em + 5ch);
+  overflow: hidden;
+}
+.meta-line .size {
+  flex: 0 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .file .stem {
   min-width: 1.5em;
