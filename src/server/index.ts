@@ -3,12 +3,13 @@
 import type { Server, ServerWebSocket } from 'bun'
 import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, IncomingEvent, ServerFrame, ServerSettings, Session, TriageEngine } from '../shared/types'
 import { existsSync } from 'node:fs'
-import { networkInterfaces } from 'node:os'
+import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
+import { allowedHosts, refuseRequest } from './origin'
 import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
@@ -24,6 +25,7 @@ export function startServer() {
   const channels = new ChannelLiveness()
   const withChannel = (session: Session): Session => channels.isLive(session.id) ? { ...session, channel: true } : session
   const listen = listenHosts(process.env.GOLLABARA_HOST, networkInterfaces())
+  const hosts = allowedHosts(listen.hosts, networkInterfaces(), hostname(), process.env.GOLLABARA_ALLOWED_HOSTS)
   // One listener per address; every frame goes out on each of them, so all views get it
   const servers: Server<undefined>[] = []
   const publish = (frame: ServerFrame) => {
@@ -41,6 +43,10 @@ export function startServer() {
       if (!allowRequest(srv.requestIP(req)?.address, listen.explicit))
         return new Response('forbidden', { status: 403 })
       const url = new URL(req.url)
+      // Loopback is not enough: a page in this machine's browser comes from loopback too (rebinding, cross-site POSTs)
+      const refused = refuseRequest({ method: req.method, pathname: url.pathname, headers: req.headers }, hosts)
+      if (refused)
+        return new Response(refused === 415 ? 'content-type must be application/json' : 'forbidden', { status: refused })
 
       if (url.pathname === '/ws') {
         return srv.upgrade(req) ? undefined : new Response('upgrade failed', { status: 400 })
