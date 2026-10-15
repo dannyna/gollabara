@@ -1,7 +1,8 @@
-import type { Feedback, Session } from '../../src/shared/types'
+import type { Feedback, Harness, Session } from '../../src/shared/types'
 import type { PendingSend } from './feedback'
 import { describe, expect, it } from 'bun:test'
-import { failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, toMyEntries } from './feedback'
+import { routesFor } from '../../src/shared/routes'
+import { failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, routeNote, sessionRouteNote, toMyEntries } from './feedback'
 
 function fb(id: number, sessionId: string, createdAt: number, deliveredAt?: number): Feedback {
   return {
@@ -98,12 +99,41 @@ describe('postFeedback', () => {
 })
 
 describe('queueNote', () => {
-  const s = (id: string, channel?: boolean): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt: 0, ...(channel ? { channel } : {}) })
+  const s = (id: string, harness: Harness, live = false): Session =>
+    ({ id, name: id, harness, cwd: '/', startedAt: 0, lastSeenAt: 0, routes: routesFor(harness, live) })
 
   it('says 「바로」 only when every waiting session has a live wake-up hook', () => {
-    const sessions = [s('a', true), s('b')]
-    expect(queueNote(['a'], sessions)).toBe('바로 전달돼요')
-    expect(queueNote(['a', 'b'], sessions)).toBe('세션이 다음 작업을 할 때 전달돼요')
-    expect(queueNote(['gone'], sessions)).toBe('세션이 다음 작업을 할 때 전달돼요')
+    const sessions = [s('a', 'claude-code', true), s('b', 'claude-code', true)]
+    expect(queueNote(['a'], sessions)).toEqual({ note: '바로 전달돼요', mixed: false })
+    expect(queueNote(['a', 'b'], sessions)).toEqual({ note: '바로 전달돼요', mixed: false })
+  })
+
+  it('states a Codex session\'s real route, the same as Claude Code without a waiter', () => {
+    const sessions = [s('cx', 'codex'), s('cc', 'claude-code')]
+    expect(queueNote(['cx'], sessions)).toEqual({ note: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요', mixed: false })
+    expect(queueNote(['cx', 'cc'], sessions)).toEqual({ note: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요', mixed: false })
+  })
+
+  it('says the sessions differ when they do, and each keeps its own note', () => {
+    const sessions = [s('a', 'claude-code', true), s('cx', 'codex')]
+    expect(queueNote(['a', 'cx'], sessions)).toEqual({ note: '세션마다 전달 시점이 달라요', mixed: true })
+    expect(sessionRouteNote('a', sessions)).toBe('바로 전달돼요')
+    expect(sessionRouteNote('cx', sessions)).toBe('세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요')
+  })
+
+  it('falls back for unknown sessions and servers from before routes', () => {
+    const legacy: Session = { id: 'old', name: 'old', harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt: 0, channel: true }
+    expect(queueNote(['gone'], [])).toEqual({ note: '세션이 다음 작업을 할 때 전달돼요', mixed: false })
+    expect(sessionRouteNote('old', [legacy])).toBe('바로 전달돼요')
+    expect(routeNote([])).toBe('세션이 다음 작업을 할 때 전달돼요')
+  })
+})
+
+describe('routesFor', () => {
+  it('gives idle wake only to Claude Code sessions with a live waiter', () => {
+    expect(routesFor('claude-code', true)).toEqual(['next-tool', 'next-prompt', 'turn-end', 'idle-wake'])
+    expect(routesFor('open-design', true)).toContain('idle-wake')
+    expect(routesFor('claude-code', false)).toEqual(['next-tool', 'next-prompt', 'turn-end'])
+    expect(routesFor('codex', true)).toEqual(['next-tool', 'next-prompt', 'turn-end'])
   })
 })

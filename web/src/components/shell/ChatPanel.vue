@@ -8,7 +8,7 @@ import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { clock, splitSessionName } from '../../artifacts'
-import { failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
+import { failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, VIA_LABEL } from '../../feedback'
 import { toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
@@ -154,6 +154,12 @@ const timeline = computed(() => toFeed(
 ))
 const refTimes = (thumbs: Thumb[]) => thumbs.map(t => t.at ?? 0)
 
+// How queued feedback will reach the waiting sessions: one note when they share their routes
+// (「바로 전달돼요」 only when every one has a live wake-up hook), else one per group
+const queueTrayNote = computed(() => queueNote(
+  [...new Set(feedback.value.filter(f => f.deliveredAt == null).map(f => f.sessionId))],
+  props.sessions ?? [],
+))
 // Queued on the server, not yet picked up: the tray, one group per session
 const queue = computed<QueueGroup[]>(() => {
   const groups = new Map<string, QueueGroup>()
@@ -161,17 +167,14 @@ const queue = computed<QueueGroup[]>(() => {
     if (f.deliveredAt != null)
       continue
     let group = groups.get(f.sessionId)
-    if (!group)
-      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [] })
+    if (!group) {
+      const route = queueTrayNote.value.mixed ? sessionRouteNote(f.sessionId, props.sessions ?? []) : undefined
+      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [], ...(route ? { route } : {}) })
+    }
     group.items.push(f.image ? `↪ 이미지 · ${f.text}` : f.text)
   }
   return [...groups.values()]
 })
-// 「바로 전달돼요」 only when every waiting session has a live wake-up hook
-const queueTrayNote = computed(() => queueNote(
-  [...new Set(feedback.value.filter(f => f.deliveredAt == null).map(f => f.sessionId))],
-  props.sessions ?? [],
-))
 
 // Chat thumbnails open the one app viewer at every width
 const { open } = useImageViewer()
@@ -223,6 +226,8 @@ function pickMention(id: string) {
 }
 
 const receiver = computed(() => resolveTarget({ attachment: target.value?.sessionId, scope: props.scope, mention: mentioned.value, muted: muted.value }))
+// The composer says how a message to the chosen session will reach it
+const receiverRoute = computed(() => receiver.value == null ? undefined : sessionRouteNote(receiver.value, props.sessions ?? []))
 const blocked = computed(() => props.offline
   ? { icon: 'plug' as const, text: '다시 연결되면 보낼 수 있어요' }
   : receiver.value == null ? { icon: 'alert' as const, text: '@로 보낼 세션을 골라 주세요' } : undefined)
@@ -393,14 +398,14 @@ defineExpose({ reveal })
       <NewPill v-if="unseen && !offline" kind="message" :count="unseen" @click="jumpToLatest" />
     </div>
     <ChatComposer
-      ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :blocked="blocked"
+      ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :route="receiverRoute" :blocked="blocked"
       :target="receiver && shortName(receiver)" :attachment="attachment" :mention-open="mentionOpen"
       @update:attachment="onAttachment" @send="send"
       @mention="mentionButton = !mentionButton" @mention-query="mentionQuery = $event"
       @mention-focus="mentionList?.focusFirst()" @mention-close="closeMention"
     >
       <template v-if="queue.length" #tray>
-        <QueueTray :groups="queue" :note="queueTrayNote" :actions="false" />
+        <QueueTray :groups="queue" :note="queueTrayNote.note" :actions="false" />
       </template>
       <template v-if="mentionOpen" #popover>
         <MentionList ref="mentionList" :options="mentionOptions" @pick="pickMention" @close="closeMention(); composer?.focus()" />

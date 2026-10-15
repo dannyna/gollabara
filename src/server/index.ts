@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
 import { packageRoot } from '../shared/package-root'
+import { routesFor } from '../shared/routes'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
@@ -29,7 +30,11 @@ const HARNESSES: Harness[] = ['claude-code', 'open-design', 'codex', 'claude-des
 export function startServer() {
   const store = new Store(dataDir())
   const channels = new ChannelLiveness()
-  const withChannel = (session: Session): Session => channels.isLive(session.id) ? { ...session, channel: true } : session
+  // Each session carries its delivery routes; `channel` stays for views from before routes
+  const withChannel = (session: Session): Session => {
+    const live = channels.isLive(session.id)
+    return { ...session, ...(live ? { channel: true } : {}), routes: routesFor(session.harness, live) }
+  }
   const listen = listenHosts(process.env.GOLLABARA_HOST, networkInterfaces())
   const hosts = allowedHosts(listen.hosts, networkInterfaces(), hostname(), process.env.GOLLABARA_ALLOWED_HOSTS)
   // One listener per address; every frame goes out on each of them, so all views get it

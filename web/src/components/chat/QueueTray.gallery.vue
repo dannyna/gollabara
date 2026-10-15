@@ -43,6 +43,22 @@ import SystemLine from './SystemLine.vue'
       </template>
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="02b · 전달 경로가 다른 세션">
+    <ChatFrame note="깨우기 hook이 살아 있는 Claude Code 세션과 Codex 세션. 헤더는 다르다고만 말하고, 묶음마다 자기 경로를.">
+      <template #footer>
+        <ChatComposer can-send target="od" route="바로 전달돼요">
+          <template #tray>
+            <QueueTray
+              note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
+                { session: 'od', items: ['모바일 360px도 한 장 찍어 줘'], route: '바로 전달돼요' },
+                { session: 'api', items: ['테스트 실패만 정리해 줘'], route: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요' },
+              ]"
+            />
+          </template>
+        </ChatComposer>
+      </template>
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="03 · 가득 참 · 세션당 3건">
     <ChatFrame note="od로의 전송만 꺼진다. 대상을 다른 세션으로 바꾸면 다시 켜진다.">
       <SessionMessage :name="S.od" :at="time(14, 38)">
