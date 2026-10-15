@@ -157,10 +157,23 @@ export interface Feedback {
 /** CLI the server runs to triage chat text. Off unless the user opts in. */
 export type TriageEngine = 'off' | 'claude' | 'codex'
 
-/** Server-side settings (GET/PUT /api/settings): the server, not the browser, runs what they control */
+/** How long the server keeps messages, feedback and images: days, or `forever` */
+export type Retention = '7' | '30' | 'forever'
+
+/**
+ * Settings stored on the server (GET/PUT /api/settings), so every device agrees. Only theme and the
+ * server address stay in each browser. A key never saved is absent, so the first client can seed it.
+ */
 export interface ServerSettings {
   triage: TriageEngine
+  /** Absent until chosen; nothing is pruned until then */
+  retention?: Retention
+  /** Address to open on a phone; https only, empty when unset */
+  phone?: string
 }
+
+/** PUT /api/settings: any subset of the settings. `seed` writes only keys the server has no value for. */
+export type SettingsPatch = Partial<ServerSettings> & { seed?: boolean }
 
 /** Whether a recap line is shown in the chat; hidden lines fold into 「숨긴 메시지 n」 rows */
 export type Verdict = 'show' | 'hide'
@@ -208,6 +221,8 @@ export type ServerFrame
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
     | { type: 'triage', triage: Triage }
     | { type: 'settings', settings: ServerSettings }
+    // Rows retention or 「이 세션 데이터 삭제」 removed; views drop them
+    | { type: 'deleted', messageIds: number[], feedbackIds: number[], sessionIds: string[] }
 
 /** The latest hook seen from one harness; `version` is null for a hook from before the version handshake */
 export interface HookSeen {

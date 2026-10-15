@@ -1,7 +1,8 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, IncomingEvent, ServerFrame, ServerSettings, Session, TriageEngine } from '../shared/types'
+import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, IncomingEvent, Retention, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
+import type { Purged } from './store'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -15,7 +16,8 @@ import { allowRequest, listenHosts } from './listen'
 import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
 import { loadVapidKeys, Pusher, sendPush, toSubscription } from './push'
-import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
+import { PRUNE_EVERY_MS, pruneBefore } from './retention'
+import { FeedbackError, RETENTIONS, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
 
@@ -26,6 +28,7 @@ const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 /** How long a wake-up poll waits for feedback before it returns empty and the waiting hook asks again */
 const CHANNEL_WAIT_MS = 25_000
 const HARNESSES: Harness[] = ['claude-code', 'open-design', 'codex', 'claude-design']
+const PHONE_MAX = 2048
 
 export function startServer() {
   const store = new Store(dataDir())
@@ -101,20 +104,38 @@ export function startServer() {
         if (req.method === 'GET')
           return Response.json(store.settings())
         if (req.method === 'PUT') {
-          // Turning triage on makes this machine run a CLI: loopback and tailnet only, like feedback
+          // Turning triage on makes this machine run a CLI, and retention deletes: loopback and tailnet only, like feedback
           if (!isTrustedSource(srv.requestIP(req)?.address))
             return new Response('forbidden', { status: 403 })
-          const body = await req.json().catch(() => null) as Partial<ServerSettings> | null
-          if (!TRIAGE_ENGINES.includes(body?.triage as TriageEngine))
-            return new Response('triage must be off, claude or codex', { status: 400 })
-          const engine = body!.triage!
-          if (engine !== 'off' && !Bun.which(engine))
+          const body = await req.json().catch(() => null) as SettingsPatch | null
+          const invalid = settingsError(body)
+          if (invalid)
+            return new Response(invalid, { status: 400 })
+          const { triage: engine, retention, phone, seed } = body!
+          const previous = store.settings().triage
+          if (engine && engine !== 'off' && engine !== previous && !Bun.which(engine))
             return new Response(`${engine} is not installed`, { status: 409 })
-          const settings = store.saveSettings({ triage: engine })
-          triager.onSettings(engine)
+          const settings = store.saveSettings({ triage: engine, retention, phone: phone?.trim() }, seed === true)
+          if (settings.triage !== previous)
+            triager.onSettings(settings.triage)
           publish({ type: 'settings', settings })
+          // A shorter window deletes now, not at the next hourly pass
+          if (retention)
+            prune()
           return Response.json(settings)
         }
+      }
+
+      // 「이 세션 데이터 삭제」: removes rows and files, so only this machine and the tailnet, like settings
+      if (url.pathname.startsWith('/api/sessions/') && req.method === 'DELETE') {
+        if (!isTrustedSource(srv.requestIP(req)?.address))
+          return new Response('forbidden', { status: 403 })
+        const id = decodeURIComponent(url.pathname.slice('/api/sessions/'.length))
+        if (!id)
+          return new Response('session id is required', { status: 400 })
+        const purged = store.deleteSession(id)
+        publishPurged(purged)
+        return Response.json({ ok: true, messages: purged.messageIds.length, files: purged.files.length })
       }
 
       // Web Push: the device asks for the key it subscribes with, then hands its subscription over
@@ -284,6 +305,24 @@ export function startServer() {
     if (status === 'delivered')
       pusher.onDelivered(feedback.sessionId, feedback.deliveredVia!)
   }
+  function publishPurged({ messageIds, feedbackIds, sessionIds }: Purged) {
+    if (messageIds.length || feedbackIds.length || sessionIds.length)
+      publish({ type: 'deleted', messageIds, feedbackIds, sessionIds })
+  }
+  function prune() {
+    const before = pruneBefore(store.settings().retention, Date.now())
+    if (before === null)
+      return
+    try {
+      publishPurged(store.prune(before))
+    }
+    catch (error) {
+      console.warn(`gollabara could not prune: ${error instanceof Error ? error.message : error}`)
+    }
+  }
+  prune()
+  // unref: the timer alone never keeps the process (or a test run) alive
+  setInterval(prune, PRUNE_EVERY_MS).unref()
   function publishSession(id: string) {
     const session = store.session(id)
     if (session)
@@ -292,6 +331,26 @@ export function startServer() {
   for (const server of servers)
     console.log(`gollabara is watching at ${server.url.href.replace(/\/$/, '')}`)
   return servers
+}
+
+/** Why a settings patch is invalid, or null. Every key is optional; those present must be valid. */
+function settingsError(body: SettingsPatch | null): string | null {
+  if (!body || typeof body !== 'object')
+    return 'a settings object is required'
+  if (body.triage !== undefined && !TRIAGE_ENGINES.includes(body.triage as TriageEngine))
+    return 'triage must be off, claude or codex'
+  if (body.retention !== undefined && !RETENTIONS.includes(body.retention as Retention))
+    return 'retention must be 7, 30 or forever'
+  if (body.phone !== undefined) {
+    if (typeof body.phone !== 'string' || body.phone.length > PHONE_MAX)
+      return 'phone must be a string'
+    const phone = body.phone.trim()
+    if (phone && !URL.canParse(phone))
+      return 'phone must be an https address'
+    if (phone && new URL(phone).protocol !== 'https:')
+      return 'phone must be an https address'
+  }
+  return null
 }
 
 function serveWeb(pathname: string): Response {

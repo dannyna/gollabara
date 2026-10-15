@@ -5,7 +5,7 @@ import AppToast from './AppToast.vue'
 import { useToast } from './useToast'
 
 const { toast } = useToast()
-const MESSAGES = ['이 브라우저에 설정을 저장했어요', '설치 명령을 복사했어요']
+const MESSAGES = ['설정을 저장했어요', '설치 명령을 복사했어요']
 let n = 0
 const next = () => toast(MESSAGES[n++ % 2]!)
 </script>
@@ -13,7 +13,7 @@ const next = () => toast(MESSAGES[n++ % 2]!)
 <template>
   <GalleryCase title="결과 알림 · fg 면 · 3초 뒤 닫힘">
     <GalleryStage :height="200">
-      <AppToast text="이 브라우저에 설정을 저장했어요" />
+      <AppToast text="설정을 저장했어요" />
     </GalleryStage>
   </GalleryCase>
   <GalleryCase title="다음 할 일 하나 · 클립보드에 쓸 수 없을 때">

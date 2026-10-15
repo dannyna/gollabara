@@ -139,15 +139,17 @@ describe('turnThumbs', () => {
 describe('sessionMenuItems', () => {
   const labels = (scoped: boolean, muted: boolean) => sessionMenuItems(scoped, muted).map(i => [i.label, i.why ?? null])
 
-  it('offers scoping and muting a session in 「전체 세션」', () => {
-    expect(labels(false, false)).toEqual([['이 세션만 보기', null], ['음소거', null]])
+  const remove = ['이 세션 데이터 삭제', null]
+
+  it('offers scoping, muting and deleting a session in 「전체 세션」', () => {
+    expect(labels(false, false)).toEqual([['이 세션만 보기', null], ['음소거', null], remove])
   })
 
   it('flips the scope row to 「전체 세션 보기」 while scoped to that session', () => {
-    expect(labels(true, false)).toEqual([['전체 세션 보기', null], ['음소거', null]])
+    expect(labels(true, false)).toEqual([['전체 세션 보기', null], ['음소거', null], remove])
   })
 
-  it('a muted session offers unmuting, and cannot become the scope', () => {
-    expect(labels(false, true)).toEqual([['이 세션만 보기', '음소거 중'], ['음소거 해제', null]])
+  it('a muted session offers unmuting and deleting, and cannot become the scope', () => {
+    expect(labels(false, true)).toEqual([['이 세션만 보기', '음소거 중'], ['음소거 해제', null], remove])
   })
 })

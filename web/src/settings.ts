@@ -1,12 +1,13 @@
-// Settings from the settings sheet. Most live in this browser only: saving
-// connects to nothing and deletes no files (DESIGN.md Settings sheet). The triage
-// engine is the exception: the server runs it, so it is stored there.
+// Settings from the settings sheet. The server stores all of them (#79), so the phone and the desktop
+// agree; only the server address (and the theme, theme.ts) stays in this browser. Values from before
+// that move up once: the first device to connect seeds the server, and its local copy is dropped.
 
-import type { ServerSettings, TriageEngine } from '../../src/shared/types'
+import type { Retention, ServerSettings, SettingsPatch, TriageEngine } from '../../src/shared/types'
 import { ref } from 'vue'
 
-export type Retention = '7' | '30' | 'forever'
+export type { Retention }
 
+/** The sheet's form: the server address from this browser, the rest from the server */
 export interface Settings {
   server: string
   /** Address to open on a phone; https only */
@@ -19,7 +20,19 @@ export type SettingsErrors = Partial<Record<'server' | 'phone', string>>
 const STORAGE_KEY = 'gollabara-settings'
 
 export function defaultSettings(): Settings {
-  return { server: typeof location === 'undefined' ? '' : location.origin, phone: '', retention: '30' }
+  return { server: typeof location === 'undefined' ? '' : location.origin, phone: '', retention: 'forever' }
+}
+
+/** The sheet's values: an unset retention reads as 「계속 보관」, which is what the server does with it */
+export function sheetSettings(server: string, stored: ServerSettings): Settings {
+  return { server, phone: stored.phone ?? '', retention: stored.retention ?? 'forever' }
+}
+
+const DAYS: Record<Retention, number> = { 7: 7, 30: 30, forever: Infinity }
+
+/** A shorter window deletes on save, so the sheet asks first */
+export function shortensRetention(from: Retention, to: Retention): boolean {
+  return DAYS[to] < DAYS[from]
 }
 
 function isUrl(value: string, protocols: string[]) {
@@ -41,32 +54,65 @@ export function validateSettings(s: Settings): SettingsErrors {
   return errors
 }
 
-function readStored(): Settings {
-  const base = defaultSettings()
+function readStored(): Partial<Settings> {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<Settings> | null
-    return saved ? { ...base, ...saved } : base
+    return saved && typeof saved === 'object' ? saved : {}
   }
   catch {
-    return base
+    return {}
   }
 }
 
-const settings = ref<Settings>(readStored())
+const server = ref<string>(readStored().server || defaultSettings().server)
 
 export function useSettings() {
-  function save(next: Settings) {
-    settings.value = next
+  function saveServer(next: string) {
+    server.value = next
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ server: next }))
     }
     catch {}
   }
-  return { settings, save }
+  return { server, saveServer }
+}
+
+/** What this browser kept from before the server stored settings, as a seed; null when nothing is left */
+export function legacySettings(stored: Partial<Settings>): SettingsPatch | null {
+  const patch: SettingsPatch = {}
+  if (stored.retention === '7' || stored.retention === '30' || stored.retention === 'forever')
+    patch.retention = stored.retention
+  if (typeof stored.phone === 'string')
+    patch.phone = stored.phone
+  return Object.keys(patch).length ? { ...patch, seed: true } : null
+}
+
+/**
+ * Moves this browser's phone address and retention to the server, once. The server writes only keys it
+ * has no value for, so a stale device never overwrites another's choice. Kept locally if the server refuses.
+ */
+export async function migrateLocalSettings(fetcher: typeof fetch = fetch): Promise<void> {
+  const stored = readStored()
+  const seed = legacySettings(stored)
+  if (!seed)
+    return
+  try {
+    await putServerSettings(seed, fetcher)
+  }
+  catch {
+    return
+  }
+  try {
+    if (stored.server)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ server: stored.server }))
+    else
+      localStorage.removeItem(STORAGE_KEY)
+  }
+  catch {}
 }
 
 /** Changes a server-side setting; throws Error with the message to show */
-export async function putServerSettings(next: ServerSettings, fetcher: typeof fetch = fetch): Promise<ServerSettings> {
+export async function putServerSettings(next: SettingsPatch, fetcher: typeof fetch = fetch): Promise<ServerSettings> {
   let res: Response
   try {
     res = await fetcher('/api/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(next) })

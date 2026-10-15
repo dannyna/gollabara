@@ -16,7 +16,7 @@ defineProps<{
   scoped?: boolean
 }>()
 
-defineEmits<{ scope: [], mute: [] }>()
+defineEmits<{ scope: [], mute: [], delete: [] }>()
 </script>
 
 <template>
@@ -24,7 +24,7 @@ defineEmits<{ scope: [], mute: [] }>()
     <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
     <FloatingActions variant="message" />
     <div class="message-head">
-      <SessionMenuButton :name="name" :scoped="scoped" @scope="$emit('scope')" @mute="$emit('mute')" />
+      <SessionMenuButton :name="name" :scoped="scoped" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
       <time>{{ clock(at) }}</time>
     </div>
     <div class="message-body">

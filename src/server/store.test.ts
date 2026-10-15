@@ -1,5 +1,5 @@
 import type { IncomingEvent, SessionInfo } from '../shared/types'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
@@ -202,5 +202,70 @@ describe('image source', () => {
     expect(reference).toMatchObject({ source: '/tmp/mock.png', role: 'reference' })
     expect(artifact).toMatchObject({ role: 'artifact' })
     expect(legacy).not.toHaveProperty('role')
+  })
+})
+
+describe('deleting', () => {
+  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
+  const shot = (session: SessionInfo, data: string): IncomingEvent => ({ kind: 'image', session, toolName: 'Read', images: [{ data, mime: 'image/png', width: 1, height: 1 }] })
+  const file = (url: string) => join(dir, 'images', url.slice('/img/'.length))
+  // Stop closes the turn, so each capture below is its own message
+  const capture = (session: SessionInfo, data: string, at: number) => {
+    const { message } = store.ingest(shot(session, data), at)
+    store.ingest({ kind: 'recap', session, text: 'done' }, at)
+    return message!
+  }
+
+  test('a prune removes old messages, feedback and triage, and only the files nothing newer uses', () => {
+    const lone = capture(od, PNG, 1000)
+    const shared = capture(od, FULL_PNG, 1000)
+    store.saveTriage({ messageId: lone.id, index: 0, verdict: 'hide' })
+    const oldFeedback = store.queueFeedback('od-1', 'old', undefined, 1000)
+    const newer = capture(cc, FULL_PNG, 5000)
+    const newFeedback = store.queueFeedback('cc-1', 'new', undefined, 5000)
+
+    const purged = store.prune(3000)
+    expect(purged).toEqual({ messageIds: [lone.id, shared.id], feedbackIds: [oldFeedback.id], sessionIds: ['od-1'], files: [lone.images![0]!.url.slice('/img/'.length)] })
+    expect(existsSync(file(lone.images![0]!.url))).toBe(false)
+    expect(existsSync(file(newer.images![0]!.url))).toBe(true)
+    expect(store.recent().map(m => m.id)).toEqual([newer.id])
+    expect(store.recentFeedback().map(f => f.id)).toEqual([newFeedback.id])
+    expect(store.triageFor([lone.id])).toEqual([])
+    expect(store.sessions().map(s => s.id)).toEqual(['cc-1'])
+  })
+
+  test('a file that remaining feedback quotes stays', () => {
+    const old = capture(od, PNG, 1000)
+    store.ingest({ kind: 'session', session: cc }, 5000)
+    store.queueFeedback('cc-1', 'look at this', old.images![0]!.url, 5000)
+    expect(store.prune(3000).files).toEqual([])
+    expect(existsSync(file(old.images![0]!.url))).toBe(true)
+  })
+
+  test('deleting a session removes its messages, feedback, triage and unshared images', () => {
+    const own = capture(od, PNG, 1000)
+    const shared = capture(od, FULL_PNG, 1100)
+    store.saveTriage({ messageId: own.id, index: 0, verdict: 'show' })
+    const feedback = store.queueFeedback('od-1', 'bigger', own.images![0]!.url, 1200)
+    const other = capture(cc, FULL_PNG, 1300)
+    const kept = store.queueFeedback('cc-1', 'kept', undefined, 1400)
+
+    const purged = store.deleteSession('od-1')
+    expect(purged).toEqual({ messageIds: [own.id, shared.id], feedbackIds: [feedback.id], sessionIds: ['od-1'], files: [own.images![0]!.url.slice('/img/'.length)] })
+    expect(existsSync(file(own.images![0]!.url))).toBe(false)
+    expect(existsSync(file(other.images![0]!.url))).toBe(true)
+    expect(store.recent().map(m => m.id)).toEqual([other.id])
+    expect(store.recentFeedback().map(f => f.id)).toEqual([kept.id])
+    expect(store.triageFor([own.id])).toEqual([])
+    expect(store.session('od-1')).toBeNull()
+  })
+})
+
+describe('settings', () => {
+  test('a patch changes only its keys; a seed writes only keys never saved', () => {
+    expect(store.settings()).toEqual({ triage: 'off' })
+    expect(store.saveSettings({ retention: '7' })).toEqual({ triage: 'off', retention: '7' })
+    expect(store.saveSettings({ retention: '30', phone: 'https://mac.ts.net' }, true)).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
+    expect(store.saveSettings({ phone: '' })).toEqual({ triage: 'off', retention: '7', phone: '' })
   })
 })
