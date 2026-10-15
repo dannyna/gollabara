@@ -1,11 +1,14 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
-import type { Server } from 'bun'
+import type { Server, ServerWebSocket } from 'bun'
 import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, IncomingEvent, ServerFrame, ServerSettings, Session, TriageEngine } from '../shared/types'
 import { existsSync } from 'node:fs'
+import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
+import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
+import { allowRequest, listenHosts } from './listen'
 import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
@@ -20,18 +23,23 @@ export function startServer() {
   const store = new Store(dataDir())
   const channels = new ChannelLiveness()
   const withChannel = (session: Session): Session => channels.isLive(session.id) ? { ...session, channel: true } : session
-  // Set once the server is up; verdicts go out on the same topic as messages
-  let publish: (frame: ServerFrame) => void = () => {}
+  const listen = listenHosts(process.env.GOLLABARA_HOST, networkInterfaces())
+  // One listener per address; every frame goes out on each of them, so all views get it
+  const servers: Server<undefined>[] = []
+  const publish = (frame: ServerFrame) => {
+    const data = JSON.stringify(frame)
+    for (const server of servers) server.publish(TOPIC, data)
+  }
   const triager = new Triager(store, triage => publish({ type: 'triage', triage }), {
     dataDir: dataDir(),
     selfUrl: `http://127.0.0.1:${serverPort()}`,
   })
 
-  const server = Bun.serve({
-    port: serverPort(),
-    // Listen on all interfaces so devices on the same network or tailnet can open it too
-    hostname: '0.0.0.0',
-    async fetch(req, srv) {
+  const handlers = {
+    async fetch(req: Request, srv: Server<undefined>) {
+      // Only this machine and the tailnet get an answer, whichever address the request came in on
+      if (!allowRequest(srv.requestIP(req)?.address, listen.explicit))
+        return new Response('forbidden', { status: 403 })
       const url = new URL(req.url)
 
       if (url.pathname === '/ws') {
@@ -46,9 +54,9 @@ export function startServer() {
         if (relinked && relinked !== session.id)
           channels.wake(relinked)
         channels.observe(session.id, event.kind === 'session' ? { event: event.kind, reason: event.reason } : { event: event.kind })
-        srv.publish(TOPIC, JSON.stringify({ type: 'session', session: withChannel(session) } satisfies ServerFrame))
+        publish({ type: 'session', session: withChannel(session) })
         if (message)
-          srv.publish(TOPIC, JSON.stringify({ type: created ? 'message' : 'message-upsert', message } satisfies ServerFrame))
+          publish({ type: created ? 'message' : 'message-upsert', message })
         // Queued, never awaited: the model never holds up ingestion
         triager.onIngest(event, { session, message, created })
         return Response.json({ ok: true, id: message?.id ?? null })
@@ -69,7 +77,7 @@ export function startServer() {
             return new Response(`${engine} is not installed`, { status: 409 })
           const settings = store.saveSettings({ triage: engine })
           triager.onSettings(engine)
-          srv.publish(TOPIC, JSON.stringify({ type: 'settings', settings } satisfies ServerFrame))
+          publish({ type: 'settings', settings })
           return Response.json(settings)
         }
       }
@@ -89,7 +97,7 @@ export function startServer() {
             return new Response('image must be a string', { status: 400 })
           try {
             const feedback = store.queueFeedback(body.sessionId, body.text, body.image || undefined)
-            publishFeedback(srv, 'queued', feedback)
+            publishFeedback('queued', feedback)
             channels.wake(feedback.sessionId)
             return Response.json(feedback)
           }
@@ -105,7 +113,7 @@ export function startServer() {
             return new Response('via is invalid', { status: 400 })
           const items = store.claimFeedback(body.sessionId, body.via as FeedbackVia)
           channels.observe(body.sessionId, { claim: body.via as FeedbackVia, claimed: items.length })
-          for (const feedback of items) publishFeedback(srv, 'delivered', feedback)
+          for (const feedback of items) publishFeedback('delivered', feedback)
           return Response.json(items)
         }
       }
@@ -149,7 +157,7 @@ export function startServer() {
             if (moved())
               break
           }
-          for (const feedback of items) publishFeedback(srv, 'delivered', feedback)
+          for (const feedback of items) publishFeedback('delivered', feedback)
           const reason = items.length ? null : retired()
           if (reason)
             return new Response(reason, { status: 410 })
@@ -181,7 +189,7 @@ export function startServer() {
       return serveWeb(url.pathname)
     },
     websocket: {
-      open(ws) {
+      open(ws: ServerWebSocket<undefined>) {
         ws.subscribe(TOPIC)
         const messages = store.recent()
         ws.send(JSON.stringify({
@@ -195,20 +203,30 @@ export function startServer() {
       },
       message() {},
     },
-  })
+  }
 
-  publish = frame => server.publish(TOPIC, JSON.stringify(frame))
+  for (const [i, hostname] of listen.hosts.entries()) {
+    try {
+      servers.push(Bun.serve({ port: serverPort(), hostname, ...handlers }))
+    }
+    catch (error) {
+      // The first address (loopback by default) must bind; a tailnet address that went away must not stop the server
+      if (i === 0)
+        throw error
+      console.warn(`gollabara could not listen on ${hostname}: ${error instanceof Error ? error.message : error}`)
+    }
+  }
+  function publishFeedback(status: 'queued' | 'delivered', feedback: Feedback) {
+    publish({ type: 'feedback', status, feedback })
+  }
   function publishSession(id: string) {
     const session = store.session(id)
     if (session)
       publish({ type: 'session', session: withChannel(session) })
   }
-  console.log(`gollabara is watching at http://localhost:${server.port}`)
-  return server
-}
-
-function publishFeedback(srv: Server<undefined>, status: 'queued' | 'delivered', feedback: Feedback) {
-  srv.publish(TOPIC, JSON.stringify({ type: 'feedback', status, feedback } satisfies ServerFrame))
+  for (const server of servers)
+    console.log(`gollabara is watching at ${server.url.href.replace(/\/$/, '')}`)
+  return servers
 }
 
 function serveWeb(pathname: string): Response {
