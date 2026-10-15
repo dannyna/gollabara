@@ -1,29 +1,29 @@
-// Which sessions have a channel server or a wake-up Stop hook waiting on their feedback, the long polls they
-// wait in, and whether each session is mid-turn. In memory only: both poll again within seconds after a restart.
+// Which sessions have a wake-up Stop hook waiting on their feedback, the long polls they wait in, and whether
+// each session is mid-turn. In memory only: a waiter polls again within seconds after a restart.
 import type { FeedbackVia, IncomingEvent } from '../shared/types'
 
 /** A session counts as live this long after its last poll ended, covering the gap between polls */
 export const CHANNEL_GRACE_MS = 30_000
 
-/** Mid-turn (a hook will pick feedback up at its next tool call or Stop) or idle (only a channel or a wake-up reaches it) */
+/** Mid-turn (a hook will pick feedback up at its next tool call or Stop) or idle (only a wake-up reaches it) */
 export type Activity = 'busy' | 'idle'
 
-/** What the server saw a session do: a feedback claim (from a hook, a channel push or a wake-up) or an ingested event */
+/** What the server saw a session do: a feedback claim (from a hook or a wake-up) or an ingested event */
 export type ActivitySignal
   = | { claim: FeedbackVia, claimed: number }
     | { event: IncomingEvent['kind'] }
 
 /**
- * The session's state after a signal, or null when the signal says nothing new. A channel or a wake-up claims
- * only from an idle session, so feedback sent mid-turn reaches it through the hook as before.
+ * The session's state after a signal, or null when the signal says nothing new. A wake-up claims only from
+ * an idle session, so feedback sent mid-turn reaches it through the hook as before.
  * - A prompt or a tool call means a turn is running; so does a question (PreToolUse).
  * - A Stop that claimed feedback continues the turn; one that claimed nothing ends it.
- * - A channel push or a wake-up starts a turn, which may not run a prompt hook.
+ * - A wake-up starts a turn, which may not run a prompt hook.
  * - SessionStart begins idle. A recap says nothing on its own: it races the Stop's claim, which decides.
  */
 export function activityAfter(signal: ActivitySignal): Activity | null {
   if ('claim' in signal) {
-    if (signal.claim === 'stop' || signal.claim === 'channel' || signal.claim === 'rewake')
+    if (signal.claim === 'stop' || signal.claim === 'rewake')
       return signal.claimed > 0 ? 'busy' : signal.claim === 'stop' ? 'idle' : null
     return 'busy'
   }

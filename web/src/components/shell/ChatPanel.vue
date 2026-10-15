@@ -148,7 +148,7 @@ const queue = computed<QueueGroup[]>(() => {
   }
   return [...groups.values()]
 })
-// 「바로 전달돼요」 only when every waiting session has a live channel or wake-up hook
+// 「바로 전달돼요」 only when every waiting session has a live wake-up hook
 const queueTrayNote = computed(() => queueNote(
   [...new Set(feedback.value.filter(f => f.deliveredAt == null).map(f => f.sessionId))],
   props.sessions ?? [],

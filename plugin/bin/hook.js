@@ -67,8 +67,6 @@ function turnOpener(tail) {
       return "human";
     if (!opens || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
       continue;
-    if (isChannelFeedback(entry))
-      return "human";
     if (isRewakeFeedback(entry))
       return "rewake";
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
@@ -78,9 +76,6 @@ function turnOpener(tail) {
 function isFeedbackDelivery(entry) {
   const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
   return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
-}
-function isChannelFeedback(entry) {
-  return entry?.origin?.kind === "channel" && carriesFeedback(entry);
 }
 function isRewakeFeedback(entry) {
   return entry?.origin?.kind === "task-notification" && carriesFeedback(entry);

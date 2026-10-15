@@ -1,13 +1,5 @@
 {
   "name": "gollabara",
   "version": "0.1.0",
-  "description": "Streams the screenshots, recaps, and questions a session produces to the gollabara stream",
-  "mcpServers": {
-    "channel": {
-      "command": "bun",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/channel.js"],
-      "env": { "MCP_PROTOCOL_NEGOTIATION": "legacy" }
-    }
-  },
-  "channels": [{ "server": "channel" }]
+  "description": "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 }

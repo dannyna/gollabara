@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { activityAfter, ChannelLiveness } from './channel'
 
-describe('channel liveness', () => {
+describe('wake-up liveness', () => {
   test('live while a poll is open and for the grace period after the last one ends', () => {
     const live = new ChannelLiveness(30_000)
     expect(live.isLive('s1', 0)).toBe(false)
@@ -46,7 +46,7 @@ describe('channel liveness', () => {
   })
 })
 
-describe('busy or idle (a channel claims only from an idle session)', () => {
+describe('busy or idle (a wake-up claims only from an idle session)', () => {
   test('prompts, tool calls and questions mean a turn is running', () => {
     expect(activityAfter({ claim: 'user-prompt-submit', claimed: 0 })).toBe('busy')
     expect(activityAfter({ claim: 'post-tool-use', claimed: 0 })).toBe('busy')
@@ -59,9 +59,7 @@ describe('busy or idle (a channel claims only from an idle session)', () => {
     expect(activityAfter({ claim: 'stop', claimed: 2 })).toBe('busy')
   })
 
-  test('a channel push or a wake-up starts a turn; an empty claim and a recap change nothing', () => {
-    expect(activityAfter({ claim: 'channel', claimed: 1 })).toBe('busy')
-    expect(activityAfter({ claim: 'channel', claimed: 0 })).toBeNull()
+  test('a wake-up starts a turn; an empty claim and a recap change nothing', () => {
     expect(activityAfter({ claim: 'rewake', claimed: 1 })).toBe('busy')
     expect(activityAfter({ claim: 'rewake', claimed: 0 })).toBeNull()
     expect(activityAfter({ event: 'recap' })).toBeNull()

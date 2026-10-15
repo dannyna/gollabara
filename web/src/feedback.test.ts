@@ -100,7 +100,7 @@ describe('postFeedback', () => {
 describe('queueNote', () => {
   const s = (id: string, channel?: boolean): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt: 0, ...(channel ? { channel } : {}) })
 
-  it('says 「바로」 only when every waiting session has a live channel', () => {
+  it('says 「바로」 only when every waiting session has a live wake-up hook', () => {
     const sessions = [s('a', true), s('b')]
     expect(queueNote(['a'], sessions)).toBe('바로 전달돼요')
     expect(queueNote(['a', 'b'], sessions)).toBe('세션이 다음 작업을 할 때 전달돼요')

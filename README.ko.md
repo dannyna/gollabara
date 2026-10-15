@@ -68,7 +68,7 @@ bun src/cli.ts serve                       # http://localhost:4747
 claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
 ```
 
-피드백은 쉬고 있는 세션에도 바로 닿습니다. 플러그인이 세션을 깨우므로 실행 플래그가 필요 없습니다. 세션을 `claude --dangerously-load-development-channels plugin:gollabara@gollabara`로 시작하면 Claude Code 채널(리서치 프리뷰)을 통한 두 번째 경로를 선택적으로 더할 수 있습니다.
+피드백은 쉬고 있는 세션에도 바로 닿습니다. 플러그인이 세션을 깨우므로 실행 플래그가 필요 없습니다.
 
 개발과 설정은 [AGENTS.md](AGENTS.md)를 참고하세요.
 

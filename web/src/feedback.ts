@@ -128,7 +128,7 @@ export const VIA_LABEL: Record<FeedbackVia, string> = {
 }
 
 /**
- * The queue tray's note: a session with a live channel or wake-up hook gets feedback at once, even when
+ * The queue tray's note: a session with a live wake-up hook gets feedback at once, even when
  * idle; the others pick it up on their next hook. Every waiting session must have one for 「바로」.
  */
 export function queueNote(sessionIds: string[], sessions: Session[]): string {
