@@ -67,6 +67,14 @@ export const MIGRATIONS: Migration[] = [
     db.run(`UPDATE triage SET verdict = CASE verdict WHEN 'signal' THEN 'show' ELSE 'hide' END WHERE verdict IN ('signal', 'progress', 'noise')`)
     db.run(`UPDATE triage_cache SET verdict = 'hide' WHERE verdict IN ('progress', 'noise')`)
   },
+  // 2: the latest hook seen per harness, for `golla doctor` (#65). A NULL version is a hook from before the handshake.
+  (db) => {
+    db.run(`CREATE TABLE hook_versions (
+      harness TEXT PRIMARY KEY,
+      version TEXT,
+      seen_at INTEGER NOT NULL
+    )`)
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

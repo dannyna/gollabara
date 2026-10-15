@@ -3,8 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { afterAll, describe, expect, test } from 'bun:test'
+import { doctor } from '../doctor'
+import { PLUGIN_VERSION } from '../shared/version'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
+import { readHealth } from './health'
 import { projectRoot, readBranch, readFileRole, readTail, stopTurnOpener, turnStart } from './index'
 import { mapHook, sessionInfo } from './map'
 
@@ -117,36 +120,41 @@ describe('image role from the file\'s mtime', () => {
   })
 })
 
-describe('GOLLABARA_HOOK=off', () => {
-  // A local stand-in server on a free port; never the real one on 4747
-  async function runEntry(env: Record<string, string>, input: object = { ...stop, transcript_path: undefined }) {
-    const hits: string[] = []
-    const events: any[] = []
-    const server = Bun.serve({
-      port: 0,
-      async fetch(req) {
-        hits.push(new URL(req.url).pathname)
-        if (new URL(req.url).pathname === '/api/events')
-          events.push(await req.json())
-        return Response.json([])
-      },
+// A local stand-in server on a free port; never the real one on 4747. The health log goes to a scratch data dir.
+async function runEntry(env: Record<string, string>, input: object = { ...stop, transcript_path: undefined }, answer = true) {
+  const hits: string[] = []
+  const events: any[] = []
+  const headers: Record<string, string | null>[] = []
+  const server = Bun.serve({
+    port: 0,
+    async fetch(req) {
+      hits.push(new URL(req.url).pathname)
+      headers.push({ hook: req.headers.get('x-gollabara-hook'), harness: req.headers.get('x-gollabara-harness') })
+      if (new URL(req.url).pathname === '/api/events')
+        events.push(await req.json())
+      // A server that never answers: the hook's own timeout ends the request
+      if (!answer)
+        await new Promise(() => {})
+      return Response.json([])
+    },
+  })
+  try {
+    const proc = Bun.spawn(['bun', join(import.meta.dir, 'entry.ts')], {
+      env: { ...process.env, GOLLABARA_URL: `http://127.0.0.1:${server.port}`, GOLLABARA_DATA: dir('data'), ...env },
+      stdin: new TextEncoder().encode(JSON.stringify(input)),
+      stdout: 'pipe',
     })
-    try {
-      const proc = Bun.spawn(['bun', join(import.meta.dir, 'entry.ts')], {
-        env: { ...process.env, GOLLABARA_URL: `http://127.0.0.1:${server.port}`, ...env },
-        stdin: new TextEncoder().encode(JSON.stringify(input)),
-        stdout: 'pipe',
-      })
-      const [exitCode, stdout] = await Promise.all([proc.exited, new Response(proc.stdout).text()])
-      return { exitCode, stdout, hits, events }
-    }
-    finally {
-      server.stop(true)
-    }
+    const [exitCode, stdout] = await Promise.all([proc.exited, new Response(proc.stdout).text()])
+    return { exitCode, stdout, hits, events, headers }
   }
+  finally {
+    server.stop(true)
+  }
+}
 
+describe('GOLLABARA_HOOK=off', () => {
   test('the hook exits at once without posting or claiming', async () => {
-    expect(await runEntry({ GOLLABARA_HOOK: 'off' })).toEqual({ exitCode: 0, stdout: '', hits: [], events: [] })
+    expect(await runEntry({ GOLLABARA_HOOK: 'off' })).toEqual({ exitCode: 0, stdout: '', hits: [], events: [], headers: [] })
   })
 
   test('without it the same Stop posts the recap and claims feedback', async () => {
@@ -162,5 +170,29 @@ describe('GOLLABARA_HOOK=off', () => {
     const transcript = join(import.meta.dir, 'fixtures', 'transcript-human.jsonl')
     const { events } = await runEntry({ GOLLABARA_HOOK: '' }, { ...postReadImage, tool_input: { file_path: mock }, transcript_path: transcript })
     expect(events).toMatchObject([{ kind: 'image', images: [{ source: mock, role: 'reference' }] }])
+  })
+})
+
+describe('version handshake and health log', () => {
+  test('every request names the plugin version and the harness', async () => {
+    const { headers } = await runEntry({ GOLLABARA_HOOK: '', GOLLABARA_DATA: dir('data-headers') })
+    expect(headers).toEqual([
+      { hook: PLUGIN_VERSION, harness: 'claude-code' },
+      { hook: PLUGIN_VERSION, harness: 'claude-code' },
+    ])
+    expect(readHealth(dir('data-headers'))).toMatchObject([{ event: 'Stop', harness: 'claude-code', ok: true }])
+  })
+
+  test('a hook whose server never answers exits 0 at its timeout, and doctor shows it with its latency', async () => {
+    const data = dir('data-timeout')
+    const { exitCode } = await runEntry({ GOLLABARA_HOOK: '', GOLLABARA_DATA: data }, undefined, false)
+    expect(exitCode).toBe(0)
+    const [entry] = readHealth(data)
+    expect(entry).toMatchObject({ event: 'Stop', harness: 'claude-code', ok: false, error: 'timeout' })
+    expect(entry!.ms).toBeGreaterThanOrEqual(1500)
+    expect(entry!.ms).toBeLessThan(3000)
+    const report = (await doctor({ url: 'http://127.0.0.1:9', dataDir: data })).join('\n')
+    expect(report).toContain(`Stop (claude-code) timeout after ${entry!.ms} ms`)
+    expect(report).toContain('failures  1 logged')
   })
 })

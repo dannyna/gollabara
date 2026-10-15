@@ -54,7 +54,7 @@ describe('migrations', () => {
     expect(version(db)).toBe(SCHEMA_VERSION)
     expect(columns(db, 'sessions')).toContain('pid')
     expect(columns(db, 'triage')).toContain('tone')
-    for (const table of ['messages', 'sessions', 'feedback', 'settings', 'triage', 'triage_cache'])
+    for (const table of ['messages', 'sessions', 'feedback', 'settings', 'triage', 'triage_cache', 'hook_versions'])
       expect(count(db, table)).toBe(0)
     db.close()
   })

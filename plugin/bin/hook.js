@@ -4,11 +4,13 @@ import process4 from "process";
 
 // src/hook/index.ts
 import { Buffer } from "buffer";
-import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { closeSync, existsSync, fstatSync, openSync, readFileSync as readFileSync2, readSync, statSync as statSync2 } from "fs";
+import { dirname, join as join3, resolve } from "path";
 import process2 from "process";
 
 // src/shared/config.ts
+import { homedir } from "os";
+import { join } from "path";
 import process from "process";
 var DEFAULT_PORT = 4747;
 function serverPort() {
@@ -16,6 +18,62 @@ function serverPort() {
 }
 function serverUrl() {
   return process.env.GOLLABARA_URL ?? `http://127.0.0.1:${serverPort()}`;
+}
+function dataDir() {
+  return process.env.GOLLABARA_DATA ?? join(homedir(), ".gollabara", "data");
+}
+// plugin/.claude-plugin/plugin.json
+var plugin_default = {
+  name: "gollabara",
+  version: "0.1.0",
+  description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
+};
+
+// src/shared/version.ts
+var PLUGIN_VERSION = plugin_default.version;
+var HOOK_VERSION_HEADER = "x-gollabara-hook";
+var HOOK_HARNESS_HEADER = "x-gollabara-harness";
+
+// src/hook/health.ts
+import { appendFileSync, mkdirSync, readFileSync, renameSync, statSync } from "fs";
+import { join as join2 } from "path";
+var HEALTH_FILE = "hook-health.jsonl";
+var HEALTH_ROTATED = "hook-health.1.jsonl";
+var HEALTH_MAX_BYTES = 128 * 1024;
+function logHealth(dir, entry, max = HEALTH_MAX_BYTES) {
+  try {
+    const path = join2(dir, HEALTH_FILE);
+    const line = `${JSON.stringify(entry)}
+`;
+    let size = 0;
+    try {
+      size = statSync(path).size;
+    } catch {
+      mkdirSync(dir, { recursive: true });
+    }
+    if (size && size + line.length > max)
+      renameSync(path, join2(dir, HEALTH_ROTATED));
+    appendFileSync(path, line);
+  } catch {}
+}
+function errorClass(reason) {
+  if (reason instanceof HttpError)
+    return `http-${reason.status}`;
+  const name = reason?.name;
+  if (name === "TimeoutError" || name === "AbortError")
+    return "timeout";
+  const code = reason?.code;
+  if (code === "ConnectionRefused" || code === "ECONNREFUSED")
+    return "unreachable";
+  return "error";
+}
+
+class HttpError extends Error {
+  status;
+  constructor(status) {
+    super(`http ${status}`);
+    this.status = status;
+  }
 }
 
 // src/hook/map.ts
@@ -250,10 +308,13 @@ var TRANSCRIPT_HEAD_BYTES = 64 * 1024;
 async function runHook() {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
+  const started = performance.now();
+  let health;
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
+    health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
     const opener = input.hook_event_name === "Stop" ? stopTurnOpener(input.transcript_path) : "unknown";
     const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path));
     if (event?.kind === "session")
@@ -262,19 +323,34 @@ async function runHook() {
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
     const post = (path, body) => fetch(`${serverUrl()}${path}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", [HOOK_VERSION_HEADER]: PLUGIN_VERSION, [HOOK_HARNESS_HEADER]: session.harness },
       body: JSON.stringify(body),
       signal
+    }).then((r) => {
+      if (!r.ok)
+        throw new HttpError(r.status);
+      return r;
     });
-    const [, claimed] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       event ? post("/api/events", event) : null,
-      via ? post("/api/feedback/claim", { sessionId: session.id, via }).then((r) => r.ok ? r.json() : []) : []
+      via ? post("/api/feedback/claim", { sessionId: session.id, via }).then((r) => r.json()) : []
     ]);
+    if (event || via) {
+      const failed = results.find((r) => r.status === "rejected");
+      health = { ...health, ms: Math.round(performance.now() - started), ...failed ? { error: errorClass(failed.reason) } : {} };
+    } else {
+      health = undefined;
+    }
+    const claimed = results[1];
     const items = claimed.status === "fulfilled" && Array.isArray(claimed.value) ? claimed.value : [];
     const output = feedbackOutput(input.hook_event_name, items);
     if (output)
       await Bun.write(Bun.stdout, JSON.stringify(output));
-  } catch {}
+  } catch {
+    health = { event: health?.event ?? "unknown", harness: health?.harness, ms: Math.round(performance.now() - started), error: "error" };
+  }
+  if (health)
+    logHealth(dataDir(), { at: Date.now(), ...health, ok: !health.error });
 }
 function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
   return fromTail(transcriptPath, (text) => {
@@ -291,7 +367,7 @@ function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
 }
 function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
   try {
-    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows));
+    return imageRole(statSync2(path).mtimeMs, turnStart(transcriptPath, windows));
   } catch {
     return "artifact";
   }
@@ -341,7 +417,7 @@ function readTail(path, bytes) {
 }
 function projectRoot(cwd) {
   for (let dir = resolve(cwd);; dir = dirname(dir)) {
-    if (existsSync(join(dir, ".git")))
+    if (existsSync(join3(dir, ".git")))
       return dir;
     if (dirname(dir) === dir)
       return cwd;
@@ -349,15 +425,15 @@ function projectRoot(cwd) {
 }
 function readBranch(root) {
   try {
-    const dotGit = join(root, ".git");
+    const dotGit = join3(root, ".git");
     let gitDir = dotGit;
-    if (statSync(dotGit).isFile()) {
-      const line = readFileSync(dotGit, "utf8").trim();
+    if (statSync2(dotGit).isFile()) {
+      const line = readFileSync2(dotGit, "utf8").trim();
       if (!line.startsWith("gitdir:"))
         return;
       gitDir = resolve(root, line.slice("gitdir:".length).trim());
     }
-    const head = readFileSync(join(gitDir, "HEAD"), "utf8").trim();
+    const head = readFileSync2(join3(gitDir, "HEAD"), "utf8").trim();
     return head.startsWith("ref: refs/heads/") ? head.slice("ref: refs/heads/".length) : undefined;
   } catch {
     return;
@@ -405,7 +481,7 @@ async function runWait() {
       const timer = setTimeout(() => abort.abort(), POLL_TIMEOUT_MS);
       const watch = setInterval(() => alive() || abort.abort(), 1000);
       try {
-        const res = await fetch(url, { signal: abort.signal });
+        const res = await fetch(url, { signal: abort.signal, headers: { [HOOK_VERSION_HEADER]: PLUGIN_VERSION } });
         if (res.ok)
           return { items: await res.json() };
         return res.status >= 500 ? "down" : "stop";

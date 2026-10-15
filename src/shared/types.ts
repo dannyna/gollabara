@@ -184,3 +184,21 @@ export type ServerFrame
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
     | { type: 'triage', triage: Triage }
     | { type: 'settings', settings: ServerSettings }
+
+/** The latest hook seen from one harness; `version` is null for a hook from before the version handshake */
+export interface HookSeen {
+  harness: Harness
+  version: string | null
+  seenAt: number
+  /** Older than the plugin version the server expects, or sent no version */
+  outdated: boolean
+}
+
+/** `GET /api/health`: what the server expects and which hooks it has heard from */
+export interface Health {
+  /** Plugin version the server expects hooks to run */
+  version: string
+  /** SQLite schema version */
+  schema: number
+  hooks: HookSeen[]
+}

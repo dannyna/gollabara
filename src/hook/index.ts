@@ -2,13 +2,15 @@
 // Never blocks the session: short timeout, swallow every error, always exit 0.
 // Stdout carries only the feedback JSON for the session, and only when there is feedback.
 
-import type { Feedback, ImageRole } from '../shared/types'
+import type { Feedback, Harness, ImageRole } from '../shared/types'
 import type { HookInput, TurnOpener } from './map'
 import { Buffer } from 'node:buffer'
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
-import { serverUrl } from '../shared/config'
+import { dataDir, serverUrl } from '../shared/config'
+import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
+import { errorClass, HttpError, logHealth } from './health'
 import { feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo, sessionStartedAt, turnOpener, turnStartedAt } from './map'
 
 const POST_TIMEOUT_MS = 1500
@@ -24,11 +26,14 @@ export async function runHook(): Promise<void> {
   // Set by gollabara's own background model calls so they never stream themselves
   if (process.env.GOLLABARA_HOOK === 'off')
     return
+  const started = performance.now()
+  let health: { event: string, harness?: Harness, ms: number, error?: string } | undefined
   try {
     const raw = await Bun.stdin.text()
     const input = JSON.parse(raw) as HookInput
     // Pick only the keys we use: the rest of the env can hold tool tokens
     const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch })
+    health = { event: input.hook_event_name, harness: session.harness, ms: 0 }
     // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
     const opener = input.hook_event_name === 'Stop' ? stopTurnOpener(input.transcript_path) : 'unknown'
     const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path))
@@ -39,16 +44,30 @@ export async function runHook(): Promise<void> {
     const via = feedbackVia(input.hook_event_name)
     // Event and claim share one budget and run side by side; most tool calls only claim
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS)
+    // The version headers let the server flag an outdated plugin (`golla doctor`)
     const post = (path: string, body: unknown) => fetch(`${serverUrl()}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [HOOK_VERSION_HEADER]: PLUGIN_VERSION, [HOOK_HARNESS_HEADER]: session.harness },
       body: JSON.stringify(body),
       signal,
+    }).then((r) => {
+      if (!r.ok)
+        throw new HttpError(r.status)
+      return r
     })
-    const [, claimed] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       event ? post('/api/events', event) : null,
-      via ? post('/api/feedback/claim', { sessionId: session.id, via }).then(r => r.ok ? r.json() as Promise<Feedback[]> : []) : [],
+      via ? post('/api/feedback/claim', { sessionId: session.id, via }).then(r => r.json() as Promise<Feedback[]>) : [],
     ])
+    // A run that sent nothing (no event, no claim) is not logged
+    if (event || via) {
+      const failed = results.find(r => r.status === 'rejected')
+      health = { ...health, ms: Math.round(performance.now() - started), ...(failed ? { error: errorClass(failed.reason) } : {}) }
+    }
+    else {
+      health = undefined
+    }
+    const claimed = results[1]
     const items = claimed.status === 'fulfilled' && Array.isArray(claimed.value) ? claimed.value : []
     const output = feedbackOutput(input.hook_event_name, items)
     // Awaited so the bytes are out before entry.ts calls process.exit
@@ -57,7 +76,11 @@ export async function runHook(): Promise<void> {
   }
   catch {
     // The session keeps going even if the server is down
+    health = { event: health?.event ?? 'unknown', harness: health?.harness, ms: Math.round(performance.now() - started), error: 'error' }
   }
+  // After the output is out, so the session never waits on the log
+  if (health)
+    logHealth(dataDir(), { at: Date.now(), ...health, ok: !health.error })
 }
 
 /** Who opened the turn, from the transcript's tail; 'unknown' (so the recap is posted) when it can't be read */
