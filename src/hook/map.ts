@@ -1,6 +1,6 @@
 // Turns Claude Code hook input (stdin JSON) into stream events.
 // Kept pure so it is easy to test. hook/index.ts handles I/O.
-import type { Feedback, FeedbackVia, ImageRole, IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
+import type { Feedback, FeedbackVia, ImageRole, IncomingEvent, IncomingImage, Question, SessionInfo, SessionStartReason } from '../shared/types'
 import { isAbsolute } from 'node:path'
 import { FEEDBACK_PREFIX, feedbackText } from '../shared/feedback'
 
@@ -14,6 +14,8 @@ export interface HookInput {
   last_assistant_message?: string
   stop_hook_active?: boolean
   transcript_path?: string
+  /** SessionStart only: startup, resume, clear or compact */
+  source?: string
 }
 
 /**
@@ -26,6 +28,8 @@ export type TurnOpener = 'human' | 'rewake' | 'system' | 'unknown'
 /** `turnOrigin` values seen on real transcripts. A value not listed here counts as unknown, so the recap still posts */
 const HUMAN_TURN_ORIGINS = new Set(['human', 'sdk'])
 const WAKE_UP_TURN_ORIGINS = new Set(['task_notification', 'peer', 'system', 'scheduled'])
+
+const SESSION_START_REASONS: SessionStartReason[] = ['startup', 'resume', 'clear', 'compact']
 
 /** Hook process env. Only the keys read here; never pass the rest along (it holds tool tokens). */
 export interface HookEnv {
@@ -180,8 +184,10 @@ function carriesFeedback(entry: any): boolean {
  */
 export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown', fileRole?: (path: string) => ImageRole): IncomingEvent | null {
   switch (input.hook_event_name) {
-    case 'SessionStart':
-      return { kind: 'session', session }
+    case 'SessionStart': {
+      const reason = SESSION_START_REASONS.find(r => r === input.source)
+      return reason ? { kind: 'session', session, reason } : { kind: 'session', session }
+    }
     case 'PostToolUse': {
       const images = extractImages(input.tool_response)
       if (images.length === 0)

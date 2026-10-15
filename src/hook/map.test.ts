@@ -28,13 +28,23 @@ const odSession = (input: HookInput) => sessionInfo(input, odEnv, noBranchLookup
 
 describe('Open Design (real payloads and env captured in the spike)', () => {
   test('SessionStart becomes an open-design session named after the project', () => {
-    for (const source of ['startup', 'resume']) {
+    for (const source of ['startup', 'resume'] as const) {
       const input = { ...odSessionStart, source } as HookInput
       expect(mapHook(input, odSession(input))).toEqual({
         kind: 'session',
         session: { id: odSessionStart.session_id, name: 'gollabara-spike', harness: 'open-design', project: 'gollabara-spike', cwd: odSessionStart.cwd },
+        reason: source,
       })
     }
+  })
+
+  test('SessionStart carries why the session started, and drops a source it does not know', () => {
+    for (const source of ['clear', 'compact']) {
+      const input = { ...odSessionStart, source } as HookInput
+      expect(mapHook(input, odSession(input))).toMatchObject({ kind: 'session', reason: source })
+    }
+    const input = { ...odSessionStart, source: 'teleport' } as HookInput
+    expect(mapHook(input, odSession(input))).not.toHaveProperty('reason')
   })
 
   test('Read image lands under the Open Design session', () => {

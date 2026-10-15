@@ -45,7 +45,7 @@ export function startServer() {
         // The process moved to a new session (/clear, resume): its wake-up waiter's open poll returns and retires
         if (relinked && relinked !== session.id)
           channels.wake(relinked)
-        channels.observe(session.id, { event: event.kind })
+        channels.observe(session.id, event.kind === 'session' ? { event: event.kind, reason: event.reason } : { event: event.kind })
         srv.publish(TOPIC, JSON.stringify({ type: 'session', session: withChannel(session) } satisfies ServerFrame))
         if (message)
           srv.publish(TOPIC, JSON.stringify({ type: created ? 'message' : 'message-upsert', message } satisfies ServerFrame))
