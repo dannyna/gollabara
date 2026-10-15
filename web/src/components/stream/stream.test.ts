@@ -2,7 +2,7 @@ import type { Artifact } from '../../artifacts'
 import type { Wheel } from './step'
 import { describe, expect, it } from 'bun:test'
 import { feedbackTargetOf } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, holdKey, lastArrival, listMove, PINNED_TEXT, togglePin } from './follow'
+import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, PINNED_TEXT, togglePin } from './follow'
 import { alignTarget, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 
 function cell(seq: number, extra: Partial<Artifact> = {}): Artifact {
@@ -27,6 +27,17 @@ describe('follow', () => {
   it('follows within 70px of the right end', () => {
     expect(atLatest({ scrollWidth: 2000, clientWidth: 800, scrollLeft: 1131 })).toBe(true)
     expect(atLatest({ scrollWidth: 2000, clientWidth: 800, scrollLeft: 1130 })).toBe(false)
+  })
+
+  it('a fold after a wide latest cell never pushes that cell off the anchor', () => {
+    // The latest cell aligns at 1100, a trailing 「참고 이미지」 fold makes the end 1200
+    expect(latestLeft(1200, 1100)).toBe(1100)
+    expect(atLatest({ scrollWidth: 2000, clientWidth: 800, scrollLeft: 1100 }, 1100)).toBe(true)
+    expect(atLatest({ scrollWidth: 2000, clientWidth: 800, scrollLeft: 1200 }, 1100)).toBe(true)
+    expect(atLatest({ scrollWidth: 2000, clientWidth: 800, scrollLeft: 1030 }, 1100)).toBe(false)
+    // When cell and fold fit, alignTarget already clamps to the end; no cell follows the end
+    expect(latestLeft(1200, 1200)).toBe(1200)
+    expect(latestLeft(1200, null)).toBe(1200)
   })
 
   it('counts arrivals only, not cells that reappear after an unmute', () => {

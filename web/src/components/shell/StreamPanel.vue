@@ -12,7 +12,7 @@ import { referenceFolds } from '../../artifacts'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, holdKey, lastArrival, listMove, togglePin } from '../stream/follow'
+import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, togglePin } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 
@@ -61,12 +61,12 @@ function markUserIntent() {
 function onStep(left: number) {
   markUserIntent()
   const el = track.value!
-  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }))
+  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }, rail.value?.latestAlign()))
     follow.value = 'paused'
 }
 function onScroll() {
   const el = track.value!
-  if (atLatest(el)) {
+  if (atLatest(el, rail.value?.latestAlign())) {
     // A pin keeps the rail from following even at the right end
     if (!pin.value)
       follow.value = 'following'
@@ -76,8 +76,10 @@ function onScroll() {
     follow.value = 'paused'
   }
 }
+/** The right end, or the latest cell on the anchor when a trailing 「참고 이미지」 fold would push it out */
 function toLatest(behavior: ScrollBehavior) {
-  track.value?.scrollTo({ left: track.value.scrollWidth, behavior })
+  const el = track.value
+  el?.scrollTo({ left: latestLeft(el.scrollWidth - el.clientWidth, rail.value?.latestAlign()), behavior })
 }
 function jumpToLatest() {
   // The way back to the latest also lets go of the pin, so following resumes
@@ -166,7 +168,7 @@ watch(() => props.pinned, () => {
   if (pin.value)
     follow.value = 'paused'
   else if (track.value)
-    follow.value = atLatest(track.value) ? 'following' : 'paused'
+    follow.value = atLatest(track.value, rail.value?.latestAlign()) ? 'following' : 'paused'
 })
 
 // The rail mounts at the latest, also when the first artifact ends an empty state, or on

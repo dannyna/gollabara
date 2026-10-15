@@ -19,8 +19,15 @@ export const FOLLOW_TEXT: Record<Follow, string> = {
   paused: '이전 산출물 · 자동 따라가기 일시 정지',
 }
 
-export function atLatest(el: { scrollWidth: number, clientWidth: number, scrollLeft: number }) {
-  return el.scrollWidth - el.clientWidth - el.scrollLeft < FOLLOW_EDGE
+/**
+ * Where following the latest leaves the rail: its right end, except that what comes after the
+ * latest cell (a 「참고 이미지」 fold) never pushes that cell off the anchor. `latest` is the
+ * latest cell's alignTarget (step.ts), null without one.
+ */
+export const latestLeft = (max: number, latest?: number | null) => latest == null ? max : Math.min(max, latest)
+
+export function atLatest(el: { scrollWidth: number, clientWidth: number, scrollLeft: number }, latest?: number | null) {
+  return latestLeft(el.scrollWidth - el.clientWidth, latest) - el.scrollLeft < FOLLOW_EDGE
 }
 
 export const lastArrival = (artifacts: Artifact[]) => artifacts.reduce((n, a) => Math.max(n, a.arrival), 0)

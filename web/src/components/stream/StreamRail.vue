@@ -138,8 +138,16 @@ function align(key: string, how: ScrollBehavior = behavior()) {
   rail.scrollTo({ left: alignTarget(start, anchor, max), behavior: how })
 }
 
+/** Where the latest cell sits on the anchor, so following can stop there (follow.ts latestLeft); null without cells */
+function latestAlign() {
+  if (!el.value)
+    return null
+  const { starts, anchor, max } = geometry()
+  return starts.length ? alignTarget(starts.at(-1)!, anchor, max) : null
+}
+
 onBeforeUnmount(() => clearTimeout(timer))
-defineExpose({ el, align, realign })
+defineExpose({ el, align, realign, latestAlign })
 </script>
 
 <template>
