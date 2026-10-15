@@ -21,7 +21,7 @@ gollabara is a local web app that streams the artifacts of coding and design ses
 ## Tests
 
 - Run `bun test` (every `*.test.ts` under `src/` and `web/src/`).
-- `src/hook/map.ts` and the adapters (`src/hook/claude-code.ts`, `src/hook/codex.ts`) are pure, so any mapping change needs a fixture-based test.
+- `src/hook/map.ts` and the adapters' parsers (`turnOpener`, `turnStartedAt`, `codexTurnStartedAt`) are pure, so any mapping change needs a fixture-based test.
 
 ## Skip / low priority
 
