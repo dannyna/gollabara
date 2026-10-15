@@ -17,6 +17,16 @@ The MVP is done when one person can, on their own machines:
 
 The invariants in AGENTS.md hold throughout, with one approved amendment to invariant 5 for D1.
 
+## Status (2026-10-16)
+
+| Milestone                 | Shipped                                                                                                                                                                 | Waiting on                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| M1 · Remote and trust     | Migrations (#88), PWA on desktop (#90), content-free push on desktop Chrome (#92)                                                                                       | Tailscale on: the serve spike (#61) and owner-only remote writes (#62), then the iPhone checks for #63 and #64 |
+| M2 · Engineering baseline | Version handshake and health log (#89), setup/doctor/update/uninstall and the login service (#93), docs sync (#87)                                                      | Publishing to npm (#67), the owner's call                                                                      |
+| M3 · Harness spikes       | Codex spike (#91)                                                                                                                                                       | —                                                                                                              |
+| M4 · Codex adapter        | Delivery routes and the Codex plugin (#94), shared hook core (#102)                                                                                                     | Codex's interactive hook-trust prompt and `request_user_input` are not yet checked live                        |
+| M5 · Daily-use baseline   | Retention and shared settings (#95), ended sessions (#96), first run and tray follow-ups (#99), history (#101), headless runs no longer wait on the wake-up hook (#100) | The MVP release (#80)                                                                                          |
+
 ## Done: M0 foundation (Claude Code)
 
 | Area        | Shipped                                                                                                                                                                                                                                   |
