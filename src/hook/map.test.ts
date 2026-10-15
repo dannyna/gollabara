@@ -143,6 +143,10 @@ describe('turn opener (real transcript tails, redacted)', () => {
     expect(turnOpener('not json\n{"type":"user"')).toBe('unknown')
     expect(mapHook(stop as HookInput, session, 'unknown')).toMatchObject({ kind: 'recap' })
   })
+
+  test('an origin not seen before counts as unknown, so the recap still posts', () => {
+    expect(turnOpener('{"type":"user","turnOrigin":"some_new_origin"}')).toBe('unknown')
+  })
 })
 
 describe('extractImages', () => {

@@ -20,6 +20,7 @@ function serverUrl() {
 
 // src/hook/map.ts
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
+var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
 var RECAP_MAX = 160;
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
@@ -36,6 +37,8 @@ function turnOpener(tail) {
   const lines = tail.split(`
 `);
   for (let i = lines.length - 1;i >= 0; i--) {
+    if (!lines[i].includes('"turnOrigin"'))
+      continue;
     let entry;
     try {
       entry = JSON.parse(lines[i]);
@@ -44,7 +47,7 @@ function turnOpener(tail) {
     }
     if (entry?.type !== "user" || entry.isSidechain || typeof entry.turnOrigin !== "string")
       continue;
-    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : "system";
+    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
   }
   return "unknown";
 }
@@ -154,7 +157,7 @@ function extractQuestions(toolInput) {
 
 // src/hook/index.ts
 var POST_TIMEOUT_MS = 1500;
-var TRANSCRIPT_TAIL_BYTES = 256 * 1024;
+var TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024];
 async function runHook() {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
@@ -182,9 +185,18 @@ async function runHook() {
       await Bun.write(Bun.stdout, JSON.stringify(output));
   } catch {}
 }
-function stopTurnOpener(transcriptPath) {
-  const tail = transcriptPath ? readTail(transcriptPath, TRANSCRIPT_TAIL_BYTES) : undefined;
-  return tail === undefined ? "unknown" : turnOpener(tail);
+function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
+  if (!transcriptPath)
+    return "unknown";
+  for (const bytes of windows) {
+    const tail = readTail(transcriptPath, bytes);
+    if (!tail)
+      return "unknown";
+    const opener = turnOpener(tail.text);
+    if (opener !== "unknown" || tail.whole)
+      return opener;
+  }
+  return "unknown";
 }
 function readTail(path, bytes) {
   try {
@@ -194,7 +206,7 @@ function readTail(path, bytes) {
       const length = Math.min(size, bytes);
       const buffer = Buffer.alloc(length);
       readSync(fd, buffer, 0, length, size - length);
-      return buffer.toString("utf8");
+      return { text: buffer.toString("utf8"), whole: length === size };
     } finally {
       closeSync(fd);
     }

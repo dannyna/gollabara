@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -55,12 +55,20 @@ describe('transcript tail on Stop', () => {
   test('reads only the last bytes of the file', () => {
     const path = join(dir('tail'), 'session.jsonl')
     writeFileSync(path, `${'a'.repeat(1000)}end`)
-    expect(readTail(path, 10)).toBe('aaaaaaaend')
-    expect(readTail(path, 1 << 20)).toHaveLength(1003)
+    expect(readTail(path, 10)).toEqual({ text: 'aaaaaaaend', whole: false })
+    expect(readTail(path, 1 << 20)).toMatchObject({ whole: true })
   })
 
   test('the opener comes from the transcript file', () => {
     expect(stopTurnOpener(join(import.meta.dir, 'fixtures', 'transcript-monitor.jsonl'))).toBe('system')
+  })
+
+  test('a screenshot-heavy turn widens the window until it reaches the opener', () => {
+    const path = join(dir('tail'), 'screenshots.jsonl')
+    const screenshot = JSON.stringify({ type: 'user', message: { content: [{ type: 'image', source: { data: 'A'.repeat(300 * 1024) } }] } })
+    writeFileSync(path, `${readFileSync(join(import.meta.dir, 'fixtures', 'transcript-monitor.jsonl'), 'utf8')}${screenshot}\n`)
+    expect(stopTurnOpener(path, [256 * 1024])).toBe('unknown')
+    expect(stopTurnOpener(path)).toBe('system')
   })
 
   test('an unreadable or missing transcript falls back to posting the recap', () => {

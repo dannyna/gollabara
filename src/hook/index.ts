@@ -12,8 +12,11 @@ import { serverUrl } from '../shared/config'
 import { feedbackOutput, feedbackVia, mapHook, sessionInfo, turnOpener } from './map'
 
 const POST_TIMEOUT_MS = 1500
-/** Enough to reach the turn's opening entry on most turns without reading a long session whole */
-const TRANSCRIPT_TAIL_BYTES = 256 * 1024
+/**
+ * Tail windows tried in turn until one holds the turn's opening entry. Most turns fit the first;
+ * turns that Read screenshots put megabytes between the opener and the end (1.3-3.3 MB in the e2e runs)
+ */
+const TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024]
 
 export async function runHook(): Promise<void> {
   // Set by gollabara's own background model calls so they never stream themselves
@@ -52,12 +55,22 @@ export async function runHook(): Promise<void> {
 }
 
 /** Who opened the turn, from the transcript's tail; 'unknown' (so the recap is posted) when it can't be read */
-export function stopTurnOpener(transcriptPath?: string): TurnOpener {
-  const tail = transcriptPath ? readTail(transcriptPath, TRANSCRIPT_TAIL_BYTES) : undefined
-  return tail === undefined ? 'unknown' : turnOpener(tail)
+export function stopTurnOpener(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): TurnOpener {
+  if (!transcriptPath)
+    return 'unknown'
+  for (const bytes of windows) {
+    const tail = readTail(transcriptPath, bytes)
+    if (!tail)
+      return 'unknown'
+    const opener = turnOpener(tail.text)
+    if (opener !== 'unknown' || tail.whole)
+      return opener
+  }
+  return 'unknown'
 }
 
-export function readTail(path: string, bytes: number): string | undefined {
+/** The last `bytes` of a file, and whether that is the whole file; undefined when it can't be read */
+export function readTail(path: string, bytes: number): { text: string, whole: boolean } | undefined {
   try {
     const fd = openSync(path, 'r')
     try {
@@ -65,7 +78,7 @@ export function readTail(path: string, bytes: number): string | undefined {
       const length = Math.min(size, bytes)
       const buffer = Buffer.alloc(length)
       readSync(fd, buffer, 0, length, size - length)
-      return buffer.toString('utf8')
+      return { text: buffer.toString('utf8'), whole: length === size }
     }
     finally {
       closeSync(fd)

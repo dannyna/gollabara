@@ -21,8 +21,9 @@ export interface HookInput {
  */
 export type TurnOpener = 'human' | 'system' | 'unknown'
 
-/** `turnOrigin` values of turns a person started; every other value is a wake-up */
+/** `turnOrigin` values seen on real transcripts. A value not listed here counts as unknown, so the recap still posts */
 const HUMAN_TURN_ORIGINS = new Set(['human', 'sdk'])
+const WAKE_UP_TURN_ORIGINS = new Set(['task_notification', 'peer', 'system', 'scheduled'])
 
 /** Hook process env. Only the keys read here; never pass the rest along (it holds tool tokens). */
 export interface HookEnv {
@@ -64,6 +65,9 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
 export function turnOpener(tail: string): TurnOpener {
   const lines = tail.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
+    // Cheap filter first: screenshot turns carry multi-MB base64 lines
+    if (!lines[i].includes('"turnOrigin"'))
+      continue
     let entry: any
     try {
       entry = JSON.parse(lines[i])
@@ -73,7 +77,7 @@ export function turnOpener(tail: string): TurnOpener {
     }
     if (entry?.type !== 'user' || entry.isSidechain || typeof entry.turnOrigin !== 'string')
       continue
-    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : 'system'
+    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
   }
   return 'unknown'
 }
