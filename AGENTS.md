@@ -13,16 +13,17 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Layout
 
-| Path          | Role                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| `src/cli.ts`  | `golla` CLI entry point (`serve`, `hook`)                                                  |
-| `src/hook/`   | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`                      |
-| `src/server/` | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                         |
-| `src/shared/` | Types and config shared by the server, the hook, and the UI                                |
-| `web/`        | Viewer UI (Vue 3 + Vite)                                                                   |
-| `plugin/`     | Claude Code plugin. `bin/hook.js` is a build output, but it is committed                   |
-| `docs/`       | Architecture SVGs (from the Open Design `gollabara-architecture` project) and `ROADMAP.md` |
-| `spike/`      | Early hook-input capture experiments, reference only                                       |
+| Path            | Role                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `src/cli.ts`    | `golla` CLI entry point (`serve`, `hook`, `doctor`)                                        |
+| `src/doctor.ts` | `golla doctor`: server reachability, plugin versions, hook health                          |
+| `src/hook/`     | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`                      |
+| `src/server/`   | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                         |
+| `src/shared/`   | Types and config shared by the server, the hook, and the UI                                |
+| `web/`          | Viewer UI (Vue 3 + Vite)                                                                   |
+| `plugin/`       | Claude Code plugin. `bin/hook.js` is a build output, but it is committed                   |
+| `docs/`         | Architecture SVGs (from the Open Design `gollabara-architecture` project) and `ROADMAP.md` |
+| `spike/`        | Early hook-input capture experiments, reference only                                       |
 
 ## Commands
 
@@ -37,6 +38,7 @@ bun test             # every *.test.ts (hook, server, shared, web)
 bun run typecheck
 bun run lint         # ESLint (@antfu/eslint-config), also formats Markdown/JSON/YAML
 bun run lint:fix
+bun src/cli.ts doctor # server reachable, plugin version per harness, hook latency and failures
 ```
 
 `bun install` sets up husky git hooks: pre-commit runs lint-staged, and commit-msg runs commitlint.
@@ -52,7 +54,7 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 | `GOLLABARA_PORT`          | `4747`                  | Server port                                                                               |
 | `GOLLABARA_HOST`          | unset                   | Comma-separated listen addresses (e.g. `0.0.0.0`); setting it also lifts the source check |
 | `GOLLABARA_URL`           | `http://127.0.0.1:4747` | Server the hook posts events to and the wake-up hook polls                                |
-| `GOLLABARA_DATA`          | `~/.gollabara/data`     | Where messages and images are stored                                                      |
+| `GOLLABARA_DATA`          | `~/.gollabara/data`     | Where messages, images, and the hook health log are stored                                |
 | `GOLLABARA_HOOK`          | unset                   | `off`: the hooks exit at once, posting and claiming nothing                               |
 | `GOLLABARA_ALLOWED_HOSTS` | unset                   | Comma-separated extra host names the server answers to (e.g. a reverse proxy's name)      |
 
@@ -70,7 +72,9 @@ The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs n
 
 ## Storage
 
-`GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is.
+`GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is. Migration 2 adds `hook_versions`, the latest hook seen per harness.
+
+It also holds `hook-health.jsonl`, the hook health log (see below). The hook writes it under its own `GOLLABARA_DATA`, so a session whose env doesn't match the server's logs elsewhere.
 
 ## Capture (Claude Code)
 
@@ -108,6 +112,13 @@ An idle session (its turn ended, waiting for input) runs no hook, so hook delive
 - **Recap.** A wake-up turn opens with `turnOrigin: "task_notification"` and `origin.kind: "task-notification"`, and its content is `Stop hook blocking error from command "Stop": ` followed by the stderr. When that carries `[gollabara] Feedback from the user`, the turn is the user's (`rewake`). Its Stop arrives with `stop_hook_active: true`, yet the recap opens a new turn instead of joining the previous one; feedback delivered at that Stop continues it as usual. Another hook's wake-up stays a wake-up.
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
+
+### Version handshake and hook health
+
+- **Handshake.** Every hook request carries `X-Gollabara-Hook: <version>`, the version in `plugin/.claude-plugin/plugin.json` baked into `plugin/bin/hook.js` at build time, and `X-Gollabara-Harness`. The wake-up hook sends only the version; the server takes the harness from the session. Events from hooks older than the handshake carry neither header and are stored as before.
+- **Recording.** On events, claims and wake-up polls the server upserts the harness's latest hook (version, or NULL for no header, and when) into `hook_versions`. `GET /api/health` returns `{ version, schema, hooks: [{ harness, version, seenAt, outdated }] }`, where `version` is the plugin version the server expects (the same `plugin.json`). A hook is `outdated` when it sent no version or an older one.
+- **Health log.** Each hook run that sent a request appends one line to `hook-health.jsonl`: `at`, `event` (the hook event name), `harness`, `ms` (from the hook's start until its requests settled), `ok`, and on failure an `error` class (`timeout`, `unreachable`, `http-<status>`, `error`). No payload text. The append is synchronous (a few hundred bytes) and comes after the session's output; every error is swallowed. At 128 KB the file rotates to `hook-health.1.jsonl`, so the log stays under 256 KB. The wake-up hook does not log.
+- **Doctor.** `golla doctor` prints whether the server answers `GET /api/health`, each harness's last hook version ("plugin outdated" for missing or older), p50/p95 latency and the latest failures from the health log, and the data directory.
 
 Open Design runs the same plugin. When the hook's env has `OD_PROJECT_ID`, the session is tagged `open-design` and named after that project id. The hook reads no other `OD_*` value, because the env also holds a tool token.
 

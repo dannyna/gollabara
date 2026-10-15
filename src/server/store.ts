@@ -1,10 +1,11 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, Harness, HookSeen, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Database } from 'bun:sqlite'
+import { hookOutdated } from '../shared/version'
 import { dHash } from './dhash'
 import { imageSize } from './image-size'
 import { migrate } from './migrations'
@@ -109,6 +110,18 @@ export class Store {
 
   cacheVerdict(key: string, verdict: Verdict): void {
     this.db.run('INSERT INTO triage_cache (key, verdict) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET verdict = excluded.verdict', [key, verdict])
+  }
+
+  /** Records the hook a harness last ran: `version` is null when the hook sent none */
+  seeHook(harness: Harness, version: string | null, now = Date.now()): void {
+    this.db.run(`INSERT INTO hook_versions (harness, version, seen_at) VALUES (?, ?, ?)
+      ON CONFLICT(harness) DO UPDATE SET version = excluded.version, seen_at = excluded.seen_at`, [harness, version, now])
+  }
+
+  /** The latest hook seen per harness, most recent first */
+  hooks(expected?: string): HookSeen[] {
+    const rows = this.db.query('SELECT harness, version, seen_at FROM hook_versions ORDER BY seen_at DESC').all() as { harness: Harness, version: string | null, seen_at: number }[]
+    return rows.map(r => ({ harness: r.harness, version: r.version, seenAt: r.seen_at, outdated: hookOutdated(r.version, expected) }))
   }
 
   /** One stored message, or null */

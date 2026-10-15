@@ -7,6 +7,7 @@ import type { HookInput } from './map'
 import process from 'node:process'
 import { serverUrl } from '../shared/config'
 import { feedbackText } from '../shared/feedback'
+import { HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 
 /**
  * plugin/hooks/hooks.json gives the hook 24 h. Claude Code kills it then without a trace, and feedback
@@ -73,7 +74,8 @@ export async function runWait(): Promise<number> {
       // An open poll the server answers after Claude Code is gone would claim feedback no one reads
       const watch = setInterval(() => alive() || abort.abort(), 1000)
       try {
-        const res = await fetch(url, { signal: abort.signal })
+        // The server takes the harness from the session record
+        const res = await fetch(url, { signal: abort.signal, headers: { [HOOK_VERSION_HEADER]: PLUGIN_VERSION } })
         if (res.ok)
           return { items: await res.json() as Feedback[] }
         return res.status >= 500 ? 'down' : 'stop'

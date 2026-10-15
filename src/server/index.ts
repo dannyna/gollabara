@@ -1,14 +1,16 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, IncomingEvent, ServerFrame, ServerSettings, Session, TriageEngine } from '../shared/types'
+import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, IncomingEvent, ServerFrame, ServerSettings, Session, TriageEngine } from '../shared/types'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
+import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
+import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
 import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
@@ -19,6 +21,7 @@ const TOPIC = 'stream'
 const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 /** How long a wake-up poll waits for feedback before it returns empty and the waiting hook asks again */
 const CHANNEL_WAIT_MS = 25_000
+const HARNESSES: Harness[] = ['claude-code', 'open-design', 'codex', 'claude-design']
 
 export function startServer() {
   const store = new Store(dataDir())
@@ -36,6 +39,17 @@ export function startServer() {
     dataDir: dataDir(),
     selfUrl: `http://127.0.0.1:${serverPort()}`,
   })
+
+  /**
+   * Records which hook version a harness runs. Hooks from before the handshake send no headers; their
+   * harness comes from the event or the session, and the version is recorded as missing.
+   */
+  const seeHook = (req: Request, fallback: Harness | undefined) => {
+    const named = req.headers.get(HOOK_HARNESS_HEADER) as Harness | null
+    const harness = named && HARNESSES.includes(named) ? named : fallback
+    if (harness)
+      store.seeHook(harness, req.headers.get(HOOK_VERSION_HEADER)?.slice(0, 64) || null)
+  }
 
   const handlers = {
     async fetch(req: Request, srv: Server<undefined>) {
@@ -56,6 +70,7 @@ export function startServer() {
         const event = await req.json() as IncomingEvent
         const relinked = event.kind === 'session' && event.pid ? store.sessionForPid(event.pid) : null
         const { session, message, created } = store.ingest(event)
+        seeHook(req, session.harness)
         // The process moved to a new session (/clear, resume): its wake-up waiter's open poll returns and retires
         if (relinked && relinked !== session.id)
           channels.wake(relinked)
@@ -117,6 +132,7 @@ export function startServer() {
         if (url.pathname === '/api/feedback/claim') {
           if (!VIAS.includes(body.via as FeedbackVia))
             return new Response('via is invalid', { status: 400 })
+          seeHook(req, store.session(body.sessionId)?.harness)
           const items = store.claimFeedback(body.sessionId, body.via as FeedbackVia)
           channels.observe(body.sessionId, { claim: body.via as FeedbackVia, claimed: items.length })
           for (const feedback of items) publishFeedback('delivered', feedback)
@@ -137,6 +153,7 @@ export function startServer() {
         const waiter = Number(url.searchParams.get('waiter'))
         if (!sessionId || !(waiter > 0))
           return new Response('session and waiter are required', { status: 400 })
+        seeHook(req, store.session(sessionId)?.harness)
         const moved = () => pid > 0 && (store.sessionForPid(pid) ?? sessionId) !== sessionId
         const retired = () => channels.retired(sessionId, waiter) ?? (moved() ? 'moved' : null)
         channels.enlist(sessionId, waiter)
@@ -178,6 +195,10 @@ export function startServer() {
           }, CHANNEL_GRACE_MS + 100)
         }
       }
+
+      // For the UI and `golla doctor`: the plugin version this server expects and the hooks it has heard from
+      if (url.pathname === '/api/health')
+        return Response.json({ version: PLUGIN_VERSION, schema: SCHEMA_VERSION, hooks: store.hooks() } satisfies Health)
 
       if (url.pathname === '/api/messages')
         return Response.json(store.recent())
