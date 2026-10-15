@@ -1,6 +1,7 @@
 // `golla hook wait` — the wake-up Stop hook. Claude Code runs it in the background (`asyncRewake`), so it
 // never blocks the session. It waits for the user's feedback while the session is idle; exit code 2 wakes
-// the session and shows it the stderr text. Every other ending is a quiet exit 0.
+// the session and shows it the stderr text. Every other ending is a quiet exit 0, and a headless run
+// (`claude -p`, the Agent SDK) exits at once.
 
 import type { Feedback } from '../shared/types'
 import type { HookInput } from './map'
@@ -53,10 +54,19 @@ export async function waitForFeedback(poll: () => Promise<PollResult>, options: 
   return null
 }
 
+/**
+ * Whether the session is headless. Claude Code marks a non-interactive run's entrypoint `sdk-cli`
+ * (`claude -p`), and the Agent SDK sets `sdk-ts` or `sdk-py`. Such a run waits for its background hooks
+ * before it exits, and nothing there ends a wait, so a waiter would hold it open for its whole budget.
+ */
+export function headless(entrypoint: string | undefined): boolean {
+  return entrypoint?.startsWith('sdk-') ?? false
+}
+
 /** Exit code for the hook process: 2 wakes the session with the feedback on stderr, 0 is quiet */
 export async function runWait(): Promise<number> {
   // Set by gollabara's own background model calls so they never stream themselves
-  if (process.env.GOLLABARA_HOOK === 'off')
+  if (process.env.GOLLABARA_HOOK === 'off' || headless(process.env.CLAUDE_CODE_ENTRYPOINT))
     return 0
   try {
     const input = JSON.parse(await Bun.stdin.text()) as HookInput

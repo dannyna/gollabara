@@ -1,7 +1,7 @@
 {
   "name": "gollabara",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "One stream of the screenshots, recaps and questions your coding agent sessions produce",
   "license": "MIT",
   "repository": {
