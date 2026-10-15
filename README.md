@@ -66,9 +66,17 @@ What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): re
 Requires [bun](https://bun.sh) 1.3 or later.
 
 ```bash
+bunx gollabara setup     # once it is on npm
+bunx gollabara doctor    # what is and isn't working
+```
+
+`setup` installs gollabara under `~/.gollabara`, starts the server as a login service on macOS (http://localhost:4747), and installs the plugin into Claude Code when `claude` is on your PATH. Run it again any time; `bunx gollabara update` refreshes everything and `bunx gollabara uninstall` removes it (`--keep-data` keeps your messages and images).
+
+From a checkout, until the npm package is published:
+
+```bash
 bun install && bun run build
-bun src/cli.ts serve                       # http://localhost:4747
-claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
+bun src/cli.ts setup     # or: bun src/cli.ts serve, without the login service
 ```
 
 Your feedback reaches a session even while it sits idle: the plugin wakes it, with no launch flag.

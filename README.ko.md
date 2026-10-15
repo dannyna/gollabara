@@ -66,9 +66,17 @@ gollabara는 「골라 봐라」를 소리 나는 대로 적은 이름이고, �
 [bun](https://bun.sh) 1.3 이상이 필요합니다.
 
 ```bash
+bunx gollabara setup     # npm에 올라간 뒤
+bunx gollabara doctor    # 무엇이 되고 무엇이 안 되는지
+```
+
+`setup`은 gollabara를 `~/.gollabara`에 설치하고, macOS에서는 서버를 로그인 서비스로 띄우며(http://localhost:4747), `claude`가 PATH에 있으면 Claude Code에 플러그인을 설치합니다. 몇 번을 다시 실행해도 괜찮습니다. `bunx gollabara update`로 모두 새로 고치고, `bunx gollabara uninstall`로 지웁니다(`--keep-data`를 주면 메시지와 이미지는 남깁니다).
+
+npm 패키지가 나오기 전에는 저장소에서 실행합니다.
+
+```bash
 bun install && bun run build
-bun src/cli.ts serve                       # http://localhost:4747
-claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
+bun src/cli.ts setup     # 로그인 서비스 없이 띄우려면 bun src/cli.ts serve
 ```
 
 피드백은 쉬고 있는 세션에도 바로 닿습니다. 플러그인이 세션을 깨우므로 실행 플래그가 필요 없습니다.

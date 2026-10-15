@@ -15,8 +15,9 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 | Path            | Role                                                                                       |
 | --------------- | ------------------------------------------------------------------------------------------ |
-| `src/cli.ts`    | `golla` CLI entry point (`serve`, `hook`, `doctor`)                                        |
-| `src/doctor.ts` | `golla doctor`: server reachability, plugin versions, hook health                          |
+| `src/cli.ts`    | `golla` CLI entry point (`serve`, `hook`, `doctor`, `setup`, `update`, `uninstall`)        |
+| `src/doctor.ts` | `golla doctor`: server reachability, plugin versions, hook health, then the machine checks |
+| `src/setup/`    | `golla setup/update/uninstall`, the LaunchAgent, harness plugins, doctor's machine checks  |
 | `src/hook/`     | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`                      |
 | `src/server/`   | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                         |
 | `src/shared/`   | Types and config shared by the server, the hook, and the UI                                |
@@ -31,14 +32,14 @@ Use [bun](https://bun.sh) 1.3+ only; never npm, pnpm, or yarn.
 
 ```bash
 bun install          # also installs the husky git hooks
-bun run build        # bundle the hook + build the web UI
+bun run build        # bundle the hook and the CLI (dist/golla.js) + build the web UI
 bun run dev          # server, restarts on file change
 bun run dev:web      # web dev server (4748, proxies to 4747)
 bun test             # every *.test.ts (hook, server, shared, web)
 bun run typecheck
 bun run lint         # ESLint (@antfu/eslint-config), also formats Markdown/JSON/YAML
 bun run lint:fix
-bun src/cli.ts doctor # server reachable, plugin version per harness, hook latency and failures
+bun src/cli.ts doctor # server, plugin version per harness, hook health, service, plugins, sleep, Tailscale
 ```
 
 `bun install` sets up husky git hooks: pre-commit runs lint-staged, and commit-msg runs commitlint.
@@ -57,6 +58,9 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 | `GOLLABARA_DATA`          | `~/.gollabara/data`     | Where messages, images, and the hook health log are stored                                |
 | `GOLLABARA_HOOK`          | unset                   | `off`: the hooks exit at once, posting and claiming nothing                               |
 | `GOLLABARA_ALLOWED_HOSTS` | unset                   | Comma-separated extra host names the server answers to (e.g. a reverse proxy's name)      |
+| `GOLLABARA_HOME`          | `~/.gollabara`          | Where `golla setup` installs the app (`app/`)                                             |
+| `GOLLABARA_SERVICE_LABEL` | `dev.gollabara.server`  | The LaunchAgent label, and its plist name in `~/Library/LaunchAgents`                     |
+| `GOLLABARA_CLAUDE`        | `claude`                | The Claude Code binary `golla setup`, `uninstall` and `doctor` run                        |
 
 `golla serve` listens on `127.0.0.1` plus each Tailscale address found on the network interfaces at start (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`), one listener per address sharing the handlers and the WebSocket fan-out (`src/server/listen.ts`). A tailnet address that appears later is picked up on the next restart. Requests from any other source get 403 for every path. `GOLLABARA_HOST` replaces the addresses, and because it is the user's explicit opt-in, it also lifts that check; the feedback, settings and wake-up endpoints still accept only loopback and tailnet sources.
 
@@ -75,6 +79,21 @@ The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs n
 `GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is. Migration 2 adds `hook_versions`, the latest hook seen per harness.
 
 It also holds `hook-health.jsonl`, the hook health log (see below). The hook writes it under its own `GOLLABARA_DATA`, so a session whose env doesn't match the server's logs elsewhere.
+
+## Install and the login service
+
+`golla setup` (`bunx gollabara setup` from npm, `bun src/cli.ts setup` from a built checkout) is idempotent:
+
+- **Stable path.** It copies `package.json`, `dist/golla.js`, `web/dist`, `plugin/` and `.claude-plugin/` to `$GOLLABARA_HOME/app/<version>` and points the `app/current` symlink at it with one rename, so a `git pull` or a bunx cache eviction never breaks the running service. Older versions are removed after the switch. `app/install.json` records the version, the source (`npm`, or `checkout` with its path), label, port, data dir and whether the service is on; `update`, `doctor` and `uninstall` read it, after flags and env.
+- **Bundle.** `dist/golla.js` is the whole CLI bundled with `bun build --target=bun`, so the npm package and the installed copy need no `node_modules`; it runs with `bun --no-install`. The server finds `web/dist` by walking up to gollabara's `package.json` (`src/shared/package-root.ts`), from `src/server` and from `dist/` alike.
+- **Service (macOS).** A LaunchAgent, `~/Library/LaunchAgents/<label>.plist`, runs `<absolute bun> --no-install <app/current>/dist/golla.js serve` with `RunAtLoad` and `KeepAlive`, `GOLLABARA_PORT`, `GOLLABARA_DATA` and setup's `PATH` (launchd's own PATH has no `claude` or `codex` for triage), logging to `<data>/server.log`. Setup boots it out and bootstraps it again (`launchctl bootout`/`bootstrap gui/<uid>`), then waits up to 20 s for `GET /api/health`. `--no-service` skips it; other platforms skip it with a note.
+- **Harnesses.** `src/setup/harness.ts` lists them; each has `detect`, `install`, `uninstall` and `status`. Claude Code is detected by `claude` on PATH. Setup runs `claude plugin marketplace add <app/current>` (which repoints an existing `gollabara` marketplace, such as a checkout) and `claude plugin install gollabara@gollabara`. Claude Code reads a directory marketplace's plugin in place, so switching `app/current` updates the plugin at the next session start. Codex (#72) joins that list.
+- **Port.** `--port` sets the service's port. Hooks still post to 4747 unless `GOLLABARA_PORT` or `GOLLABARA_URL` is set where the harness runs, and setup says so.
+- **Update.** `golla update` rebuilds the recorded checkout (`bun run build`) and runs its `setup`, or runs `bun x gollabara@latest setup`, with the recorded port and service choice. That setup reinstalls the plugins and restarts the service.
+- **Uninstall.** `golla uninstall` boots out the service and removes its plist, uninstalls the plugin and removes the `gollabara` marketplace, removes `app/`, and removes the data dir unless `--keep-data` (never `/` or the home dir).
+- **Doctor.** After the server and hook rows, `golla doctor` adds the installed version and source, the service (loaded, running, pid), each harness's plugin, sleep settings from `pmset -g custom` (advice when the Mac sleeps on power, which stops remote viewing) and Tailscale (installed, running, serve configured). It exits 1 when the server is unreachable, a hook is outdated, the service is installed but not running, or a detected harness has no plugin. Sleep and Tailscale are advice only.
+
+To try any of this without touching a real install, set `GOLLABARA_HOME`, `GOLLABARA_DATA`, `GOLLABARA_SERVICE_LABEL` and `GOLLABARA_CLAUDE` (a stub that records its arguments) to scratch values, and pass a free `--port`.
 
 ## Capture (Claude Code)
 
@@ -144,5 +163,6 @@ With 「대화 정리」 set to Claude or Codex (`PUT /api/settings`, loopback/t
 - **Docs:** [README.md](README.md) (English) and [README.ko.md](README.ko.md) (Korean) must stay in sync. AGENTS.md, DESIGN.md, and [REVIEW.md](REVIEW.md) are in English. The README carries the design philosophy, not technical detail.
 - **Language:** Code, comments, commit messages, PR titles and bodies, issues, and docs are in English. The exceptions are [README.ko.md](README.ko.md) and the product UI copy, which are Korean. Write in English even when the conversation with the user is in Korean.
 - **Code comments:** Short, explaining why.
+- **Releases:** Whenever hook code changes (anything that changes `plugin/bin/hook.js`), bump the version in `plugin/.claude-plugin/plugin.json` and `package.json` together, in the same PR. The version handshake compares the hook's baked-in version with the server's, so this is what lets `golla doctor` flag an outdated plugin. Publishing to npm (`prepublishOnly` runs `bun run build`) is the owner's call.
 - **Commits:** Conventional Commits (`feat(web): …`, `fix(hook): …`), enforced by commitlint.
 - **Pull requests:** `main` takes changes only through PRs and squash merges, so the PR title becomes the commit on `main` and must be a Conventional Commit too (checked by `pr-title`). Name branches `<type>/<short-topic>` (e.g. `ci/lint-and-hooks`). The `ci` and `pr-title` checks must pass and every review thread must be resolved before merging.
