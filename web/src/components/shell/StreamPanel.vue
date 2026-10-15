@@ -9,7 +9,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { arrivedSince, atLatest, lastSeq } from '../stream/follow'
+import { arrivedSince, atLatest, lastArrival } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 
@@ -30,14 +30,15 @@ const track = computed(() => rail.value?.el)
 
 const follow = ref<Follow>('start')
 const unseen = ref(0)
-// Highest sequence number already accounted for, so only real arrivals are counted
-let seenSeq = lastSeq(props.artifacts)
+// Newest arrival already accounted for, so only real arrivals are counted
+let seen = lastArrival(props.artifacts)
 
 // Programmatic smooth scrolls pass through "not at the end" too; only a direct
-// interaction may pause following
+// interaction may pause following. A wheel step scrolls smoothly for a while, so the
+// intent outlasts it.
 let userIntentUntil = 0
 function markUserIntent() {
-  userIntentUntil = Date.now() + 800
+  userIntentUntil = Date.now() + 1000
 }
 function onScroll() {
   const el = track.value!
@@ -59,21 +60,46 @@ function jumpToLatest() {
   unseen.value = 0
 }
 
-/** Brings a cell to the middle of the rail, e.g. when its chat thumbnail is picked */
-function reveal(key: string, behavior: ScrollBehavior = 'smooth') {
+/** Puts a cell on the rail's anchor, like a wheel step, e.g. when its chat thumbnail is picked */
+function reveal(key: string, behavior?: ScrollBehavior) {
   // Counts as browsing: following pauses unless the cell sits at the right end
   markUserIntent()
-  track.value?.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ behavior, inline: 'center', block: 'nearest' })
+  rail.value?.align(key, behavior)
 }
 defineExpose({ reveal })
 
+/**
+ * The first cell in view that a new capture will not move, and where it sits. Read before
+ * the DOM updates: a re-captured screen moves its cell to the end, and the cells after its
+ * old place close up under a reader who is browsing.
+ */
+function holdView(moved: Set<string>) {
+  const el = track.value
+  if (!el)
+    return null
+  const left = el.getBoundingClientRect().left
+  for (const cell of el.querySelectorAll<HTMLElement>(':scope > [data-key]')) {
+    const box = cell.getBoundingClientRect()
+    if (box.right > left && !moved.has(cell.dataset.key!))
+      return { key: cell.dataset.key!, offset: box.left - left }
+  }
+  return null
+}
+function restoreView(hold: { key: string, offset: number } | null) {
+  const el = track.value
+  const cell = hold && el?.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(hold.key)}"]`)
+  if (el && cell)
+    el.scrollLeft += cell.getBoundingClientRect().left - el.getBoundingClientRect().left - hold!.offset
+}
+
 watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevList, prevScope]) => {
-  const arrived = arrivedSince(seenSeq, list)
-  seenSeq = Math.max(seenSeq, lastSeq(list))
+  const arrived = arrivedSince(seen, list)
+  const hold = arrived && follow.value === 'paused' ? holdView(new Set(list.filter(a => a.arrival > seen).map(a => a.key))) : null
+  seen = Math.max(seen, lastArrival(list))
   // Cells that only appeared or vanished: a session muted or unmuted
   const before = new Set(prevList.map(a => a.key))
   const now = new Set(list.map(a => a.key))
-  const reshuffled = prevList.some(a => !now.has(a.key)) || list.some(a => !before.has(a.key) && a.seq <= lastSeq(prevList))
+  const reshuffled = prevList.some(a => !now.has(a.key)) || list.some(a => !before.has(a.key) && a.arrival <= lastArrival(prevList))
   await nextTick()
   if (scope !== prevScope) {
     // A new scope starts at its latest artifact
@@ -89,6 +115,7 @@ watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevLis
     toLatest('smooth')
   }
   else if (arrived) {
+    restoreView(hold)
     unseen.value += arrived
   }
 })
@@ -125,7 +152,7 @@ const { setTarget } = useFeedbackTarget()
     <StreamRail
       v-else ref="rail" :artifacts="artifacts" :selected="selected"
       @select="emit('select', $event)" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
-      @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
+      @step="markUserIntent" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"
     />
     <NewPill v-if="follow === 'paused' && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />

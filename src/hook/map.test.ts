@@ -97,6 +97,36 @@ describe('mapHook (real payloads captured in the spike)', () => {
     expect(event.images[0]).toMatchObject({ mime: 'image/png', width: 1024, height: 1024 })
   })
 
+  test('records the file a Read image came from as its source', () => {
+    const event = mapHook(postReadImage as HookInput, session)
+    if (event?.kind !== 'image')
+      throw new Error('expected an image event')
+    expect(event.images[0]!.source).toBe(postReadImage.tool_input.file_path)
+  })
+
+  test('leaves source unset when one path yields several images, or names none', () => {
+    const base = { session_id: 's1', cwd: '/x', hook_event_name: 'PostToolUse', tool_name: 'Read' }
+    const two = [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }, { type: 'image', data: 'BBBB', mimeType: 'image/png' }]
+    const pages = mapHook({ ...base, tool_input: { file_path: '/tmp/deck.pdf' }, tool_response: two }, session)
+    const unnamed = mapHook({ ...base, tool_name: 'mcp__x__shot', tool_input: {}, tool_response: two.slice(0, 1) }, session)
+    if (pages?.kind !== 'image' || unnamed?.kind !== 'image')
+      throw new Error('expected image events')
+    expect(pages.images.every(i => i.source === undefined)).toBe(true)
+    expect(unnamed.images[0]!.source).toBeUndefined()
+  })
+
+  test('takes a screenshot tool\'s filename as the source', () => {
+    const event = mapHook({
+      session_id: 's1',
+      cwd: '/x',
+      hook_event_name: 'PostToolUse',
+      tool_name: 'mcp__playwright__browser_take_screenshot',
+      tool_input: { filename: 'login.png' },
+      tool_response: [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }],
+    }, session)
+    expect(event).toMatchObject({ images: [{ source: 'login.png' }] })
+  })
+
   test('does not stream an MCP text result without images', () => {
     expect(mapHook(postMcpText as HookInput, session)).toBeNull()
   })

@@ -13,7 +13,7 @@ function shot(w: number, h: number, tone: string) {
 }
 
 function artifact(seq: number, sessionId: string, branch: string, w: number, h: number, at: number, label: string, tone: string): Artifact {
-  return { key: `${seq}-0`, messageId: seq, url: shot(w, h, tone), width: w, height: h, sessionId, session: sessionId, branch, at, sessionStart: true, seq, label }
+  return { key: `${seq}-0`, messageId: seq, url: shot(w, h, tone), width: w, height: h, sessionId, session: sessionId, branch, at, runStart: true, seq, arrival: seq, label }
 }
 
 export const SAMPLE_ARTIFACTS: Artifact[] = [

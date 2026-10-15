@@ -86,5 +86,71 @@ export function dayRail(): Artifact[] {
 
 /** Planned non-image artifacts (guide 07): 16:10 with no preview */
 export function documentSample(id: string, session: string, seq: number, minute: number, label: string): Artifact {
-  return { key: id, messageId: 100 + seq, url: '', width: 1600, height: 1000, sessionId: session, session, branch: BRANCH[session], at: min(minute), sessionStart: false, seq, turnIndex: 0, label }
+  return { key: id, messageId: 100 + seq, url: '', width: 1600, height: 1000, sessionId: session, session, branch: BRANCH[session], at: min(minute), runStart: false, seq, arrival: seq, turnIndex: 0, label }
+}
+
+// Re-captures and runs (#33). `mark` nudges one small rect so the bytes differ while the
+// screen stays the same, as a real re-shoot does; the dHash is set by hand to match.
+const SAME = 'ffffffff00000000'
+interface Shot { session: 'od' | 'piuda', minute: number, file?: string, variant?: number, mark?: number, same?: boolean }
+
+function captureMessages(shots: Shot[]): StreamMessage[] {
+  return shots.map((s, n) => {
+    const at = min(s.minute)
+    let url = shot(390, 844, TONE[s.session]!, s.variant ?? n % 3)
+    // Every shot gets its own bytes unless `mark: 0` asks for an exact copy
+    const mark = s.mark ?? n + 20
+    if (mark)
+      url = url.replace(encodeURIComponent('</svg>'), encodeURIComponent(`<rect x="${mark * 9 % 370}" y="830" width="6" height="6" fill="#c9ced6"/></svg>`))
+    // Distinct screens get far-apart hashes
+    const dhash = s.same ? SAME : (0x1F3D5B79n * BigInt(n + 1)).toString(16).padStart(16, '0').slice(-16)
+    return {
+      id: n + 1,
+      at,
+      sessionId: s.session,
+      sessionName: `${s.session} · ${BRANCH[s.session]}`,
+      kind: 'turn',
+      images: [{ url, width: 390, height: 844, at, ...(s.file ? { source: `/tmp/e2e/${s.file}`, dhash } : {}) }],
+    }
+  })
+}
+
+/** `count` captures of one login screen to the same file, a minute apart */
+function reshots(count: number, from = 0): Shot[] {
+  return Array.from({ length: count }, (_, i) => ({ session: 'od' as const, minute: from + i, file: 'p2-01-login.png', variant: 0, mark: i + 1, same: true }))
+}
+
+export const CAPTURE_SAMPLES = {
+  two: () => toArtifacts(captureMessages(reshots(2))),
+  five: () => toArtifacts(captureMessages(reshots(5))),
+  mixed: () => toArtifacts(captureMessages([
+    ...reshots(2),
+    { session: 'od', minute: 2, file: 'p2-02-age-gate.png', variant: 1 },
+    { session: 'od', minute: 3, file: 'p2-03-ai-consent-after-scrolling-down.png', variant: 2 },
+    { session: 'od', minute: 4, file: 'p2-01-login.png', variant: 0, mark: 7, same: true },
+  ])),
+  // No source: only byte-identical captures hide
+  identical: () => toArtifacts(captureMessages([
+    { session: 'od', minute: 0, variant: 1, mark: 0 },
+    { session: 'od', minute: 1, variant: 1, mark: 0 },
+    { session: 'od', minute: 2, variant: 2 },
+  ])),
+  longRun: () => toArtifacts(captureMessages([0, 0.5, 1, 1.5, 2, 2.5].map((minute, i) => ({ session: 'od', minute, file: `r3-0${i + 1}-home.png`, variant: i % 3 })))),
+  interleaved: () => toArtifacts(captureMessages([
+    { session: 'od', minute: 0, file: 'hero-a.png', variant: 0 },
+    { session: 'od', minute: 1, file: 'hero-b.png', variant: 1 },
+    { session: 'piuda', minute: 2, file: 'sidebar.png', variant: 2 },
+    { session: 'od', minute: 3, file: 'hero-c.png', variant: 2 },
+  ])),
+  gap: () => toArtifacts(captureMessages([
+    { session: 'od', minute: 0, file: 'hero-a.png', variant: 0 },
+    { session: 'od', minute: 2, file: 'hero-b.png', variant: 1 },
+    { session: 'od', minute: 9, file: 'hero-c.png', variant: 2 },
+    { session: 'od', minute: 10, file: 'hero-d.png', variant: 0 },
+  ])),
+  hiddenInRun: () => toArtifacts(captureMessages([
+    { session: 'od', minute: 0, file: 'hero-a.png', variant: 1 },
+    ...reshots(3, 1),
+    { session: 'od', minute: 4, file: 'hero-b.png', variant: 2 },
+  ])),
 }

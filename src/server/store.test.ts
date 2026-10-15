@@ -7,6 +7,8 @@ import { FeedbackError, Store, TURN_IDLE_MS } from './store'
 
 // 1×1 PNG
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAA'
+// The same pixel with its IEND chunk, so it decodes for a dHash
+const FULL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 const od: SessionInfo = { id: 'od-1', name: 'gollabara-spike', harness: 'open-design', project: 'gollabara-spike', cwd: '/od/data' }
 
 const image = (session = od): IncomingEvent => ({ kind: 'image', session, toolName: 'Read', images: [{ data: PNG, mime: 'image/png', width: 800, height: 500 }] })
@@ -141,5 +143,27 @@ describe('feedback', () => {
     expect(() => store.queueFeedback('nope', 'hi')).toThrow(FeedbackError)
     for (const ref of ['/img/missing.png', '../stream.db', '/img/..'])
       expect(() => store.queueFeedback('od-1', 'hi', ref)).toThrow('unknown image')
+  })
+})
+
+describe('image source', () => {
+  test('keeps the source and a dHash for a named image, neither for an unnamed one', () => {
+    store.ingest({ kind: 'image', session: od, toolName: 'Read', images: [{ data: FULL_PNG, mime: 'image/png', source: '/tmp/shot.png' }] }, 1000)
+    store.ingest(image(), 2000)
+    const [named, unnamed] = store.recent()[0]!.images!
+    expect(named).toMatchObject({ source: '/tmp/shot.png', dhash: expect.stringMatching(/^[0-9a-f]{16}$/) })
+    expect(unnamed).not.toHaveProperty('source')
+    expect(unnamed).not.toHaveProperty('dhash')
+  })
+
+  test('a message stored before sources existed still loads, and new images join its turn', () => {
+    // Same body shape an older server wrote: no source, no dhash
+    store.ingest(image(), 1000)
+    const reopened = new Store(dir)
+    reopened.ingest({ kind: 'image', session: od, toolName: 'Read', images: [{ data: PNG, mime: 'image/png', source: '/tmp/a.png' }] }, 2000)
+    expect(reopened.recent()[0]!.images).toEqual([
+      { url: expect.any(String), width: 800, height: 500, at: 1000 },
+      expect.objectContaining({ source: '/tmp/a.png', at: 2000 }),
+    ])
   })
 })

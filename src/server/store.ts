@@ -1,15 +1,23 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Database } from 'bun:sqlite'
+import { dHash } from './dhash'
 import { imageSize } from './image-size'
 
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
+
+/**
+ * Larger captures are not decoded for a dHash; they still group by identical bytes.
+ * JPEG decoding runs about 14 ms per megapixel, so 12 MP stays near 170 ms and the
+ * hook's parallel feedback claim never waits out its 1.5 s budget behind it.
+ */
+const DHASH_MAX_PIXELS = 12_000_000
 
 /** A crashed session never sends Stop, so an open turn closes after this long without events */
 export const TURN_IDLE_MS = 10 * 60 * 1000
@@ -162,10 +170,12 @@ export class Store {
 
   /** Upserts the event's session, then stores the event in its turn. message is null if there is nothing to stream */
   ingest(event: IncomingEvent, now = Date.now()): Ingested {
-    return this.db.transaction(() => this.ingestInTx(event, now))()
+    // Files and hashes first: decoding for the dHash is slow and needs no lock
+    const saved = event.kind === 'image' ? event.images.map(i => this.saveImage(i)) : []
+    return this.db.transaction(() => this.ingestInTx(event, saved, now))()
   }
 
-  private ingestInTx(event: IncomingEvent, now: number): Ingested {
+  private ingestInTx(event: IncomingEvent, saved: StoredImage[], now: number): Ingested {
     const prev = this.db.query('SELECT * FROM sessions WHERE id = ?').get(event.session.id) as SessionRow | null
     const row = this.upsertSession(event.session, now)
     const session = toSession(row)
@@ -179,7 +189,7 @@ export class Store {
       result = { session, message: this.insert({ ...base, kind: 'question', questions: event.questions }), created: true }
     }
     else if (event.kind === 'image') {
-      const images = event.images.map(i => ({ ...this.saveImage(i.data, i.mime, i.width, i.height), at: now }))
+      const images = saved.map(i => ({ ...i, at: now }))
       const open = openTurn !== null ? this.message(openTurn) : null
       if (open) {
         result = { session, message: this.update({ ...open, images: [...(open.images ?? []), ...images] }), created: false }
@@ -312,15 +322,20 @@ export class Store {
     return message
   }
 
-  private saveImage(base64: string, mime: string, width?: number, height?: number): StoredImage {
-    const bytes = Buffer.from(base64, 'base64')
+  // Images live in the message body JSON, so `source` and `dhash` need no column; older bodies simply lack them
+  private saveImage({ data, mime, width, height, source }: IncomingImage): StoredImage {
+    const bytes = Buffer.from(data, 'base64')
     const hash = new Bun.CryptoHasher('sha256').update(bytes).digest('hex').slice(0, 32)
     const name = `${hash}.${EXT[mime] ?? 'png'}`
     const path = join(this.imageDir, name)
     if (!existsSync(path))
       writeFileSync(path, bytes)
     const size = width && height ? { width, height } : imageSize(bytes) ?? { width: 16, height: 10 }
-    return { url: `/img/${name}`, ...size }
+    if (!source)
+      return { url: `/img/${name}`, ...size }
+    // Only a named file can be re-captured, so only those need the dHash; huge images skip it
+    const dhash = size.width * size.height <= DHASH_MAX_PIXELS ? dHash(bytes, mime) : null
+    return { url: `/img/${name}`, ...size, source, ...(dhash ? { dhash } : {}) }
   }
 }
 

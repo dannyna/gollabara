@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import GalleryStage from '../../gallery/GalleryStage.vue'
+import { CAPTURE_SAMPLES } from '../stream/gallery-samples'
 import { SAMPLE_ARTIFACTS } from './gallery-samples'
 import ImageViewer from './ImageViewer.vue'
 import { useFeedbackTarget } from './useFeedbackTarget'
@@ -9,6 +10,7 @@ import { useImageViewer } from './useImageViewer'
 function noop() {}
 const { openKey, open } = useImageViewer()
 const { target } = useFeedbackTarget()
+const FIVE = CAPTURE_SAMPLES.five()
 </script>
 
 <template>
@@ -30,6 +32,11 @@ const { target } = useFeedbackTarget()
   <GalleryCase title="마지막 장 · 세로 화면 · 다음 꺼짐">
     <GalleryStage :height="720">
       <ImageViewer :items="SAMPLE_ARTIFACTS" model-value="6-0" preview @update:model-value="noop" />
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="같은 화면 5장 · 3 / 5에서 앞뒤로 넘김 (↑/↓) · 「따로 보기」로 한 장을 꺼냄 · 피드백은 보이는 캡처에">
+    <GalleryStage :height="720">
+      <ImageViewer :items="FIVE" :model-value="FIVE[0]!.key" :initial-version="2" preview @update:model-value="noop" />
     </GalleryStage>
   </GalleryCase>
   <GalleryCase title="직접 열어 보기 · ←/→ · Ctrl+휠 · 「이 이미지에 피드백」은 뷰어를 닫고 대상을 정해요">

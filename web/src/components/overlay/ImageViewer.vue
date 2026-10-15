@@ -2,13 +2,18 @@
 import type { Artifact } from '../../artifacts'
 import type { ZoomState } from './zoom'
 import { computed, ref, watch } from 'vue'
-import { clock } from '../../artifacts'
+import { middleTruncate } from '../../../../src/shared/stacks'
+import { atVersion, clock, sourceName } from '../../artifacts'
+import { useCaptures } from '../../captures'
 import OverlayIcon from './OverlayIcon.vue'
 import { feedbackTargetOf, useFeedbackTarget } from './useFeedbackTarget'
+import { useImageViewer } from './useImageViewer'
 import { useOverlay } from './useOverlay'
 import { MAX_ZOOM, MIN_ZOOM, setZoom, ZOOM_STEP, zoomLabel } from './zoom'
 
 // Full-screen viewer. Images are shown as they arrived, ratio kept, never cropped.
+// A cell that hides earlier captures of the same screen pages through them here,
+// oldest → newest, starting at the newest.
 
 const props = defineProps<{
   items: Artifact[]
@@ -18,6 +23,8 @@ const props = defineProps<{
   preview?: boolean
   /** Gallery: start zoomed in */
   initialZoom?: number
+  /** Gallery: open on this capture (0 = oldest) instead of the newest */
+  initialVersion?: number
 }>()
 const emit = defineEmits<{ 'update:modelValue': [key: string | null] }>()
 
@@ -45,6 +52,44 @@ watch(item, (a) => {
 const pad = (n: number) => String(n).padStart(2, '0')
 const position = computed(() => `${pad(index.value + 1)} / ${pad(props.items.length)}`)
 
+// Which capture of the cell is on screen; every cell opens on its newest
+const versions = computed(() => item.value?.versions ?? [])
+// A chat thumbnail of an older capture opens on that capture
+const { openCapture } = useImageViewer()
+function startVersion() {
+  const asked = versions.value.findIndex(v => v.key === openCapture.value)
+  // Used once: moving to another cell starts on its newest
+  openCapture.value = null
+  return asked >= 0 ? asked : Math.max(0, versions.value.length - 1)
+}
+const versionIndex = ref(props.initialVersion ?? startVersion())
+watch(() => props.modelValue, () => versionIndex.value = startVersion())
+// A new capture arriving while the newest is on screen keeps the newest on screen
+watch(() => versions.value.length, (n, prev) => {
+  if (versionIndex.value >= (prev ?? 0) - 1)
+    versionIndex.value = Math.max(0, n - 1)
+})
+const shown = computed(() => {
+  const v = versions.value[versionIndex.value]
+  return item.value && v ? atVersion(item.value, v) : item.value
+})
+const file = computed(() => shown.value && sourceName(shown.value))
+function page(step: number) {
+  const next = versionIndex.value + step
+  if (next >= 0 && next < versions.value.length)
+    versionIndex.value = next
+}
+
+// 「따로 보기」: the capture on screen gets its own cell, and the viewer follows it there
+const { splitOff } = useCaptures()
+function separate() {
+  const v = versions.value[versionIndex.value]
+  if (!v)
+    return
+  splitOff(v.key)
+  emit('update:modelValue', v.key)
+}
+
 function go(step: number) {
   const next = props.items[index.value + step]
   if (next)
@@ -53,7 +98,7 @@ function go(step: number) {
 
 // Zoom and pan; a new image starts at 100%
 const view = ref<ZoomState>(setZoom({ zoom: 1, x: 0, y: 0 }, props.initialZoom ?? 1))
-watch(() => props.modelValue, () => view.value = setZoom(view.value, MIN_ZOOM))
+watch(() => shown.value?.url, () => view.value = setZoom(view.value, MIN_ZOOM))
 const zoomBy = (delta: number) => view.value = setZoom(view.value, view.value.zoom + delta)
 const transform = computed(() => `translate(${view.value.x}px, ${view.value.y}px) scale(${view.value.zoom})`)
 
@@ -100,15 +145,26 @@ function onWheel(e: WheelEvent) {
 
 const { setTarget } = useFeedbackTarget()
 function giveFeedback() {
-  setTarget(feedbackTargetOf(item.value!))
+  // The capture on screen, not necessarily the newest
+  setTarget(feedbackTargetOf(shown.value!))
   close()
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'ArrowLeft')
+  if (e.key === 'ArrowLeft') {
     go(-1)
-  else if (e.key === 'ArrowRight')
+  }
+  else if (e.key === 'ArrowRight') {
     go(1)
+  }
+  else if (e.key === 'ArrowUp' && versions.value.length) {
+    e.preventDefault()
+    page(-1)
+  }
+  else if (e.key === 'ArrowDown' && versions.value.length) {
+    e.preventDefault()
+    page(1)
+  }
 }
 </script>
 
@@ -123,7 +179,7 @@ function onKeydown(e: KeyboardEvent) {
       </button>
       <div class="viewer-title">
         {{ item.session }}<span v-if="item.branch"> · {{ item.branch }}</span>
-        <small>{{ clock(item.at) }} · {{ item.width }} × {{ item.height }}</small>
+        <small>{{ clock(shown!.at) }}<template v-if="file"> · <span :title="shown!.source">{{ middleTruncate(file, 40) }}</span></template> · {{ shown!.width }} × {{ shown!.height }}</small>
       </div>
       <div class="viewer-tools">
         <button class="icon-button" type="button" aria-label="축소" :disabled="view.zoom <= MIN_ZOOM" @click="zoomBy(-ZOOM_STEP)">
@@ -143,7 +199,7 @@ function onKeydown(e: KeyboardEvent) {
       @pointerdown="onPointerdown" @pointermove="onPointermove" @pointerup="onPointerup" @pointercancel="onPointerup"
       @wheel="onWheel"
     >
-      <img :src="item.url" :alt="item.label ?? `${item.session} 이미지`" :style="{ transform }" draggable="false">
+      <img :src="shown!.url" :alt="file ?? item.label ?? `${item.session} 이미지`" :style="{ transform }" draggable="false">
       <!-- At either end the arrow turns off; it never wraps around -->
       <button class="icon-button viewer-nav viewer-prev" type="button" aria-label="이전 이미지" :disabled="index <= 0" @click="go(-1)">
         <OverlayIcon name="left" />
@@ -161,6 +217,18 @@ function onKeydown(e: KeyboardEvent) {
         <span class="mono">{{ position }}</span><br>
         <span>{{ item.label ?? '이미지' }}</span>
       </p>
+      <div v-if="versions.length" class="versions" role="group" aria-label="같은 화면의 다른 캡처" aria-keyshortcuts="ArrowUp ArrowDown">
+        <button class="icon-button" type="button" aria-label="이전 캡처" :disabled="versionIndex <= 0" @click="page(-1)">
+          <OverlayIcon name="left" />
+        </button>
+        <span class="mono" aria-live="polite">{{ versionIndex + 1 }} / {{ versions.length }} · 같은 화면</span>
+        <button class="icon-button" type="button" aria-label="다음 캡처" :disabled="versionIndex >= versions.length - 1" @click="page(1)">
+          <OverlayIcon name="right" />
+        </button>
+        <button class="text-button" type="button" @click="separate">
+          따로 보기
+        </button>
+      </div>
       <!-- Picks the image for the composer; delivery happens there, not here -->
       <button class="secondary" type="button" @click="giveFeedback">
         이 이미지에 피드백 ↗
@@ -263,6 +331,21 @@ function onKeydown(e: KeyboardEvent) {
   color: var(--muted);
   font-size: 11px;
 }
+.versions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+}
+.versions .mono {
+  padding: 0 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.versions .text-button {
+  margin-left: 6px;
+}
 
 @media (max-width: 767px) {
   .viewer-bar {
@@ -301,6 +384,15 @@ function onKeydown(e: KeyboardEvent) {
   }
   .viewer-bottom p {
     font-size: 10px;
+  }
+  /* The capture pager takes its own row under the caption */
+  .viewer-bottom {
+    flex-wrap: wrap;
+  }
+  .versions {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
   }
   .viewer-bottom .secondary {
     font-size: 11px;

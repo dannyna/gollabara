@@ -70,6 +70,9 @@ function mapHook(input, session, opener = "unknown") {
       const images = extractImages(input.tool_response);
       if (images.length === 0)
         return null;
+      const source = images.length === 1 ? imageSource(input.tool_input) : undefined;
+      if (source)
+        images[0].source = source;
       return { kind: "image", session, toolName: input.tool_name ?? "", images };
     }
     case "PreToolUse": {
@@ -155,6 +158,14 @@ function extractImages(response) {
   };
   visit(response, 0);
   return out;
+}
+function imageSource(toolInput) {
+  for (const key of ["file_path", "path", "filename"]) {
+    const value = toolInput?.[key];
+    if (typeof value === "string" && value.trim())
+      return value.trim();
+  }
+  return;
 }
 function extractQuestions(toolInput) {
   const list = Array.isArray(toolInput?.questions) ? toolInput.questions : [];

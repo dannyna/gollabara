@@ -35,6 +35,8 @@ export interface IncomingImage {
   mime: string
   width?: number
   height?: number
+  /** Where the image came from when the tool names it, e.g. the file path a session read. Full path; the UI shows the basename. */
+  source?: string
 }
 
 export interface Question {
@@ -71,6 +73,13 @@ export interface StoredImage {
   height: number
   /** When the image arrived (missing on messages stored before turns existed) */
   at?: number
+  /** Full path or name the image came from, when known (see IncomingImage.source) */
+  source?: string
+  /**
+   * 64-bit difference hash as 16 hex chars, stored only for images with a `source`.
+   * Used only to group near-identical re-captures; never shown and never used to judge.
+   */
+  dhash?: string
 }
 
 /**
