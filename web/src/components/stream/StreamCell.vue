@@ -31,6 +31,13 @@ const a = computed(() => props.artifact)
 const caption = computed(() => artifactCaption(a.value))
 const file = computed(() => sourceName(a.value))
 const hint = computed(() => versionsHint(a.value))
+const fileParts = computed(() => {
+  if (!file.value)
+    return null
+  const short = middleTruncate(file.value)
+  const dot = short.lastIndexOf('.')
+  return dot > 0 ? { stem: short.slice(0, dot), ext: short.slice(dot) } : { stem: short, ext: '' }
+})
 const name = computed(() => `${a.value.session} ${clock(a.value.at)} ${file.value ?? caption.value}`)
 
 // The size is stored with the image, so the cell holds its place before the pixels
@@ -50,10 +57,11 @@ const state = computed(() => props.face ?? loaded.value)
       <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }">{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
       <p class="meta-line mono">
         <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
-        <template v-if="file">
-          · <span class="file" :title="a.source">{{ middleTruncate(file) }}</span>
-        </template>
-        · {{ sizeLabel ?? `${a.width} × ${a.height}` }}
+        <!-- Narrow cells shorten the stem and keep the extension, so the cut lands mid-name -->
+        <span v-if="fileParts" class="file" :title="a.source">
+          <span class="stem">{{ fileParts.stem }}</span><span>{{ fileParts.ext }}</span>
+        </span>
+        <span>{{ sizeLabel ?? `${a.width} × ${a.height}` }}</span>
       </p>
     </div>
     <button
@@ -143,8 +151,31 @@ const state = computed(() => props.face ?? loaded.value)
   font-size: 10px;
   color: var(--muted);
 }
+/* time · file · size; only the file's stem gives way in a narrow cell */
+.meta-line {
+  display: flex;
+  min-width: 0;
+}
+.meta-line > * {
+  flex: none;
+}
+.meta-line > * + *::before {
+  content: '·';
+  flex: none;
+  padding: 0 0.5em;
+}
 .meta-line time {
   font-size: inherit;
+}
+.meta-line .file {
+  flex: 0 1 auto;
+  display: flex;
+  min-width: 0;
+}
+.file .stem {
+  min-width: 1.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .caption .hint {
   color: var(--muted);

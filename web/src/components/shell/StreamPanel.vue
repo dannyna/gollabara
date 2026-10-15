@@ -68,8 +68,33 @@ function reveal(key: string, behavior?: ScrollBehavior) {
 }
 defineExpose({ reveal })
 
+/**
+ * The first cell in view that a new capture will not move, and where it sits. Read before
+ * the DOM updates: a re-captured screen moves its cell to the end, and the cells after its
+ * old place close up under a reader who is browsing.
+ */
+function holdView(moved: Set<string>) {
+  const el = track.value
+  if (!el)
+    return null
+  const left = el.getBoundingClientRect().left
+  for (const cell of el.querySelectorAll<HTMLElement>(':scope > [data-key]')) {
+    const box = cell.getBoundingClientRect()
+    if (box.right > left && !moved.has(cell.dataset.key!))
+      return { key: cell.dataset.key!, offset: box.left - left }
+  }
+  return null
+}
+function restoreView(hold: { key: string, offset: number } | null) {
+  const el = track.value
+  const cell = hold && el?.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(hold.key)}"]`)
+  if (el && cell)
+    el.scrollLeft += cell.getBoundingClientRect().left - el.getBoundingClientRect().left - hold!.offset
+}
+
 watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevList, prevScope]) => {
   const arrived = arrivedSince(seen, list)
+  const hold = arrived && follow.value === 'paused' ? holdView(new Set(list.filter(a => a.arrival > seen).map(a => a.key))) : null
   seen = Math.max(seen, lastArrival(list))
   // Cells that only appeared or vanished: a session muted or unmuted
   const before = new Set(prevList.map(a => a.key))
@@ -90,6 +115,7 @@ watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevLis
     toLatest('smooth')
   }
   else if (arrived) {
+    restoreView(hold)
     unseen.value += arrived
   }
 })
