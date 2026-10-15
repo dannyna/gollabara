@@ -1,6 +1,6 @@
 # AGENTS.md
 
-A guide for agents (and people) working in this repository: product invariants, code layout, commands, and conventions. Read [README.md](README.md) for why the product looks the way it does and [DESIGN.md](DESIGN.md) for the visual rules.
+A guide for agents (and people) working in this repository: product invariants, code layout, commands, and conventions. Read [README.md](README.md) for why the product looks the way it does and [DESIGN.md](DESIGN.md) for the visual rules, and [docs/ROADMAP.md](docs/ROADMAP.md) for what comes next.
 
 ## Invariants
 
