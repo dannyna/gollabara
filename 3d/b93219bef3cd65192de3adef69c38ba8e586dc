@@ -1,0 +1,24 @@
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_7a43b9f019c30d 201
+  s_b7f30c572db9a8::t_0553d1f78615db 202
+README.ko.md
+  s_b7f30c572db9a8::t_54b8e098540d94 71
+README.md
+  s_b7f30c572db9a8::t_c85fbe33f9c72a 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3db93219bef3cd65192de3adef69c38ba8e586dc",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
