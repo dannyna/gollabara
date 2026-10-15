@@ -1,0 +1,19 @@
+docs/ROADMAP.md
+  s_b7f30c572db9a8::t_8f1285269741d6 18,38,72,92,94,106,115,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1553339ab0b9f41b93b7cc2047f32a07a693fc1",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
