@@ -2,14 +2,14 @@
 // Never blocks the session: short timeout, swallow every error, always exit 0.
 // Stdout carries only the feedback JSON for the session, and only when there is feedback.
 
-import type { Feedback } from '../shared/types'
+import type { Feedback, ImageRole } from '../shared/types'
 import type { HookInput, TurnOpener } from './map'
 import { Buffer } from 'node:buffer'
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { serverUrl } from '../shared/config'
-import { feedbackOutput, feedbackVia, mapHook, sessionInfo, turnOpener } from './map'
+import { feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo, sessionStartedAt, turnOpener, turnStartedAt } from './map'
 
 const POST_TIMEOUT_MS = 1500
 /**
@@ -17,6 +17,8 @@ const POST_TIMEOUT_MS = 1500
  * turns that Read screenshots put megabytes between the opener and the end (1.3-3.3 MB in the e2e runs)
  */
 const TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024]
+/** The transcript's first entries carry a timestamp well within this */
+const TRANSCRIPT_HEAD_BYTES = 64 * 1024
 
 export async function runHook(): Promise<void> {
   // Set by gollabara's own background model calls so they never stream themselves
@@ -29,7 +31,7 @@ export async function runHook(): Promise<void> {
     const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch })
     // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
     const opener = input.hook_event_name === 'Stop' ? stopTurnOpener(input.transcript_path) : 'unknown'
-    const event = mapHook(input, session, opener)
+    const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path))
     // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), so every
     // hook, the wake-up waiter included, sees the claude pid as its parent
     if (event?.kind === 'session')
@@ -60,17 +62,68 @@ export async function runHook(): Promise<void> {
 
 /** Who opened the turn, from the transcript's tail; 'unknown' (so the recap is posted) when it can't be read */
 export function stopTurnOpener(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): TurnOpener {
-  if (!transcriptPath)
-    return 'unknown'
-  for (const bytes of windows) {
-    const tail = readTail(transcriptPath, bytes)
-    if (!tail)
-      return 'unknown'
-    const opener = turnOpener(tail.text)
-    if (opener !== 'unknown' || tail.whole)
-      return opener
+  return fromTail(transcriptPath, (text) => {
+    const opener = turnOpener(text)
+    return opener === 'unknown' ? undefined : opener
+  }, windows) ?? 'unknown'
+}
+
+/**
+ * When the current turn started, from its opener in the transcript's tail, else when the session
+ * started (the transcript's head); undefined when neither can be read
+ */
+export function turnStart(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): number | undefined {
+  const opened = fromTail(transcriptPath, turnStartedAt, windows)
+  if (opened !== undefined || !transcriptPath)
+    return opened
+  const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES)
+  return head === undefined ? undefined : sessionStartedAt(head)
+}
+
+/**
+ * The role of images read from `path`: an artifact when the file changed after the turn started.
+ * Only image reads get here, so other tool calls never stat. Any error makes it an artifact.
+ */
+export function readFileRole(path: string, transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): ImageRole {
+  try {
+    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows))
   }
-  return 'unknown'
+  catch {
+    return 'artifact'
+  }
+}
+
+/** Reads ever wider tails until `find` answers, or the whole file was read */
+function fromTail<T>(path: string | undefined, find: (text: string) => T | undefined, windows: number[]): T | undefined {
+  if (!path)
+    return undefined
+  for (const bytes of windows) {
+    const tail = readTail(path, bytes)
+    if (!tail)
+      return undefined
+    const found = find(tail.text)
+    if (found !== undefined || tail.whole)
+      return found
+  }
+  return undefined
+}
+
+/** The first `bytes` of a file; undefined when it can't be read */
+export function readHead(path: string, bytes: number): string | undefined {
+  try {
+    const fd = openSync(path, 'r')
+    try {
+      const buffer = Buffer.alloc(Math.min(fstatSync(fd).size, bytes))
+      readSync(fd, buffer, 0, buffer.length, 0)
+      return buffer.toString('utf8')
+    }
+    finally {
+      closeSync(fd)
+    }
+  }
+  catch {
+    return undefined
+  }
 }
 
 /** The last `bytes` of a file, and whether that is the whole file; undefined when it can't be read */

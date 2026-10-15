@@ -231,7 +231,7 @@ function onKeydown(e: KeyboardEvent) {
     <div class="viewer-bottom">
       <p>
         <span class="mono">{{ position }}</span><br>
-        <span>{{ item.label ?? '이미지' }}</span>
+        <span>{{ item.role === 'reference' ? '참고 이미지' : item.label ?? '이미지' }}</span>
       </p>
       <div v-if="versions.length" class="versions" role="group" aria-label="같은 화면의 다른 캡처" aria-keyshortcuts="ArrowUp ArrowDown">
         <button class="icon-button" type="button" aria-label="이전 캡처" :disabled="versionIndex <= 0" @click="page(-1)">

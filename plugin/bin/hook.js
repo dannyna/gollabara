@@ -18,6 +18,9 @@ function serverUrl() {
   return process.env.GOLLABARA_URL ?? `http://127.0.0.1:${serverPort()}`;
 }
 
+// src/hook/map.ts
+import { isAbsolute } from "path";
+
 // src/shared/feedback.ts
 var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
 function feedbackLine(item) {
@@ -73,6 +76,50 @@ function turnOpener(tail) {
   }
   return "unknown";
 }
+function turnStartedAt(tail) {
+  const lines = tail.split(`
+`);
+  for (let i = lines.length - 1;i >= 0; i--) {
+    const line = lines[i];
+    if (!line.includes('"turnOrigin"'))
+      continue;
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (entry?.isSidechain || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
+      continue;
+    const at = Date.parse(entry.timestamp);
+    return Number.isFinite(at) ? at : undefined;
+  }
+  return;
+}
+function sessionStartedAt(head) {
+  for (const line of head.split(`
+`)) {
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const at = typeof entry?.timestamp === "string" ? Date.parse(entry.timestamp) : Number.NaN;
+    if (Number.isFinite(at))
+      return at;
+  }
+  return;
+}
+function imageRole(mtimeMs, startedAt) {
+  if (mtimeMs === undefined || startedAt === undefined)
+    return "artifact";
+  return mtimeMs > startedAt ? "artifact" : "reference";
+}
+function readFilePath(toolInput) {
+  const path = imageSource(toolInput);
+  return path && isAbsolute(path) ? path : undefined;
+}
 function isFeedbackDelivery(entry) {
   const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
   return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
@@ -85,7 +132,7 @@ function carriesFeedback(entry) {
   const texts = typeof content === "string" ? [content] : Array.isArray(content) ? content.map((c) => c?.text) : [];
   return texts.some((t) => typeof t === "string" && t.includes(FEEDBACK_PREFIX));
 }
-function mapHook(input, session, opener = "unknown") {
+function mapHook(input, session, opener = "unknown", fileRole) {
   switch (input.hook_event_name) {
     case "SessionStart":
       return { kind: "session", session };
@@ -96,6 +143,10 @@ function mapHook(input, session, opener = "unknown") {
       const source = images.length === 1 ? imageSource(input.tool_input) : undefined;
       if (source)
         images[0].source = source;
+      const path = input.tool_name?.startsWith("mcp__") ? undefined : readFilePath(input.tool_input);
+      const role = path && fileRole ? fileRole(path) : "artifact";
+      for (const image of images)
+        image.role = role;
       return { kind: "image", session, toolName: input.tool_name ?? "", images };
     }
     case "PreToolUse": {
@@ -192,6 +243,7 @@ function extractQuestions(toolInput) {
 // src/hook/index.ts
 var POST_TIMEOUT_MS = 1500;
 var TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024];
+var TRANSCRIPT_HEAD_BYTES = 64 * 1024;
 async function runHook() {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
@@ -200,7 +252,7 @@ async function runHook() {
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
     const opener = input.hook_event_name === "Stop" ? stopTurnOpener(input.transcript_path) : "unknown";
-    const event = mapHook(input, session, opener);
+    const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path));
     if (event?.kind === "session")
       event.pid = process2.ppid;
     const via = feedbackVia(input.hook_event_name);
@@ -222,17 +274,51 @@ async function runHook() {
   } catch {}
 }
 function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
-  if (!transcriptPath)
-    return "unknown";
-  for (const bytes of windows) {
-    const tail = readTail(transcriptPath, bytes);
-    if (!tail)
-      return "unknown";
-    const opener = turnOpener(tail.text);
-    if (opener !== "unknown" || tail.whole)
-      return opener;
+  return fromTail(transcriptPath, (text) => {
+    const opener = turnOpener(text);
+    return opener === "unknown" ? undefined : opener;
+  }, windows) ?? "unknown";
+}
+function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
+  const opened = fromTail(transcriptPath, turnStartedAt, windows);
+  if (opened !== undefined || !transcriptPath)
+    return opened;
+  const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES);
+  return head === undefined ? undefined : sessionStartedAt(head);
+}
+function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
+  try {
+    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows));
+  } catch {
+    return "artifact";
   }
-  return "unknown";
+}
+function fromTail(path, find, windows) {
+  if (!path)
+    return;
+  for (const bytes of windows) {
+    const tail = readTail(path, bytes);
+    if (!tail)
+      return;
+    const found = find(tail.text);
+    if (found !== undefined || tail.whole)
+      return found;
+  }
+  return;
+}
+function readHead(path, bytes) {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const buffer = Buffer.alloc(Math.min(fstatSync(fd).size, bytes));
+      readSync(fd, buffer, 0, buffer.length, 0);
+      return buffer.toString("utf8");
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return;
+  }
 }
 function readTail(path, bytes) {
   try {

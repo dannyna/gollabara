@@ -7,7 +7,7 @@ import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
 import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { artifactKey, clock, splitSessionName } from '../../artifacts'
+import { clock, splitSessionName } from '../../artifacts'
 import { failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
 import { toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
@@ -15,7 +15,7 @@ import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
 import StateView from '../banner/StateView.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
-import { toFeed, toTimeline } from '../chat/chat'
+import { toFeed, toTimeline, turnThumbs } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
 import DateLabel from '../chat/DateLabel.vue'
 import HiddenRow from '../chat/HiddenRow.vue'
@@ -124,7 +124,14 @@ watch(() => view.value.nextCheck, (at) => {
     holdTimer = setTimeout(() => now.value = Date.now(), Math.max(0, at - Date.now()) + 20)
 }, { immediate: true })
 onBeforeUnmount(() => clearTimeout(holdTimer))
-const shown = computed(() => view.value.items.filter(i => !i.folded).map(i => i.message))
+// References fold into 「참고 이미지 n」 rows: inside a message that shows anything else, or in
+// place of a message that holds nothing but references
+const thumbsOf = computed(() => new Map(props.messages.map(m => [m.id, turnThumbs(m)])))
+function refsOnly(item: (typeof view.value.items)[number]) {
+  const t = thumbsOf.value.get(item.message.id)
+  return !item.folded && !item.parts.length && !item.message.questions?.length && !t?.artifacts.length && !!t?.references.length
+}
+const shown = computed(() => view.value.items.filter(i => !i.folded && !refsOnly(i)).map(i => i.message))
 const viewOf = computed(() => new Map(view.value.items.map(i => [i.message.id, i])))
 // Folded messages keep their place in the timeline so their rows land where the lines were
 const timeline = computed(() => toFeed(
@@ -133,7 +140,12 @@ const timeline = computed(() => toFeed(
     const v = viewOf.value.get(m.id)
     return v?.folded ? v.parts.flatMap(p => p.type === 'hidden' ? p.lines : []) : null
   },
+  (m) => {
+    const v = viewOf.value.get(m.id)
+    return v && refsOnly(v) ? thumbsOf.value.get(m.id)!.references : null
+  },
 ))
+const refTimes = (thumbs: Thumb[]) => thumbs.map(t => t.at ?? 0)
 
 // Queued on the server, not yet picked up: the tray, one group per session
 const queue = computed<QueueGroup[]>(() => {
@@ -241,7 +253,6 @@ function retry(p: PendingSend) {
   pending.value = pending.value.map(x => x.key === p.key ? { ...x, state: 'queued', reason: undefined } : x)
   void deliver(p)
 }
-const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
 
 // Stick to the bottom only when the reader is already there. Otherwise count what
 // arrives and raise 「새 메시지 n ↓」 instead of moving the reader.
@@ -315,6 +326,12 @@ defineExpose({ reveal })
             v-else-if="item.type === 'hidden'" :lines="item.lines"
             :model-value="openRows.has(item.key)" @update:model-value="toggleRow(item.key, $event)"
           />
+          <HiddenRow
+            v-else-if="item.type === 'refs'" label="참고 이미지" icon="image" :times="refTimes(item.thumbs)"
+            :model-value="openRows.has(item.key)" @update:model-value="toggleRow(item.key, $event)"
+          >
+            <ArtifactThumbs reference :thumbs="item.thumbs" @open-image="openImage" />
+          </HiddenRow>
           <MyMessage
             v-else-if="item.type === 'mine'" :target="shortName(item.entry.sessionId)" :text="item.entry.text"
             :quote="item.entry.quote" :state="item.entry.state" :at="item.entry.deliveredAt"
@@ -336,9 +353,16 @@ defineExpose({ reveal })
               />
             </template>
             <ArtifactThumbs
-              v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
-              :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
+              v-if="thumbsOf.get(item.message.id)?.artifacts.length" :thumbs="thumbsOf.get(item.message.id)!.artifacts"
+              :tool-name="item.message.toolName" :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
             />
+            <HiddenRow
+              v-if="thumbsOf.get(item.message.id)?.references.length" inset label="참고 이미지" icon="image"
+              :times="refTimes(thumbsOf.get(item.message.id)!.references)"
+              :model-value="openRows.has(`r-${item.message.id}`)" @update:model-value="toggleRow(`r-${item.message.id}`, $event)"
+            >
+              <ArtifactThumbs reference :thumbs="thumbsOf.get(item.message.id)!.references" @open-image="openImage" />
+            </HiddenRow>
             <!-- Answering is not built yet; with several questions every card shows at once -->
             <QuestionCard
               v-for="(q, qi) in item.message.questions" :key="`q${qi}`" :question="q" inert

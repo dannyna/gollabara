@@ -1,36 +1,46 @@
 <script setup lang="ts">
 import type { HiddenLine } from '../../triage'
+import type { IconName } from './icons'
 import { computed } from 'vue'
 import { clock } from '../../artifacts'
 import ChatIcon from './ChatIcon.vue'
 
 // 「숨긴 메시지 n」 where triage hid lines: folded in place, so the reader sees where lines
 // dropped out. Expanded lines are muted 11px text inside a hairline, with no avatar or state.
+// The same row folds reference images (「참고 이미지 n」): `label`, `icon` and `times` name
+// what it holds, and the default slot draws them when it opens.
 const props = defineProps<{
-  lines: HiddenLine[]
+  lines?: HiddenLine[]
   /** Inside a message, between lines of one turn */
   inset?: boolean
+  label?: string
+  icon?: IconName
+  /** When each folded item arrived, for the count and the time span; defaults to the lines' */
+  times?: number[]
 }>()
 const open = defineModel<boolean>({ default: false })
 
+const times = computed(() => props.times ?? props.lines?.map(l => l.at) ?? [])
 const span = computed(() => {
-  const first = clock(props.lines[0]!.at)
-  const last = clock(props.lines.at(-1)!.at)
+  const first = clock(Math.min(...times.value))
+  const last = clock(Math.max(...times.value))
   return first === last ? first : `${first}–${last}`
 })
 </script>
 
 <template>
   <button type="button" class="hidden-row" :class="{ inset }" :aria-expanded="open" @click="open = !open">
-    <span class="row-icon"><ChatIcon name="eyeoff" /></span>
-    <span>숨긴 메시지 <span class="count">{{ lines.length }}</span>{{ open ? ' 접기' : '' }}</span>
+    <span class="row-icon"><ChatIcon :name="icon ?? 'eyeoff'" /></span>
+    <span>{{ label ?? '숨긴 메시지' }} <span class="count">{{ times.length }}</span>{{ open ? ' 접기' : '' }}</span>
     <ChatIcon name="chev" class="chev" />
-    <time v-if="!inset" class="span">{{ span }}</time>
+    <time v-if="!inset && times.length" class="span">{{ span }}</time>
   </button>
   <div v-if="open" class="hidden-list" :class="{ inset }">
-    <p v-for="line in lines" :key="line.key" class="hidden-item">
-      <span class="who">{{ line.sessionName }} · {{ clock(line.at) }}</span>{{ line.text }}
-    </p>
+    <slot>
+      <p v-for="line in lines" :key="line.key" class="hidden-item">
+        <span class="who">{{ line.sessionName }} · {{ clock(line.at) }}</span>{{ line.text }}
+      </p>
+    </slot>
   </div>
 </template>
 

@@ -9,20 +9,38 @@
 // Inside the stream panel the panel is the size container. `bare` makes the rail its own
 // container, for a rail without heading or footer (the component gallery).
 
-import type { Artifact } from '../../artifacts'
+import type { Artifact, ReferenceFold as Fold } from '../../artifacts'
 import type { Wheel } from './step'
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import ReferenceFold from './ReferenceFold.vue'
 import { alignTarget, SETTLE_FALLBACK_MS, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 import StreamCell from './StreamCell.vue'
 
-defineProps<{
+const props = defineProps<{
   artifacts: Artifact[]
+  /** 「참고 이미지 n」 folds, each drawn after the cell it follows (referenceFolds) */
+  folds?: Fold[]
   selected?: string | null
   pinned?: string | null
   bare?: boolean
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
 
+const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
+const foldsAfter = computed(() => {
+  const map = new Map<string | null, Fold[]>()
+  for (const f of props.folds ?? []) map.set(f.after, [...map.get(f.after) ?? [], f])
+  return map
+})
+/** Open folds, by key; a fold keeps its first reference's key as it grows */
+const openFolds = ref(new Set<string>())
+function toggleFold(key: string, open: boolean) {
+  const next = new Set(openFolds.value)
+  if (open)
+    next.add(key)
+  else
+    next.delete(key)
+  openFolds.value = next
+}
 const el = ref<HTMLElement>()
 
 function geometry() {
@@ -120,8 +138,16 @@ function align(key: string, how: ScrollBehavior = behavior()) {
   rail.scrollTo({ left: alignTarget(start, anchor, max), behavior: how })
 }
 
+/** Where the latest cell sits on the anchor, so following can stop there (follow.ts latestLeft); null without cells */
+function latestAlign() {
+  if (!el.value)
+    return null
+  const { starts, anchor, max } = geometry()
+  return starts.length ? alignTarget(starts.at(-1)!, anchor, max) : null
+}
+
 onBeforeUnmount(() => clearTimeout(timer))
-defineExpose({ el, align, realign })
+defineExpose({ el, align, realign, latestAlign })
 </script>
 
 <template>
@@ -129,10 +155,20 @@ defineExpose({ el, align, realign })
     ref="el" class="rail" :class="{ bare }" tabindex="0" aria-label="가로로 스크롤하는 산출물 스트림"
     @wheel="onWheel" @keydown="onKeydown"
   >
-    <StreamCell
-      v-for="a in artifacts" :key="a.key" :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key"
-      @select="emit('select', a.key)" @open="emit('open', a.key)" @reply="emit('reply', a)"
+    <ReferenceFold
+      v-for="f in foldsAfter.get(null)" :key="f.key" :fold="f" :model-value="openFolds.has(f.key)"
+      @update:model-value="toggleFold(f.key, $event)" @open="emit('open', $event)" @reply="emit('reply', $event)"
     />
+    <template v-for="a in artifacts" :key="a.key">
+      <StreamCell
+        :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key"
+        @select="emit('select', a.key)" @open="emit('open', a.key)" @reply="emit('reply', a)"
+      />
+      <ReferenceFold
+        v-for="f in foldsAfter.get(a.key)" :key="f.key" :fold="f" :model-value="openFolds.has(f.key)"
+        @update:model-value="toggleFold(f.key, $event)" @open="emit('open', $event)" @reply="emit('reply', $event)"
+      />
+    </template>
   </div>
 </template>
 

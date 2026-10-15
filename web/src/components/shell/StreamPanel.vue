@@ -3,19 +3,23 @@
 // footer. It follows the latest artifact while the rail sits at the right end and holds
 // its place once the reader scrolls back, raising 「새 산출물 n →」 instead. A pinned cell
 // stops following altogether: arrivals only raise the pill, wherever the rail sits.
+// References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
 
 import type { Artifact } from '../../artifacts'
 import type { Follow } from '../stream/follow'
 import { computed, nextTick, ref, watch } from 'vue'
+import { referenceFolds } from '../../artifacts'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, holdKey, lastArrival, listMove, togglePin } from '../stream/follow'
+import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, togglePin } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
+  /** Images the sessions only looked at (toArtifacts with 'reference'), folded between the cells */
+  references?: Artifact[]
   selected?: string | null
   /** The pinned cell's key; it holds nothing while its cell is not in `artifacts` */
   pinned?: string | null
@@ -28,6 +32,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [] }>()
 
+const folds = computed(() => referenceFolds(props.artifacts, props.references ?? []))
 const rail = ref<InstanceType<typeof StreamRail>>()
 const track = computed(() => rail.value?.el)
 
@@ -56,12 +61,12 @@ function markUserIntent() {
 function onStep(left: number) {
   markUserIntent()
   const el = track.value!
-  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }))
+  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }, rail.value?.latestAlign()))
     follow.value = 'paused'
 }
 function onScroll() {
   const el = track.value!
-  if (atLatest(el)) {
+  if (atLatest(el, rail.value?.latestAlign())) {
     // A pin keeps the rail from following even at the right end
     if (!pin.value)
       follow.value = 'following'
@@ -71,8 +76,10 @@ function onScroll() {
     follow.value = 'paused'
   }
 }
+/** The right end, or the latest cell on the anchor when a trailing 「참고 이미지」 fold would push it out */
 function toLatest(behavior: ScrollBehavior) {
-  track.value?.scrollTo({ left: track.value.scrollWidth, behavior })
+  const el = track.value
+  el?.scrollTo({ left: latestLeft(el.scrollWidth - el.clientWidth, rail.value?.latestAlign()), behavior })
 }
 function jumpToLatest() {
   // The way back to the latest also lets go of the pin, so following resumes
@@ -161,7 +168,7 @@ watch(() => props.pinned, () => {
   if (pin.value)
     follow.value = 'paused'
   else if (track.value)
-    follow.value = atLatest(track.value) ? 'following' : 'paused'
+    follow.value = atLatest(track.value, rail.value?.latestAlign()) ? 'following' : 'paused'
 })
 
 // The rail mounts at the latest, also when the first artifact ends an empty state, or on
@@ -199,9 +206,10 @@ const { setTarget } = useFeedbackTarget()
       v-if="!artifacts.length && allMuted" icon="mute" title="모든 세션을 음소거했어요"
       description="세션 목록에서 다시 표시할 수 있어요." action="세션 목록 열기" @action="emit('sessions')"
     />
-    <StateView v-else-if="!artifacts.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
+    <!-- With only references in view the rail still shows, so their folds can open -->
+    <StateView v-else-if="!artifacts.length && !folds.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
     <StreamRail
-      v-else ref="rail" :artifacts="artifacts" :selected="selected" :pinned="pin"
+      v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin"
       @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"

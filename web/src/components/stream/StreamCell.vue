@@ -7,6 +7,9 @@
 //
 // The face height is the container height minus `--stream-chrome` (the fixed rows
 // around it), set by whoever holds the size container: the panel, or a bare rail.
+//
+// A reference (an image the session only looked at) shows inside an open 「참고 이미지 n」
+// fold: muted, with no number, and a click on its face opens the viewer instead of pinning.
 
 import type { Artifact } from '../../artifacts'
 import { computed, ref, watch } from 'vue'
@@ -29,7 +32,7 @@ const props = defineProps<{
   face?: 'loading' | 'failed'
 }>()
 const emit = defineEmits<{ select: [], open: [], reply: [] }>()
-
+const reference = computed(() => props.artifact.role === 'reference')
 const a = computed(() => props.artifact)
 const caption = computed(() => artifactCaption(a.value))
 const file = computed(() => sourceName(a.value))
@@ -53,7 +56,7 @@ const state = computed(() => props.face ?? loaded.value)
 <template>
   <article
     class="cell"
-    :class="[{ 'run-start': a.runStart, selected, pinned }, preview && `preview-${preview}`]"
+    :class="[{ 'run-start': a.runStart && !reference, selected, pinned, reference }, preview && `preview-${preview}`]"
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
@@ -67,8 +70,11 @@ const state = computed(() => props.face ?? loaded.value)
         <span>{{ sizeLabel ?? `${a.width} × ${a.height}` }}</span>
       </p>
     </div>
+    <button v-if="reference" class="hit" type="button" :aria-label="`참고 이미지 ${name} 크게 보기`" @click="emit('open')">
+      <img :src="a.url" alt="" draggable="false">
+    </button>
     <button
-      class="hit" type="button" :aria-pressed="!!pinned" :aria-label="pinned ? `${name} 고정됨. 누르면 고정 해제` : `${name} 선택하고 고정`"
+      v-else class="hit" type="button" :aria-pressed="!!pinned" :aria-label="pinned ? `${name} 고정됨. 누르면 고정 해제` : `${name} 선택하고 고정`"
       @click="emit('select')"
     >
       <slot name="face">
@@ -91,8 +97,8 @@ const state = computed(() => props.face ?? loaded.value)
       </span>
     </button>
     <div class="caption">
-      <span>{{ caption }}<span v-if="hint" class="hint"> · {{ hint }}</span></span>
-      <span class="mono seq">
+      <span>{{ reference ? '참고 이미지' : caption }}<span v-if="hint" class="hint"> · {{ hint }}</span></span>
+      <span v-if="!reference" class="mono seq">
         <svg v-if="pinned" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l-1 6.5 3.5 3.5h-11L10 10Z" /><path d="M12 13.5V21" /></svg>{{ String(a.seq).padStart(2, '0') }}
       </span>
     </div>
@@ -268,6 +274,22 @@ const state = computed(() => props.face ?? loaded.value)
 }
 .hit img.pending {
   visibility: hidden;
+}
+/* Muted until pointed at, so a reference never reads as something the session made */
+.reference .hit {
+  border-color: var(--border);
+  border-style: dashed;
+  box-shadow: none;
+}
+.reference .hit img {
+  opacity: 0.5;
+  filter: saturate(0.4);
+  transition: opacity 0.15s;
+}
+.reference .hit:hover:not(:disabled) img,
+.reference .hit:focus-visible img {
+  opacity: 1;
+  filter: none;
 }
 .cell-state {
   position: absolute;
