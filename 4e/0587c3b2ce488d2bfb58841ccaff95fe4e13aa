@@ -1,0 +1,25 @@
+src/hook/map.ts
+  s_b7f30c572db9a8::t_b73d106b7c6a50 193-195
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_4a2a9cbb95f72b 240-241
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_cb6e42bbe6cb2f 146
+AGENTS.md
+  s_b7f30c572db9a8::t_bfc2ab4a08b747 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e0587c3b2ce488d2bfb58841ccaff95fe4e13aa",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
