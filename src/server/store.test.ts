@@ -123,9 +123,9 @@ describe('feedback', () => {
     expect(store.recentFeedback()).toEqual(claimed)
   })
 
-  test('a channel and a hook share the claim, so an item goes out once', () => {
+  test('a wake-up and a hook share the claim, so an item goes out once', () => {
     store.queueFeedback('cc-1', 'darker header', undefined, 1000)
-    expect(store.claimFeedback('cc-1', 'channel', 2000).map(f => f.deliveredVia)).toEqual(['channel'])
+    expect(store.claimFeedback('cc-1', 'rewake', 2000).map(f => f.deliveredVia)).toEqual(['rewake'])
     expect(store.claimFeedback('cc-1', 'post-tool-use', 2001)).toEqual([])
   })
 

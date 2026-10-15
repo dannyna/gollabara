@@ -59,8 +59,7 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
 /**
  * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
  * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
- * Feedback gollabara delivered after that opener, or a gollabara channel message that opened the turn
- * (recorded as a `peer` turn), makes the turn the user's: they wait on the reply. So does a wake-up
+ * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply. So does a wake-up
  * (a `task_notification` turn whose system reminder carries the feedback), told apart as `rewake`.
  * The first line of a tail is usually cut off and is skipped like any unparsable line.
  */
@@ -85,8 +84,6 @@ export function turnOpener(tail: string): TurnOpener {
       return 'human'
     if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
       continue
-    if (isChannelFeedback(entry))
-      return 'human'
     if (isRewakeFeedback(entry))
       return 'rewake'
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
@@ -100,11 +97,6 @@ function isFeedbackDelivery(entry: any): boolean {
   return attachment?.type === 'hook_additional_context'
     && Array.isArray(attachment.content)
     && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
-}
-
-/** A turn a channel message opened, carrying gollabara feedback (another channel's message does not count) */
-function isChannelFeedback(entry: any): boolean {
-  return entry?.origin?.kind === 'channel' && carriesFeedback(entry)
 }
 
 /** A turn gollabara's wake-up Stop hook opened: its stderr, the feedback, lands in the system reminder */

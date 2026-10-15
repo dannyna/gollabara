@@ -5,7 +5,7 @@ export type Harness = 'claude-code' | 'open-design' | 'codex' | 'claude-design'
 
 /** Event the hook sends to the server */
 export type IncomingEvent
-  // `pid`: the harness process the session runs in, so a channel server it spawned can find the session
+  // `pid`: the harness process the session runs in, so a wake-up waiter can tell when it moved to another session
   = | { kind: 'session', session: SessionInfo, pid?: number }
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
@@ -28,7 +28,7 @@ export interface Session extends SessionInfo {
   /** First SessionStart, or the first event seen if the session started before the plugin was installed */
   startedAt: number
   lastSeenAt: number
-  /** A channel server or a wake-up Stop hook is waiting on the session's feedback, so it reaches the session at once, even when idle */
+  /** A wake-up Stop hook is waiting on the session's feedback, so it reaches the session at once, even when idle */
   channel?: boolean
 }
 
@@ -87,7 +87,8 @@ export interface StoredImage {
 
 /**
  * When a session picked up feedback: after a tool call, when it tried to end its turn,
- * alongside the next prompt, pushed through a channel, or by a waiting hook that woke the idle session.
+ * alongside the next prompt, or by a waiting hook that woke the idle session. `channel` came from the
+ * channel server, since removed, and appears only on older rows.
  * Harnesses map their own hook points onto these.
  */
 export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit' | 'channel' | 'rewake'

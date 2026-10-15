@@ -1,5 +1,5 @@
 // The text a session reads when gollabara hands it the user's feedback, whichever path delivers it
-// (hook context or channel). One builder, so the transcript looks the same either way.
+// (hook context or a wake-up). One builder, so the transcript looks the same either way.
 import type { Feedback } from './types'
 
 /** Start of every feedback line, also how a delivery is recognised in the transcript */

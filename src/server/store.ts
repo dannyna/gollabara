@@ -78,7 +78,7 @@ export class Store {
       body TEXT NOT NULL
     )`)
     // open_turn: the turn message images join; last_turn: where a stop-hook continuation recap goes;
-    // pid: the harness process, which links a channel server to the session
+    // pid: the harness process, so a wake-up waiter can tell when /clear or resume moved it to another session
     this.db.run(`CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

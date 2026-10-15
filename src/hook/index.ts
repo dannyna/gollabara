@@ -30,8 +30,8 @@ export async function runHook(): Promise<void> {
     // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
     const opener = input.hook_event_name === 'Stop' ? stopTurnOpener(input.transcript_path) : 'unknown'
     const event = mapHook(input, session, opener)
-    // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), and it
-    // spawns the channel server the same way, so both see the claude pid as their parent
+    // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), so every
+    // hook, the wake-up waiter included, sees the claude pid as its parent
     if (event?.kind === 'session')
       event.pid = process.ppid
     const via = feedbackVia(input.hook_event_name)
