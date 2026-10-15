@@ -3,6 +3,7 @@ import type { HookInput } from './map'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
+import { turnOpener, turnStartedAt } from './claude-code'
 import odEnv from './fixtures/od-env.json'
 import odPostReadImage from './fixtures/od-post-read-image.json'
 import odPostWrite from './fixtures/od-post-write.json'
@@ -12,7 +13,7 @@ import odStop from './fixtures/od-stop.json'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, feedbackOutput, feedbackVia, imageRole, mapHook, readFilePath, recapOf, sessionInfo, sessionName, sessionStartedAt, turnOpener, turnStartedAt } from './map'
+import { extractImages, feedbackOutput, feedbackVia, imageRole, mapHook, readFilePath, recapOf, sessionInfo, sessionName, sessionStartedAt } from './map'
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 

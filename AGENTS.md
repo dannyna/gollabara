@@ -13,18 +13,18 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Layout
 
-| Path            | Role                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `src/cli.ts`    | `golla` CLI entry point (`serve`, `hook`, `doctor`, `setup`, `update`, `uninstall`)                         |
-| `src/doctor.ts` | `golla doctor`: server reachability, plugin versions, hook health, then the machine checks                  |
-| `src/setup/`    | `golla setup/update/uninstall`, the LaunchAgent, harness plugins (`codex.ts` renders Codex's hooks), checks |
-| `src/hook/`     | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`                                       |
-| `src/server/`   | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                                          |
-| `src/shared/`   | Types and config shared by the server, the hook, and the UI                                                 |
-| `web/`          | Viewer UI (Vue 3 + Vite)                                                                                    |
-| `plugin/`       | Claude Code plugin. `bin/hook.js` is a build output, but it is committed; Codex runs it too                 |
-| `docs/`         | Architecture SVGs (from the Open Design `gollabara-architecture` project) and `ROADMAP.md`                  |
-| `spike/`        | Early hook-input capture experiments, reference only                                                        |
+| Path            | Role                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `src/cli.ts`    | `golla` CLI entry point (`serve`, `hook`, `doctor`, `setup`, `update`, `uninstall`)                                  |
+| `src/doctor.ts` | `golla doctor`: server reachability, plugin versions, hook health, then the machine checks                           |
+| `src/setup/`    | `golla setup/update/uninstall`, the LaunchAgent, harness plugins (`codex.ts` renders Codex's hooks), checks          |
+| `src/hook/`     | Hook input → stream events. Shared core: `map.ts` (pure) and `core.ts` (I/O); adapters: `claude-code.ts`, `codex.ts` |
+| `src/server/`   | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                                                   |
+| `src/shared/`   | Types and config shared by the server, the hook, and the UI                                                          |
+| `web/`          | Viewer UI (Vue 3 + Vite)                                                                                             |
+| `plugin/`       | Claude Code plugin. `bin/hook.js` is a build output, but it is committed; Codex runs it too                          |
+| `docs/`         | Architecture SVGs (from the Open Design `gollabara-architecture` project) and `ROADMAP.md`                           |
+| `spike/`        | Early hook-input capture experiments, reference only                                                                 |
 
 ## Commands
 

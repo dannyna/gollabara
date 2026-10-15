@@ -3,7 +3,7 @@
 import process from 'node:process'
 import { parseArgs } from 'node:util'
 import { doctor } from './doctor'
-import { runHook } from './hook'
+import { runHook } from './hook/core'
 import { runWait } from './hook/wait'
 import { startServer } from './server'
 import { systemChecks } from './setup/checks'
