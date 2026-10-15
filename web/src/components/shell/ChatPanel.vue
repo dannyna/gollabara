@@ -10,19 +10,21 @@ import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue
 import { artifactKey, clock, splitSessionName } from '../../artifacts'
 import { failureReason, mergeFeedback, postFeedback, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
 import { toSessionRows, useMutedSessions } from '../../sessions'
-import { triageView } from '../../triage'
+import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
 import StateView from '../banner/StateView.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
-import { toTimeline } from '../chat/chat'
+import { toFeed, toTimeline } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
 import DateLabel from '../chat/DateLabel.vue'
-import HiddenToggle from '../chat/HiddenToggle.vue'
+import HiddenRow from '../chat/HiddenRow.vue'
 import MyMessage from '../chat/MyMessage.vue'
 import QuestionCard from '../chat/QuestionCard.vue'
 import QueueTray from '../chat/QueueTray.vue'
+import RecapLine from '../chat/RecapLine.vue'
 import SessionMessage from '../chat/SessionMessage.vue'
+import SessionStarts from '../chat/SessionStarts.vue'
 import SystemLine from '../chat/SystemLine.vue'
 import MentionList from '../overlay/MentionList.vue'
 import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
@@ -92,16 +94,29 @@ const pending = ref<PendingSend[]>([])
 const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
 const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
 
-// Triage: hidden lines drop out unless revealed; a new recap-only line waits up to HOLD_MS (10 s) for its verdict
-const showHidden = ref(false)
+// Triage: hidden lines fold into 「숨긴 메시지 n」 rows in place; a new recap-only line waits up
+// to HOLD_MS (10 s) for its verdict. Lines already drawn are remembered (not reactive: it is
+// read on the recompute a verdict triggers), so a late hide dims a line instead of pulling it.
+const seen = new Set<string>()
 const now = ref(Date.now())
 const view = computed(() => triageView(props.messages, {
   engine: props.engine ?? 'off',
   triage: props.triage ?? new Map(),
   arrivals: props.arrivals,
   now: now.value,
-  showHidden: showHidden.value,
+  seen,
 }))
+watch(view, v => shownKeys(v).forEach(key => seen.add(key)), { immediate: true })
+/** Open 「숨긴 메시지 n」 rows, by row key */
+const openRows = ref(new Set<string>())
+function toggleRow(key: string, open: boolean) {
+  const next = new Set(openRows.value)
+  if (open)
+    next.add(key)
+  else
+    next.delete(key)
+  openRows.value = next
+}
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 watch(() => view.value.nextCheck, (at) => {
   clearTimeout(holdTimer)
@@ -109,13 +124,16 @@ watch(() => view.value.nextCheck, (at) => {
     holdTimer = setTimeout(() => now.value = Date.now(), Math.max(0, at - Date.now()) + 20)
 }, { immediate: true })
 onBeforeUnmount(() => clearTimeout(holdTimer))
-watch(() => view.value.hidden, (n) => {
-  if (!n)
-    showHidden.value = false
-})
-const shown = computed(() => view.value.items.map(i => i.message))
+const shown = computed(() => view.value.items.filter(i => !i.folded).map(i => i.message))
 const viewOf = computed(() => new Map(view.value.items.map(i => [i.message.id, i])))
-const timeline = computed(() => toTimeline(shown.value, props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value))
+// Folded messages keep their place in the timeline so their rows land where the lines were
+const timeline = computed(() => toFeed(
+  toTimeline(view.value.items.map(i => i.message), props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value),
+  (m) => {
+    const v = viewOf.value.get(m.id)
+    return v?.folded ? v.parts.flatMap(p => p.type === 'hidden' ? p.lines : []) : null
+  },
+))
 
 // Queued on the server, not yet picked up: the tray, one group per session
 const queue = computed<QueueGroup[]>(() => {
@@ -226,8 +244,8 @@ const unseen = ref(0)
 const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
 let first = true
 // Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
-// Scope changes, unmuting and revealing hidden lines show older messages; those are not counted.
-// Watching what is shown means a held line counts when it appears, and a hidden line never does.
+// Scope changes and unmuting show older messages; those are not counted. Watching what is
+// shown means a held line counts when it appears, and a folded message never does.
 let lastId = -Infinity
 watch(shown, async (list) => {
   const arrived = list.filter(m => m.id > lastId).length
@@ -272,7 +290,6 @@ defineExpose({ reveal })
       <h2>세션 대화</h2>
       <div class="heading-end">
         <span>질문에 답하고, 피드백을 남겨요</span>
-        <HiddenToggle v-if="view.hidden" v-model="showHidden" :count="view.hidden" />
       </div>
     </div>
     <NoticeLine v-if="offline">
@@ -288,6 +305,11 @@ defineExpose({ reveal })
         <template v-for="item in timeline" :key="item.key">
           <DateLabel v-if="item.type === 'date'" :label="item.label" />
           <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text" />
+          <SessionStarts v-else-if="item.type === 'starts'" :rows="item.rows" :lead="item.lead" />
+          <HiddenRow
+            v-else-if="item.type === 'hidden'" :lines="item.lines"
+            :model-value="openRows.has(item.key)" @update:model-value="toggleRow(item.key, $event)"
+          />
           <MyMessage
             v-else-if="item.type === 'mine'" :target="shortName(item.entry.sessionId)" :text="item.entry.text"
             :quote="item.entry.quote" :state="item.entry.state" :at="item.entry.deliveredAt"
@@ -297,11 +319,17 @@ defineExpose({ reveal })
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
-            :class="{ dim: viewOf.get(item.message.id)?.dim }"
           >
-            <p v-for="line in viewOf.get(item.message.id)?.lines" :key="line.index" :class="{ dim: line.dim }">
-              {{ line.text }}
-            </p>
+            <template v-for="part in viewOf.get(item.message.id)?.parts" :key="part.type === 'line' ? part.line.index : part.key">
+              <RecapLine
+                v-if="part.type === 'line'" :text="part.line.text" :tone="part.line.tone"
+                :filled="part.line.filled" :weak="part.line.weak"
+              />
+              <HiddenRow
+                v-else inset :lines="part.lines"
+                :model-value="openRows.has(part.key)" @update:model-value="toggleRow(part.key, $event)"
+              />
+            </template>
             <ArtifactThumbs
               v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
               :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
@@ -371,13 +399,6 @@ defineExpose({ reveal })
   font-size: 10px;
   color: var(--muted);
 }
-/* Noise revealed by 「숨긴 메시지 n」 */
-.dim {
-  opacity: 0.5;
-}
-.message.dim .dim {
-  opacity: 1;
-}
 .feed-box {
   position: relative;
   flex: 1;
@@ -412,7 +433,6 @@ defineExpose({ reveal })
     border-radius: 22px 22px 0 0;
   }
   .heading {
-    /* Grows to fit the 44px 「숨긴 메시지 n」 touch target */
     height: auto;
     min-height: 40px;
     padding: 0 18px;

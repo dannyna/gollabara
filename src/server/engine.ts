@@ -15,8 +15,9 @@ export const TRIAGE_SCHEMA = {
   type: 'object',
   properties: {
     verdict: { type: 'string', enum: ['show', 'hide'] },
+    tone: { type: 'string', enum: ['default', 'success', 'warning', 'danger'] },
   },
-  required: ['verdict'],
+  required: ['verdict', 'tone'],
   additionalProperties: false,
 } as const
 

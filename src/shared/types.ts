@@ -133,8 +133,14 @@ export interface ServerSettings {
   triage: TriageEngine
 }
 
-/** Whether a recap line is shown in the chat; hidden lines sit under 「숨긴 메시지 n」 */
+/** Whether a recap line is shown in the chat; hidden lines fold into 「숨긴 메시지 n」 rows */
 export type Verdict = 'show' | 'hide'
+
+/**
+ * The state a shown line is drawn with: a result to check (success), something the user should
+ * look at although nothing is stuck (warning), or a failure or blocker (danger)
+ */
+export type Tone = 'default' | 'success' | 'warning' | 'danger'
 
 /** A model's reading of one recap line. Shown only to the user; nothing here is ever sent to a session. */
 export interface Triage {
@@ -142,6 +148,8 @@ export interface Triage {
   /** Recap index within the turn; 0 for a legacy recap message */
   index: number
   verdict: Verdict
+  /** Only for shown lines; missing (as on verdicts stored before tones) reads as default */
+  tone?: Tone
 }
 
 /** Frame sent to the UI over WebSocket */

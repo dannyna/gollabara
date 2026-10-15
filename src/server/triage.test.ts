@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { engineArgs, engineOutput } from './engine'
+import { engineArgs, engineOutput, TRIAGE_SCHEMA } from './engine'
 import { Store } from './store'
 import { buildPrompt, cacheKey, FEEDBACK_LINES, JobQueue, toTriage, Triager } from './triage'
 
@@ -24,8 +24,20 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('toTriage', () => {
   test('keeps only show or hide; advice and drafts are dropped', () => {
-    expect(toTriage({ verdict: 'show', advice: '로그를 보세요', draft: '로그 보여 줘' }, at)).toEqual({ ...at, verdict: 'show' })
+    expect(toTriage({ verdict: 'show', tone: 'default', advice: '로그를 보세요', draft: '로그 보여 줘' }, at)).toEqual({ ...at, verdict: 'show', tone: 'default' })
     expect(toTriage({ verdict: 'hide' }, at)).toEqual({ ...at, verdict: 'hide' })
+  })
+
+  test('a shown line keeps its tone; a hidden one never carries one', () => {
+    for (const tone of ['default', 'success', 'warning', 'danger'] as const)
+      expect(toTriage({ verdict: 'show', tone }, at)).toEqual({ ...at, verdict: 'show', tone })
+    expect(toTriage({ verdict: 'hide', tone: 'danger' }, at)).toEqual({ ...at, verdict: 'hide' })
+  })
+
+  test('a missing or unknown tone reads as default and keeps the verdict', () => {
+    expect(toTriage({ verdict: 'show' }, at)).toEqual({ ...at, verdict: 'show', tone: 'default' })
+    for (const tone of ['info', 'ok', 'warn', 'risk', 3])
+      expect(toTriage({ verdict: 'show', tone }, at)).toEqual({ ...at, verdict: 'show', tone: 'default' })
   })
 
   test('rejects malformed answers and the old three-way verdicts', () => {
@@ -54,13 +66,26 @@ describe('verdicts stored before #37', () => {
         { messageId: 3, index: 0, verdict: 'hide' },
       ])
       expect(migrated.cachedVerdict('# 분 경과')).toBe('hide')
-      // New verdicts still write to the old table
-      migrated.saveTriage({ messageId: 2, index: 0, verdict: 'show' })
-      expect(new Store(old).triageFor([2])).toEqual([{ messageId: 2, index: 0, verdict: 'show' }])
+      // New verdicts still write to the old table, which gains a tone column
+      migrated.saveTriage({ messageId: 2, index: 0, verdict: 'show', tone: 'danger' })
+      expect(new Store(old).triageFor([2])).toEqual([{ messageId: 2, index: 0, verdict: 'show', tone: 'danger' }])
     }
     finally {
       rmSync(old, { recursive: true, force: true })
     }
+  })
+})
+
+describe('tone storage', () => {
+  test('a tone is stored with the verdict; a later hide clears it', () => {
+    store.saveTriage({ messageId: 1, index: 0, verdict: 'show', tone: 'warning' })
+    store.saveTriage({ messageId: 2, index: 0, verdict: 'show' })
+    expect(store.triageFor([1, 2])).toEqual([
+      { messageId: 1, index: 0, verdict: 'show', tone: 'warning' },
+      { messageId: 2, index: 0, verdict: 'show' },
+    ])
+    store.saveTriage({ messageId: 1, index: 0, verdict: 'hide' })
+    expect(store.triageFor([1])).toEqual([{ messageId: 1, index: 0, verdict: 'hide' }])
   })
 })
 
@@ -74,6 +99,11 @@ describe('engine output', () => {
 
   test('codex: the answer file is the JSON itself', () => {
     expect(engineOutput('codex', '{"verdict":"hide"}')).toEqual({ verdict: 'hide' })
+  })
+
+  test('the schema asks for a tone with the verdict, so codex strict mode accepts it', () => {
+    expect(TRIAGE_SCHEMA.required).toEqual(['verdict', 'tone'])
+    expect(TRIAGE_SCHEMA.properties.tone.enum).toEqual(['default', 'success', 'warning', 'danger'])
   })
 
   test('both CLIs run without tools, user settings or hooks', () => {
@@ -263,6 +293,25 @@ describe('feedback context', () => {
     const { inputs, ingest } = setup()
     await ingest(recap(a, '빌드 끝'))
     expect(inputs[0]).not.toContain('예전 피드백')
+  })
+
+  test('a line that answers feedback gets a tone like any shown line', async () => {
+    const published: Triage[] = []
+    store.saveSettings({ triage: 'claude' })
+    const triager = new Triager(store, t => published.push(t), {
+      dataDir: dir,
+      run: async (_engine, call) => call.input.includes('latest feedback') ? { verdict: 'show', tone: 'success' } : { verdict: 'hide', tone: 'default' },
+    })
+    const ingest = async (event: IncomingEvent) => {
+      triager.onIngest(event, store.ingest(event))
+      await triager.queue.idle()
+    }
+    await ingest(recap(a, '결제 e2e 2건 실패'))
+    store.queueFeedback(a.id, '다시 돌려 줘')
+    store.claimFeedback(a.id, 'stop')
+    await ingest(recap(a, 'e2e 다시 돌려서 전부 통과', true))
+    expect(published).toEqual([{ messageId: 1, index: 0, verdict: 'hide' }, { messageId: 1, index: 1, verdict: 'show', tone: 'success' }])
+    expect(store.triageFor([1])[1]).toEqual({ messageId: 1, index: 1, verdict: 'show', tone: 'success' })
   })
 
   test('a line after feedback skips the hide cache, so an answer is still judged', async () => {

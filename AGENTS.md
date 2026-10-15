@@ -4,10 +4,10 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Invariants
 
-1. **Observer, not mediator.** gollabara never originates messages or questions and never asks a session for approval. Mirror only the session's own questions (`AskUserQuestion`). The one thing it sends to a session is feedback the user writes, delivered as-is. Answering `AskUserQuestion` and pausing a session remain out of scope. No dedicated `post` / `ask` tools for agents to decide what to send. Triage only decides which chat lines the user sees; it never writes to a session, so only what the user sends reaches one.
+1. **Observer, not mediator.** gollabara never originates messages or questions and never asks a session for approval. Mirror only the session's own questions (`AskUserQuestion`). The one thing it sends to a session is feedback the user writes, delivered as-is. Answering `AskUserQuestion` and pausing a session remain out of scope. No dedicated `post` / `ask` tools for agents to decide what to send. Triage only decides which chat lines the user sees, and with which state; it never writes to a session, so only what the user sends reaches one.
 2. **The hook never blocks a session.** 1.5 s timeout, swallow every error, always exit 0. If the server is down, exit quietly.
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
-4. **Never judge artifacts.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing of images. A perceptual hash (dHash) is used only to group near-identical re-captures of one file (`src/shared/stacks.ts`); it is never shown and never used to judge an image. Triage of chat text (whether a recap line is shown) is allowed, opt-in, and off by default. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
+4. **Never judge artifacts.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing of images. A perceptual hash (dHash) is used only to group near-identical re-captures of one file (`src/shared/stacks.ts`); it is never shown and never used to judge an image. Triage of chat text (whether a recap line is shown, and its state) is allowed, opt-in, and off by default. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
 5. **Local only.** Data lives in local SQLite and image files. No third-party storage, no public internet exposure. The one exception is opt-in: with triage on, recap and question text, and the text of the user's latest feedback to that session, go to the model behind the user's own `claude` or `codex` CLI. Images never do.
 6. **Multi-harness by design.** Only the Claude Code plugin exists today, but Codex, Open Design, and Claude Design are targets. Keep the event types in `src/shared/types.ts` free of Claude-Code-only concepts.
 
@@ -76,13 +76,17 @@ Open Design runs the same plugin. When the hook's env has `OD_PROJECT_ID`, the s
 
 ## Triage (opt-in)
 
-With 「대화 정리」 set to Claude or Codex (`PUT /api/settings`, loopback/tailnet only; stored in SQLite), the server judges each new recap line in the background (`src/server/triage.ts`) and decides only whether it is shown: `show` or `hide`. Questions are always shown, so they are never judged; they appear only as context. Nothing that came in before the engine was turned on is judged.
+With 「대화 정리」 set to Claude or Codex (`PUT /api/settings`, loopback/tailnet only; stored in SQLite), the server judges each new recap line in the background (`src/server/triage.ts`): whether it is shown (`show` or `hide`), and for a shown line its `tone` (`default`, `success`, `warning` or `danger`). Images are never judged. Questions are always shown, so they are never judged; they appear only as context. Nothing that came in before the engine was turned on is judged.
 
 - Each prompt carries the session's last 5 recap and question lines as context. The first 3 lines that arrive after feedback was delivered to the session also carry the text of that latest feedback, and the model is told to show a line that answers it. Those lines skip the cache.
 - Calls run through `src/server/engine.ts` with a 30 s timeout, at most two at a time, never blocking `POST /api/events`. A failed call stores nothing, so the line stays shown.
 - Each call runs with `GOLLABARA_HOOK=off`, no tools, and no user settings or MCP servers where the CLI allows it, so the call never becomes a session of its own.
 - Hide verdicts are cached by normalized text (numbers ignored), so repeated ticks skip the model.
-- The UI hides only recap-only lines judged `hide`, under 「숨긴 메시지 n」. Turns with images and questions are always shown.
+- The schema requires `tone` with `verdict` (codex strict mode), but only a shown line keeps it. A missing or unknown tone on a shown line reads as `default`, so it never costs the verdict. Lines that answer feedback get a tone like any other.
+- The tone is stored in the `triage` table's nullable `tone` column, added on open when missing. A NULL tone (hidden lines, verdicts from before tones) reads as `default`.
+- The UI folds only recap-only lines judged `hide`, into in-place 「숨긴 메시지 n」 rows; consecutive hidden messages merge into one row, across sessions. Turns with images and questions are always shown; a hide there reads as `default`.
+- A line already on screen is never removed by a later `hide`: it dims in place (muted, 11px). The chat tracks which lines it has drawn; after a reload the line folds like any other.
+- Only a session's latest non-default line is drawn as a filled box; earlier stated lines keep only their icon. A `default` line does not clear an earlier state.
 - Verdicts stored before #37 read as `signal` → `show` and `progress` / `noise` → `hide`. Old advice and draft columns are ignored.
 
 ## Conventions

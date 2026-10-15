@@ -15,6 +15,12 @@ export const ICONS = {
   end: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
+  // Line states and hidden rows (OD message-state-components.html)
+  success: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+  warning: '<path d="M12 4 2.8 19.5h18.4Z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+  danger: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  eyeoff: '<path d="M3 3l18 18M10.6 6.1A9.6 9.6 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.6 6.6C4.3 8.1 3 12 3 12s4 6 9 6c1.4 0 2.7-.4 3.9-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
 } as const
 
 export type IconName = keyof typeof ICONS

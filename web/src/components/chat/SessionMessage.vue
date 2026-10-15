@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { clock, splitSessionName } from '../../artifacts'
+import { clock } from '../../artifacts'
 import FloatingActions from '../overlay/FloatingActions.vue'
 import SessionAvatar from './SessionAvatar.vue'
+import SessionName from './SessionName.vue'
 
-// Avatar · session · branch · time, then the body. Text without a surface; the
-// question card is the only surface that sits inside it.
-const props = defineProps<{
+// Avatar · session · branch · time, then the body. Text without a surface; recap lines with a
+// state and the question card are the only boxes inside it.
+defineProps<{
   /** `<dir>` or `<dir> · <branch>` */
   name: string
   at: number
   /** Paired with the artifact picked in the stream */
   highlighted?: boolean
 }>()
-const parts = computed(() => splitSessionName(props.name))
 </script>
 
 <template>
@@ -22,7 +21,7 @@ const parts = computed(() => splitSessionName(props.name))
     <FloatingActions variant="message" />
     <div class="message-head">
       <SessionAvatar :name="name" />
-      <strong>{{ parts.session }}<span v-if="parts.branch" class="branch"> · {{ parts.branch }}</span></strong>
+      <strong><SessionName :name="name" /></strong>
       <time>{{ clock(at) }}</time>
     </div>
     <div class="message-body">
@@ -50,14 +49,10 @@ const parts = computed(() => splitSessionName(props.name))
   margin-bottom: 7px;
 }
 .message-head strong {
+  display: flex;
   min-width: 0;
   font-size: 11px;
   font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.branch {
-  color: var(--muted);
-  font-weight: 400;
 }
 .message-head time {
   margin-left: auto;
@@ -66,7 +61,9 @@ const parts = computed(() => splitSessionName(props.name))
   color: var(--muted);
 }
 .message-body {
-  padding-left: 31px;
+  /* Recap line boxes reach back over this indent into the avatar column */
+  --indent: 31px;
+  padding-left: var(--indent);
   font-size: 12px;
   line-height: 1.8;
   overflow-wrap: anywhere;
@@ -87,7 +84,7 @@ const parts = computed(() => splitSessionName(props.name))
     font-size: 10px;
   }
   .message-body {
-    padding-left: 29px;
+    --indent: 29px;
   }
 }
 </style>

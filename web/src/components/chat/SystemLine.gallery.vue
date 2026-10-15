@@ -6,7 +6,6 @@ import DateLabel from './DateLabel.vue'
 import SystemLine from './SystemLine.vue'
 
 const LINES: { icon: IconName, text: string, note: string }[] = [
-  { icon: 'start', text: 'od · landing-hero 시작', note: '세션이 처음 이벤트를 보냈을 때. 같은 세션에 한 번.' },
   { icon: 'pause', text: 'client-e2e · checkout 멈춤', note: '세션 메뉴에서 멈춤. 대기 트레이 자동 전달도 멈춘다.' },
   { icon: 'play', text: 'client-e2e · checkout 재개', note: '재개하면 대기 중인 말을 턴 끝에 이어서 보낸다.' },
   { icon: 'mute', text: 'api · quota-refill 음소거함', note: '‘전체 세션’ 보기에서만 보인다. 이후 이 세션 메시지는 숨긴다.' },
