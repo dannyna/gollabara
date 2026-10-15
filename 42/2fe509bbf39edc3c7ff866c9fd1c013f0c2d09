@@ -1,0 +1,22 @@
+docs/ROADMAP.md
+  s_b7f30c572db9a8::t_69adc1a8419e0a 1-121
+  s_b7f30c572db9a8::t_2d31502b3c86f5 122
+AGENTS.md
+  s_b7f30c572db9a8::t_3573da54983f44 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "422fe509bbf39edc3c7ff866c9fd1c013f0c2d09",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
