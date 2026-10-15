@@ -1,0 +1,27 @@
+AGENTS.md
+  s_b7f30c572db9a8::t_d71931206676d3 96
+web/src/settings.ts
+  s_b7f30c572db9a8::t_3260d051243f98 80-91,93,97-111,117,119,121-128,130-138
+web/src/App.vue
+  s_b7f30c572db9a8::t_3260d051243f98 25,76-80,82-83,94,122-142,281-285
+  s_b7f30c572db9a8::t_c5fd18925c63f9 225-226
+  s_b7f30c572db9a8::t_cb63f4ea699fe2 286
+web/src/components/overlay/overlay.test.ts
+  s_b7f30c572db9a8::t_3260d051243f98 40-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1933b738a9e67b57c22afceb46a44203b7ef3ff",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
