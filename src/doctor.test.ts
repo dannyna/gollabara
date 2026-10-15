@@ -45,26 +45,26 @@ describe('golla doctor', () => {
 
     const health = await (await fetch(`${url}/api/health`)).json()
     expect(health).toMatchObject({ version: PLUGIN_VERSION, hooks: [{ harness: 'open-design', version: null, outdated: true }] })
-    const report = await doctor({ url, dataDir: data })
+    const report = (await doctor({ url, dataDir: data })).lines
     expect(report).toContain(`plugin    open-design no version (plugin outdated, expected ${PLUGIN_VERSION}), seen 0 s ago`)
   })
 
   test('a current hook reads as ok, an older version as outdated', async () => {
     await post(recap('claude-code', 'new'), { 'x-gollabara-hook': PLUGIN_VERSION, 'x-gollabara-harness': 'claude-code' })
-    expect((await doctor({ url, dataDir: data })).join('\n')).toContain(`claude-code ${PLUGIN_VERSION} (ok)`)
+    expect((await doctor({ url, dataDir: data })).lines.join('\n')).toContain(`claude-code ${PLUGIN_VERSION} (ok)`)
     await post(recap('claude-code', 'new'), { 'x-gollabara-hook': '0.0.1', 'x-gollabara-harness': 'claude-code' })
-    expect((await doctor({ url, dataDir: data })).join('\n')).toContain('claude-code 0.0.1 (plugin outdated')
+    expect((await doctor({ url, dataDir: data })).lines.join('\n')).toContain('claude-code 0.0.1 (plugin outdated')
   })
 
   test('an unreachable server and an empty log are stated plainly', async () => {
     const empty = mkdtempSync(join(tmpdir(), 'gollabara-doctor-empty-'))
     try {
-      expect(await doctor({ url: 'http://127.0.0.1:9', dataDir: empty })).toEqual([
+      expect(await doctor({ url: 'http://127.0.0.1:9', dataDir: empty })).toEqual({ broken: true, lines: [
         'server    http://127.0.0.1:9 not reachable (unreachable)',
         'latency   no hook runs logged',
         'failures  none logged',
         `data      ${empty}`,
-      ])
+      ] })
     }
     finally {
       rmSync(empty, { recursive: true, force: true })

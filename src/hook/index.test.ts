@@ -191,7 +191,7 @@ describe('version handshake and health log', () => {
     expect(entry).toMatchObject({ event: 'Stop', harness: 'claude-code', ok: false, error: 'timeout' })
     expect(entry!.ms).toBeGreaterThanOrEqual(1500)
     expect(entry!.ms).toBeLessThan(3000)
-    const report = (await doctor({ url: 'http://127.0.0.1:9', dataDir: data })).join('\n')
+    const report = (await doctor({ url: 'http://127.0.0.1:9', dataDir: data })).lines.join('\n')
     expect(report).toContain(`Stop (claude-code) timeout after ${entry!.ms} ms`)
     expect(report).toContain('failures  1 logged')
   })

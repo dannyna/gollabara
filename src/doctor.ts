@@ -1,6 +1,8 @@
 // `golla doctor` — says what is and isn't working: the server, the plugin version each harness runs,
-// and how the hooks have fared (the hook health log). Plain lines, no colors.
+// how the hooks have fared (the hook health log), and the machine-level checks it is given (the installed
+// app, the login service, plugins, sleep, Tailscale). Plain lines, no colors.
 
+import type { Check } from './setup/harness'
 import type { Health } from './shared/types'
 import { errorClass, percentile, readHealth } from './hook/health'
 
@@ -12,11 +14,23 @@ export interface DoctorOptions {
   url: string
   dataDir: string
   now?: number
+  /** Machine-level rows, listed before `data`; `golla doctor` passes `systemChecks` */
+  checks?: () => Promise<Check[]>
 }
 
-export async function doctor({ url, dataDir, now = Date.now() }: DoctorOptions): Promise<string[]> {
+export interface DoctorReport {
+  lines: string[]
+  /** The server is unreachable, a plugin is outdated, or a check is broken: `golla doctor` exits 1 */
+  broken: boolean
+}
+
+export async function doctor({ url, dataDir, now = Date.now(), checks }: DoctorOptions): Promise<DoctorReport> {
   const lines: string[] = []
-  const row = (label: string, text: string) => lines.push(`${label.padEnd(10)}${text}`)
+  let broken = false
+  const row = (label: string, text: string, isBroken = false) => {
+    lines.push(`${label.padEnd(10)}${text}`)
+    broken ||= isBroken
+  }
 
   let health: Health | null = null
   try {
@@ -27,7 +41,7 @@ export async function doctor({ url, dataDir, now = Date.now() }: DoctorOptions):
     row('server', `${url} reachable, expects plugin ${health.version}`)
   }
   catch (error) {
-    row('server', `${url} not reachable (${errorClass(error)})`)
+    row('server', `${url} not reachable (${errorClass(error)})`, true)
   }
 
   if (health) {
@@ -36,7 +50,7 @@ export async function doctor({ url, dataDir, now = Date.now() }: DoctorOptions):
     for (const hook of health.hooks) {
       const version = hook.version ?? 'no version'
       const state = hook.outdated ? `plugin outdated, expected ${health.version}` : 'ok'
-      row('plugin', `${hook.harness} ${version} (${state}), seen ${ago(now - hook.seenAt)}`)
+      row('plugin', `${hook.harness} ${version} (${state}), seen ${ago(now - hook.seenAt)}`, hook.outdated)
     }
   }
 
@@ -57,8 +71,10 @@ export async function doctor({ url, dataDir, now = Date.now() }: DoctorOptions):
     for (const f of failures.slice(-SHOWN_FAILURES))
       row('', `${stamp(f.at)} ${f.event}${f.harness ? ` (${f.harness})` : ''} ${f.error ?? 'error'} after ${f.ms} ms`)
   }
+  for (const check of await checks?.() ?? [])
+    row(check.label, check.text, check.broken)
   row('data', dataDir)
-  return lines
+  return { lines, broken }
 }
 
 function ago(ms: number): string {

@@ -7,6 +7,7 @@ import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
+import { packageRoot } from '../shared/package-root'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
@@ -16,7 +17,8 @@ import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
 
-const WEB_DIST = resolve(import.meta.dir, '../../web/dist')
+// src/server in a checkout, dist/ in the bundle that npm and `golla setup` ship
+const WEB_DIST = join(packageRoot(import.meta.dir) ?? resolve(import.meta.dir, '../..'), 'web/dist')
 const TOPIC = 'stream'
 const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 /** How long a wake-up poll waits for feedback before it returns empty and the waiting hook asks again */
