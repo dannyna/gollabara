@@ -2,9 +2,8 @@
 // src/hook/entry.ts
 import process4 from "process";
 
-// src/hook/index.ts
-import { Buffer as Buffer2 } from "buffer";
-import { closeSync, existsSync, fstatSync, openSync, readFileSync as readFileSync2, readSync, statSync as statSync2 } from "fs";
+// src/hook/core.ts
+import { existsSync, readFileSync as readFileSync2, statSync as statSync2 } from "fs";
 import { dirname, join as join3, resolve } from "path";
 import process2 from "process";
 
@@ -25,7 +24,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.3.1",
+  version: "0.3.2",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -77,7 +76,7 @@ class HttpError extends Error {
 }
 
 // src/hook/map.ts
-import { Buffer } from "buffer";
+import { Buffer as Buffer2 } from "buffer";
 import { isAbsolute } from "path";
 
 // src/shared/feedback.ts
@@ -95,22 +94,58 @@ function clock(at) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// src/hook/map.ts
-var QUESTION_TOOLS = new Set(["AskUserQuestion", "request_user_input"]);
+// src/hook/transcript.ts
+import { Buffer } from "buffer";
+import { closeSync, fstatSync, openSync, readSync } from "fs";
+var TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024];
+var TRANSCRIPT_HEAD_BYTES = 64 * 1024;
+function fromTail(path, find, windows) {
+  if (!path)
+    return;
+  for (const bytes of windows) {
+    const tail = readTail(path, bytes);
+    if (!tail)
+      return;
+    const found = find(tail.text);
+    if (found !== undefined || tail.whole)
+      return found;
+  }
+  return;
+}
+function readHead(path, bytes) {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const buffer = Buffer.alloc(Math.min(fstatSync(fd).size, bytes));
+      readSync(fd, buffer, 0, buffer.length, 0);
+      return buffer.toString("utf8");
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return;
+  }
+}
+function readTail(path, bytes) {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const size = fstatSync(fd).size;
+      const length = Math.min(size, bytes);
+      const buffer = Buffer.alloc(length);
+      readSync(fd, buffer, 0, length, size - length);
+      return { text: buffer.toString("utf8"), whole: length === size };
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return;
+  }
+}
+
+// src/hook/claude-code.ts
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
-var SESSION_START_REASONS = ["startup", "resume", "clear", "compact"];
-function sessionName(cwd, branch) {
-  const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
-  return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
-}
-function sessionInfo(input, env, git, adapter = "claude-code") {
-  const project = adapter === "claude-code" ? env.OD_PROJECT_ID : undefined;
-  if (project)
-    return { id: input.session_id, name: project, harness: "open-design", project, cwd: input.cwd };
-  const root = git.projectRoot(input.cwd);
-  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd };
-}
 function turnOpener(tail) {
   const lines = tail.split(`
 `);
@@ -157,6 +192,33 @@ function turnStartedAt(tail) {
   }
   return;
 }
+function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
+  return fromTail(transcriptPath, (text) => {
+    const opener = turnOpener(text);
+    return opener === "unknown" ? undefined : opener;
+  }, windows) ?? "unknown";
+}
+function isFeedbackDelivery(entry) {
+  const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
+  return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
+}
+function isRewakeFeedback(entry) {
+  return entry?.origin?.kind === "task-notification" && carriesFeedback(entry);
+}
+function carriesFeedback(entry) {
+  const content = entry.message?.content;
+  const texts = typeof content === "string" ? [content] : Array.isArray(content) ? content.map((c) => c?.text) : [];
+  return texts.some((t) => typeof t === "string" && t.includes(FEEDBACK_PREFIX));
+}
+var claudeCode = {
+  project: (env) => env.OD_PROJECT_ID,
+  stopOpener: (transcriptPath) => stopTurnOpener(transcriptPath),
+  turnStartedAt,
+  claims: () => true,
+  output: (hookEventName, text) => ({ hookSpecificOutput: { hookEventName, additionalContext: text } })
+};
+
+// src/hook/codex.ts
 function codexTurnStartedAt(tail) {
   const lines = tail.split(`
 `);
@@ -176,6 +238,31 @@ function codexTurnStartedAt(tail) {
     return Number.isFinite(at) ? at : undefined;
   }
   return;
+}
+var codex = {
+  project: () => {
+    return;
+  },
+  stopOpener: () => "unknown",
+  turnStartedAt: codexTurnStartedAt,
+  claims: (hookEventName, input) => !(hookEventName === "Stop" && input?.stop_hook_active),
+  output: (hookEventName, text) => hookEventName === "Stop" ? { decision: "block", reason: text } : { hookSpecificOutput: { hookEventName, additionalContext: text } }
+};
+
+// src/hook/map.ts
+var ADAPTERS = { "claude-code": claudeCode, codex };
+var QUESTION_TOOLS = new Set(["AskUserQuestion", "request_user_input"]);
+var SESSION_START_REASONS = ["startup", "resume", "clear", "compact"];
+function sessionName(cwd, branch) {
+  const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
+  return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
+}
+function sessionInfo(input, env, git, adapter = "claude-code") {
+  const project = ADAPTERS[adapter].project(env);
+  if (project)
+    return { id: input.session_id, name: project, harness: "open-design", project, cwd: input.cwd };
+  const root = git.projectRoot(input.cwd);
+  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd };
 }
 function sessionStartedAt(head) {
   for (const line of head.split(`
@@ -200,18 +287,6 @@ function imageRole(mtimeMs, startedAt) {
 function readFilePath(toolInput) {
   const path = imageSource(toolInput);
   return path && isAbsolute(path) ? path : undefined;
-}
-function isFeedbackDelivery(entry) {
-  const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
-  return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
-}
-function isRewakeFeedback(entry) {
-  return entry?.origin?.kind === "task-notification" && carriesFeedback(entry);
-}
-function carriesFeedback(entry) {
-  const content = entry.message?.content;
-  const texts = typeof content === "string" ? [content] : Array.isArray(content) ? content.map((c) => c?.text) : [];
-  return texts.some((t) => typeof t === "string" && t.includes(FEEDBACK_PREFIX));
 }
 function mapHook(input, session, opener = "unknown", fileRole) {
   switch (input.hook_event_name) {
@@ -258,17 +333,14 @@ var FEEDBACK_VIA = {
   UserPromptSubmit: "user-prompt-submit"
 };
 function feedbackVia(hookEventName, input, adapter = "claude-code") {
-  if (adapter === "codex" && hookEventName === "Stop" && input?.stop_hook_active)
+  if (!ADAPTERS[adapter].claims(hookEventName, input))
     return null;
   return FEEDBACK_VIA[hookEventName] ?? null;
 }
 function feedbackOutput(hookEventName, items, adapter = "claude-code") {
-  if (items.length === 0 || !feedbackVia(hookEventName))
+  if (items.length === 0 || !FEEDBACK_VIA[hookEventName])
     return null;
-  const text = feedbackText(items);
-  if (adapter === "codex" && hookEventName === "Stop")
-    return { decision: "block", reason: text };
-  return { hookSpecificOutput: { hookEventName, additionalContext: text } };
+  return ADAPTERS[adapter].output(hookEventName, feedbackText(items));
 }
 function recapOf(message) {
   if (!message)
@@ -326,7 +398,7 @@ function dataUrlImage(url) {
   return mime ? { data, mime } : null;
 }
 function sniffImageMime(base64) {
-  const head = Buffer.from(base64.slice(0, 24), "base64");
+  const head = Buffer2.from(base64.slice(0, 24), "base64");
   const ascii = (from, to) => head.subarray(from, to).toString("latin1");
   if (head[0] === 137 && ascii(1, 4) === "PNG")
     return "image/png";
@@ -356,10 +428,9 @@ function extractQuestions(toolInput) {
   }));
 }
 
-// src/hook/index.ts
+// src/hook/core.ts
+var HARD_DEADLINE_MS = 2500;
 var POST_TIMEOUT_MS = 1500;
-var TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024];
-var TRANSCRIPT_HEAD_BYTES = 64 * 1024;
 async function runHook(adapter = "claude-code") {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
@@ -370,7 +441,7 @@ async function runHook(adapter = "claude-code") {
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter);
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
-    const opener = input.hook_event_name === "Stop" && adapter === "claude-code" ? stopTurnOpener(input.transcript_path) : "unknown";
+    const opener = input.hook_event_name === "Stop" ? ADAPTERS[adapter].stopOpener(input.transcript_path) : "unknown";
     const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter));
     if (event?.kind === "session")
       event.pid = process2.ppid;
@@ -407,14 +478,8 @@ async function runHook(adapter = "claude-code") {
   if (health)
     logHealth(dataDir(), { at: Date.now(), ...health, ok: !health.error });
 }
-function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
-  return fromTail(transcriptPath, (text) => {
-    const opener = turnOpener(text);
-    return opener === "unknown" ? undefined : opener;
-  }, windows) ?? "unknown";
-}
 function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, adapter = "claude-code") {
-  const opened = fromTail(transcriptPath, adapter === "codex" ? codexTurnStartedAt : turnStartedAt, windows);
+  const opened = fromTail(transcriptPath, ADAPTERS[adapter].turnStartedAt, windows);
   if (opened !== undefined || !transcriptPath)
     return opened;
   const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES);
@@ -425,49 +490,6 @@ function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, a
     return imageRole(statSync2(path).mtimeMs, turnStart(transcriptPath, windows, adapter));
   } catch {
     return "artifact";
-  }
-}
-function fromTail(path, find, windows) {
-  if (!path)
-    return;
-  for (const bytes of windows) {
-    const tail = readTail(path, bytes);
-    if (!tail)
-      return;
-    const found = find(tail.text);
-    if (found !== undefined || tail.whole)
-      return found;
-  }
-  return;
-}
-function readHead(path, bytes) {
-  try {
-    const fd = openSync(path, "r");
-    try {
-      const buffer = Buffer2.alloc(Math.min(fstatSync(fd).size, bytes));
-      readSync(fd, buffer, 0, buffer.length, 0);
-      return buffer.toString("utf8");
-    } finally {
-      closeSync(fd);
-    }
-  } catch {
-    return;
-  }
-}
-function readTail(path, bytes) {
-  try {
-    const fd = openSync(path, "r");
-    try {
-      const size = fstatSync(fd).size;
-      const length = Math.min(size, bytes);
-      const buffer = Buffer2.alloc(length);
-      readSync(fd, buffer, 0, length, size - length);
-      return { text: buffer.toString("utf8"), whole: length === size };
-    } finally {
-      closeSync(fd);
-    }
-  } catch {
-    return;
   }
 }
 function projectRoot(cwd) {
@@ -561,7 +583,6 @@ async function runWait() {
 }
 
 // src/hook/entry.ts
-var HARD_DEADLINE_MS = 2500;
 var mode = process4.argv[2];
 if (mode !== "wait")
   setTimeout(() => process4.exit(0), HARD_DEADLINE_MS).unref();

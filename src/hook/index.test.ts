@@ -5,11 +5,13 @@ import process from 'node:process'
 import { afterAll, describe, expect, test } from 'bun:test'
 import { doctor } from '../doctor'
 import { PLUGIN_VERSION } from '../shared/version'
+import { stopTurnOpener } from './claude-code'
+import { projectRoot, readBranch, readFileRole, turnStart } from './core'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
 import { readHealth } from './health'
-import { projectRoot, readBranch, readFileRole, readTail, stopTurnOpener, turnStart } from './index'
 import { mapHook, sessionInfo } from './map'
+import { readTail } from './transcript'
 
 const base = realpathSync(mkdtempSync(join(tmpdir(), 'gollabara-hook-')))
 afterAll(() => rmSync(base, { recursive: true, force: true }))

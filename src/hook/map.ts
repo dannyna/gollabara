@@ -1,9 +1,12 @@
-// Turns Claude Code and Codex CLI hook input (stdin JSON) into stream events.
-// Kept pure so it is easy to test. hook/index.ts handles I/O.
+// The shared hook core's mapping: turns Claude Code and Codex CLI hook input (stdin JSON) into stream events,
+// with the recap rules, image roles and feedback claims every harness shares. What differs per harness lives
+// in its adapter (claude-code.ts, codex.ts). Kept pure so it is easy to test. hook/core.ts handles I/O.
 import type { Feedback, FeedbackVia, ImageRole, IncomingEvent, IncomingImage, Question, SessionInfo, SessionStartReason } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { isAbsolute } from 'node:path'
-import { FEEDBACK_PREFIX, feedbackText } from '../shared/feedback'
+import { feedbackText } from '../shared/feedback'
+import { claudeCode } from './claude-code'
+import { codex } from './codex'
 
 export interface HookInput {
   hook_event_name: string
@@ -25,6 +28,22 @@ export interface HookInput {
  */
 export type Adapter = 'claude-code' | 'codex'
 
+/** What one harness's hooks do differently; everything else is the shared core */
+export interface HarnessAdapter {
+  /** The Open Design project the session runs under, read from the hook env */
+  project: (env: HookEnv) => string | undefined
+  /** Who opened the turn that just stopped; 'unknown' posts the recap */
+  stopOpener: (transcriptPath?: string) => TurnOpener
+  /** When the current turn started, from a tail of the session's transcript */
+  turnStartedAt: (tail: string) => number | undefined
+  /** Whether this hook may claim feedback, at a hook point where claiming is possible at all */
+  claims: (hookEventName: string, input?: Pick<HookInput, 'stop_hook_active'>) => boolean
+  /** The hook stdout JSON that hands the feedback text to the session */
+  output: (hookEventName: string, text: string) => object
+}
+
+export const ADAPTERS: Record<Adapter, HarnessAdapter> = { 'claude-code': claudeCode, codex }
+
 /** Tools that put the session's own question on screen: Claude Code's, and Codex's (Plan mode only) */
 const QUESTION_TOOLS = new Set(['AskUserQuestion', 'request_user_input'])
 
@@ -34,10 +53,6 @@ const QUESTION_TOOLS = new Set(['AskUserQuestion', 'request_user_input'])
  * event, peer message, ...), or unknown when the transcript gave no answer.
  */
 export type TurnOpener = 'human' | 'rewake' | 'system' | 'unknown'
-
-/** `turnOrigin` values seen on real transcripts. A value not listed here counts as unknown, so the recap still posts */
-const HUMAN_TURN_ORIGINS = new Set(['human', 'sdk'])
-const WAKE_UP_TURN_ORIGINS = new Set(['task_notification', 'peer', 'system', 'scheduled'])
 
 const SESSION_START_REASONS: SessionStartReason[] = ['startup', 'resume', 'clear', 'compact']
 
@@ -51,7 +66,7 @@ export function sessionName(cwd: string, branch?: string): string {
   return branch && branch !== 'main' && branch !== 'master' ? `${dir} · ${branch}` : dir
 }
 
-/** Filesystem lookups the session name needs. hook/index.ts supplies the real ones. */
+/** Filesystem lookups the session name needs. hook/core.ts supplies the real ones. */
 export interface GitLookup {
   /** Nearest ancestor of cwd (or cwd itself) holding `.git`, or cwd when there is none */
   projectRoot: (cwd: string) => string
@@ -65,98 +80,11 @@ export interface GitLookup {
  * A Codex session is always `codex`: how Open Design launches Codex is unverified, so its env is not read.
  */
 export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup, adapter: Adapter = 'claude-code'): SessionInfo {
-  const project = adapter === 'claude-code' ? env.OD_PROJECT_ID : undefined
+  const project = ADAPTERS[adapter].project(env)
   if (project)
     return { id: input.session_id, name: project, harness: 'open-design', project, cwd: input.cwd }
   const root = git.projectRoot(input.cwd)
   return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd }
-}
-
-/**
- * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
- * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
- * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply. So does a wake-up
- * (a `task_notification` turn whose system reminder carries the feedback), told apart as `rewake`.
- * The first line of a tail is usually cut off and is skipped like any unparsable line.
- */
-export function turnOpener(tail: string): TurnOpener {
-  const lines = tail.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]
-    // Cheap filter first: screenshot turns carry multi-MB base64 lines
-    const opens = line.includes('"turnOrigin"')
-    if (!opens && !line.includes(FEEDBACK_PREFIX))
-      continue
-    let entry: any
-    try {
-      entry = JSON.parse(line)
-    }
-    catch {
-      continue
-    }
-    if (entry?.isSidechain)
-      continue
-    if (isFeedbackDelivery(entry))
-      return 'human'
-    if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
-      continue
-    if (isRewakeFeedback(entry))
-      return 'rewake'
-    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
-  }
-  return 'unknown'
-}
-
-/**
- * When the current turn started: the timestamp of the last main-thread entry that opened a turn.
- * Unlike turnOpener, feedback delivered after the opener does not stop the scan: it changes who
- * the turn is for, not when it began. Undefined when the tail holds no opener.
- */
-export function turnStartedAt(tail: string): number | undefined {
-  const lines = tail.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]!
-    if (!line.includes('"turnOrigin"'))
-      continue
-    let entry: any
-    try {
-      entry = JSON.parse(line)
-    }
-    catch {
-      continue
-    }
-    if (entry?.isSidechain || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
-      continue
-    const at = Date.parse(entry.timestamp)
-    return Number.isFinite(at) ? at : undefined
-  }
-  return undefined
-}
-
-/**
- * When the current turn started in a Codex rollout: the timestamp of the last `task_started` event.
- * A Stop `block` continues the same turn, so it opens none. Undefined when the tail holds none.
- */
-export function codexTurnStartedAt(tail: string): number | undefined {
-  const lines = tail.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]!
-    // Cheap filter first: image reads put multi-MB base64 lines in the rollout too
-    if (!line.includes('"task_started"'))
-      continue
-    let entry: any
-    try {
-      entry = JSON.parse(line)
-    }
-    catch {
-      continue
-    }
-    if (entry?.type !== 'event_msg' || entry.payload?.type !== 'task_started')
-      continue
-    const at = Date.parse(entry.timestamp)
-    return Number.isFinite(at) ? at : undefined
-  }
-  return undefined
 }
 
 /** When the session started, for a turn whose opener is out of reach: the first timestamp at the head of its transcript */
@@ -196,27 +124,8 @@ export function readFilePath(toolInput: any): string | undefined {
   return path && isAbsolute(path) ? path : undefined
 }
 
-/** Hook context that handed gollabara feedback to the session (PostToolUse, Stop or UserPromptSubmit) */
-function isFeedbackDelivery(entry: any): boolean {
-  const attachment = entry?.type === 'attachment' ? entry.attachment : undefined
-  return attachment?.type === 'hook_additional_context'
-    && Array.isArray(attachment.content)
-    && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
-}
-
-/** A turn gollabara's wake-up Stop hook opened: its stderr, the feedback, lands in the system reminder */
-function isRewakeFeedback(entry: any): boolean {
-  return entry?.origin?.kind === 'task-notification' && carriesFeedback(entry)
-}
-
-function carriesFeedback(entry: any): boolean {
-  const content = entry.message?.content
-  const texts: unknown[] = typeof content === 'string' ? [content] : Array.isArray(content) ? content.map((c: any) => c?.text) : []
-  return texts.some(t => typeof t === 'string' && t.includes(FEEDBACK_PREFIX))
-}
-
 /**
- * `fileRole` decides the role of images read from a file (hook/index.ts stats it). Images a tool
+ * `fileRole` decides the role of images read from a file (hook/core.ts stats it). Images a tool
  * produced directly, a screenshot or an MCP result with no file behind it, are artifacts.
  */
 export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown', fileRole?: (path: string) => ImageRole): IncomingEvent | null {
@@ -278,27 +187,19 @@ const FEEDBACK_VIA: Record<string, FeedbackVia> = {
 
 /**
  * Where the hook claims the session's feedback, or null when it must not claim: the claim marks items
- * delivered. A Codex Stop that is already continuing (`stop_hook_active`) never blocks again, since Codex
- * has no loop cap of its own, so claiming there would lose the items.
+ * delivered. The adapter can refuse a hook point (Codex, a Stop that is already continuing).
  */
 export function feedbackVia(hookEventName: string, input?: Pick<HookInput, 'stop_hook_active'>, adapter: Adapter = 'claude-code'): FeedbackVia | null {
-  if (adapter === 'codex' && hookEventName === 'Stop' && input?.stop_hook_active)
+  if (!ADAPTERS[adapter].claims(hookEventName, input))
     return null
   return FEEDBACK_VIA[hookEventName] ?? null
 }
 
 /** Hook stdout JSON that hands claimed feedback to the session, or null when there is nothing to print */
 export function feedbackOutput(hookEventName: string, items: Feedback[], adapter: Adapter = 'claude-code'): object | null {
-  if (items.length === 0 || !feedbackVia(hookEventName))
+  if (items.length === 0 || !FEEDBACK_VIA[hookEventName])
     return null
-  const text = feedbackText(items)
-  // Codex fails a Stop hook that returns additionalContext; `block` continues the same turn with the
-  // reason as the user's words, and the next Stop comes as `stop_hook_active`, which never claims
-  if (adapter === 'codex' && hookEventName === 'Stop')
-    return { decision: 'block', reason: text }
-  // On Stop this keeps the turn going without the error notice `decision: block` shows;
-  // the claim already emptied the queue, so the re-entered Stop lets it end
-  return { hookSpecificOutput: { hookEventName, additionalContext: text } }
+  return ADAPTERS[adapter].output(hookEventName, feedbackText(items))
 }
 
 /** Extracts a one-line recap from the turn's last reply */

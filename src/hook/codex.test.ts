@@ -5,6 +5,8 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, test } from 'bun:test'
+import { codexTurnStartedAt } from './codex'
+import { readFileRole } from './core'
 import postBash from './fixtures/codex/post-bash.json'
 import postMcpImage from './fixtures/codex/post-mcp-image.json'
 import postRequestUserInput from './fixtures/codex/post-request-user-input.json'
@@ -17,8 +19,7 @@ import sessionStart from './fixtures/codex/session-start.json'
 import stopHookActive from './fixtures/codex/stop-hook-active.json'
 import stop from './fixtures/codex/stop.json'
 import userPromptSubmit from './fixtures/codex/user-prompt-submit.json'
-import { readFileRole } from './index'
-import { codexTurnStartedAt, dataUrlImage, feedbackOutput, feedbackVia, mapHook, sessionInfo, sniffImageMime } from './map'
+import { dataUrlImage, feedbackOutput, feedbackVia, mapHook, sessionInfo, sniffImageMime } from './map'
 
 const git = { projectRoot: (cwd: string) => cwd, readBranch: () => 'feat/hero' }
 const codex = (input: object) => sessionInfo(input as HookInput, { OD_PROJECT_ID: 'od-project' }, git, 'codex')
