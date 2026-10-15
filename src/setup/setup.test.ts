@@ -107,9 +107,10 @@ describe('golla setup', () => {
     afterEach(() => server?.stop(true))
 
     test('writes the LaunchAgent pointing at bun and app/current, loads it, and waits for the server', async () => {
-      server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => Response.json({ version: '0.1.0', hooks: [] }) })
       const s = scratch()
       let loaded = false
+      // Answers only once launchd has loaded the service
+      server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => loaded ? Response.json({ version: '0.1.0', hooks: [] }) : new Response(null, { status: 503 }) })
       const { exec, calls } = fakeExec((cmd) => {
         if (cmd[0] !== 'launchctl')
           return undefined
@@ -131,6 +132,18 @@ describe('golla setup', () => {
         `bootstrap gui/501 ${plistPath(ctx)}`,
       ])
       expect(report.lines.join('\n')).toContain('service   dev.gollabara.test running at login')
+    })
+
+    test('another server already on the port: the plist is written but not loaded, and setup fails', async () => {
+      server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => Response.json({ version: '0.1.0', hooks: [] }) })
+      const s = scratch()
+      const { exec, calls } = fakeExec(cmd => cmd[0] === 'launchctl' && cmd[1] === 'print' ? { code: 113, stdout: '', stderr: 'not found' } : undefined)
+      const ctx = context(s, exec, { platform: 'darwin', port: server.port! })
+      const report = await setup(ctx)
+      expect(report.ok).toBe(false)
+      expect(existsSync(plistPath(ctx))).toBe(true)
+      expect(calls.some(c => c.cmd[1] === 'bootstrap')).toBe(false)
+      expect(report.lines.join('\n')).toContain(`another server already answers on port ${server.port}`)
     })
   })
 })

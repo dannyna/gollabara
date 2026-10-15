@@ -121,12 +121,15 @@ export async function setup(ctx: Context, { service = true } = {}): Promise<Repo
     row('service', 'the login service is macOS-only for now; run golla serve yourself')
   }
   else {
-    if (!(await serviceState(ctx)).loaded && await healthy(ctx.port))
-      row('service', `something already answers on port ${ctx.port}; the service retries until it is free`)
+    // Another server on the port would answer the health wait while the service crash-loops, so it is not
+    // loaded now; the plist still loads at the next login
+    const taken = !(await serviceState(ctx)).loaded && await healthy(ctx.port)
     mkdirSync(ctx.launchAgents, { recursive: true })
     writeFileSync(plistPath(ctx), servicePlist(ctx))
-    const error = await startService(ctx, plistPath(ctx))
-    if (error)
+    const error = taken ? null : await startService(ctx, plistPath(ctx))
+    if (taken)
+      row('service', `another server already answers on port ${ctx.port}, so ${ctx.label} was not started; stop it and run golla setup again, or pass --port`, true)
+    else if (error)
       row('service', `${plistPath(ctx)} did not load: ${error}`, true)
     else if (await waitHealthy(ctx.port, HEALTH_WAIT_MS))
       row('service', `${ctx.label} running at login, logs in ${serverLog(ctx)}`)
