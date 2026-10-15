@@ -1,0 +1,108 @@
+src/shared/types.ts
+  s_b7f30c572db9a8::t_7f641c88909e9f 14-15,39-43
+src/hook/codex.test.ts
+  s_b7f30c572db9a8::t_9aa6703c931bb3 33,36
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_5a469fa8a4f029 11-12,80-81,175-178,212,220,239-241,347,373
+web/src/components/stream/StreamCell.gallery.vue
+  s_b7f30c572db9a8::t_122e3589022d71 52-56
+package.json
+  s_b7f30c572db9a8::t_8f1eac0ceaf195 4
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_b2b25d63fc74ce 60,68,178-180
+  s_b7f30c572db9a8::t_d32ab2ca53c8ce 181
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_dcd5ba4bd59956 30-31,214
+web/src/components/chat/ChatComposer.gallery.vue
+  s_b7f30c572db9a8::t_e8ca702cf637ec 67-73
+src/server/liveness.ts
+  s_b7f30c572db9a8::t_a24164a6333167 1-27,34-83
+  s_b7f30c572db9a8::t_3563168c3da3eb 28-33
+web/src/feedback.test.ts
+  s_b7f30c572db9a8::t_b0a60e03471a6a 93-97,129-133
+  s_b7f30c572db9a8::t_0e29ce7d2dde3e 134
+web/src/components/overlay/gallery-samples.ts
+  s_b7f30c572db9a8::t_0636704efd4672 29-32
+web/src/feedback.ts
+  s_b7f30c572db9a8::t_7c3568fc6a8c3c 140-141,144-149,162-163,192-194
+AGENTS.md
+  s_b7f30c572db9a8::t_52214dc9cf20da 80,149-158,185
+  s_b7f30c572db9a8::t_c0eb113892436e 123
+web/src/components/stream/StreamRail.vue
+  s_b7f30c572db9a8::t_dcd5ba4bd59956 25-26,166
+web/src/components/chat/SessionAvatar.vue
+  s_b7f30c572db9a8::t_53da391e9301b5 8-9,14,28-32
+  s_b7f30c572db9a8::t_acaaa3b5a2f1f5 33
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_8f1eac0ceaf195 3
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_b89d24fc26d7da 207,273-332
+web/src/components/chat/QueueTray.vue
+  s_b7f30c572db9a8::t_c6fbcc8e227c2b 17-18,35,37,110-111
+  s_b7f30c572db9a8::t_1ccdc355455637 112
+web/src/components/chat/SessionMenu.vue
+  s_b7f30c572db9a8::t_eff784e3190602 14-15,70
+web/src/components/chat/SessionMenu.gallery.vue
+  s_b7f30c572db9a8::t_4cf8f151504368 69-81
+  s_b7f30c572db9a8::t_13be674797c204 105-107
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_8f1eac0ceaf195 28,250
+web/src/components/chat/SessionMenuButton.vue
+  s_b7f30c572db9a8::t_a381ddd5e2c0e2 86
+  s_b7f30c572db9a8::t_eff784e3190602 20-21,89,91-92,96,127-136
+src/server/index.ts
+  s_b7f30c572db9a8::t_eb989531280ead 214-215
+  s_b7f30c572db9a8::t_927adad3a852c3 16,37-38,40-41,94-95,97-101,226,342-355
+plugin/hooks/hooks.json
+  s_b7f30c572db9a8::t_8f1eac0ceaf195 12-13
+web/src/App.vue
+  s_b7f30c572db9a8::t_d5fe2bdc63c5f6 39,262
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_a126e3b1bb85cb 42-50
+src/server/liveness.test.ts
+  s_b7f30c572db9a8::t_25434d17129f1e 2,11-16
+  s_b7f30c572db9a8::t_52e409a98adb38 1,3-5,7-10,17-71
+  s_b7f30c572db9a8::t_fc6a133f15b6a9 6
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_dcd5ba4bd59956 26-27,64,68,162-163,167-175
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_2753b084d83682 50-57
+src/hook/map.ts
+  s_b7f30c572db9a8::t_9aa6703c931bb3 264,266
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_c04ec7abb3c6e1 88-93
+src/server/store.ts
+  s_b7f30c572db9a8::t_cc3e287768f9e1 55-56,71-77,80,248-249,258-265,315-328,335,337-338,340-342,410,412-414,416,479
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_5a25c7683f5691 62,95-111
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_b0a60e03471a6a 3,21-22,24-26,29-31
+  s_b7f30c572db9a8::t_3e1c288500f9e4 32
+web/src/components/chat/QueueTray.gallery.vue
+  s_b7f30c572db9a8::t_1c3b5e452d1a7d 62-80
+DESIGN.md
+  s_b7f30c572db9a8::t_b15c714f7a9a07 300
+  s_b7f30c572db9a8::t_2609d26e10cab7 318-322,324-328
+web/src/components/chat/SessionMessage.vue
+  s_b7f30c572db9a8::t_eff784e3190602 17-18,25,50-51
+  s_b7f30c572db9a8::t_2ab82bc8d10b50 52
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_7c3568fc6a8c3c 14-15,25,29,36-38
+  s_b7f30c572db9a8::t_93e15aa2973dce 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fd0821bb3b432ca741a38c0a49e2d215627e52d",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
