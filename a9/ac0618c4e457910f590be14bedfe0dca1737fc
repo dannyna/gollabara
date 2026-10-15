@@ -1,0 +1,49 @@
+src/hook/fixtures/codex/stop-hook-active.json
+  s_b7f30c572db9a8::t_dde99bf5b2b774 1-11
+src/hook/fixtures/codex/user-prompt-submit.json
+  s_b7f30c572db9a8::t_09f076250896fc 1-10
+src/hook/fixtures/codex/session-start-resume.json
+  s_b7f30c572db9a8::t_052779759591fd 1-9
+src/hook/fixtures/codex/session-start.json
+  s_b7f30c572db9a8::t_77ce925c405e7f 1-9
+src/hook/fixtures/codex/post-request-user-input.json
+  s_b7f30c572db9a8::t_0069ef8799534d 1-31
+src/hook/fixtures/codex/session-end.json
+  s_b7f30c572db9a8::t_7513cc13eaf1c6 1-7
+src/hook/fixtures/codex/pre-bash.json
+  s_b7f30c572db9a8::t_f712cf5f692fea 1-14
+src/hook/fixtures/codex/permission-request-mcp.json
+  s_b7f30c572db9a8::t_86de3ad68cac84 1-11
+src/hook/fixtures/codex/post-view-image.json
+  s_b7f30c572db9a8::t_1d27e68e444870 1-21
+src/hook/fixtures/codex/post-bash.json
+  s_b7f30c572db9a8::t_bf3d05735be69b 1-15
+src/hook/fixtures/codex/stop.json
+  s_b7f30c572db9a8::t_68f288f2cbc8d5 1-11
+src/hook/fixtures/codex/pre-request-user-input.json
+  s_b7f30c572db9a8::t_b07f8e2df5467b 1-30
+src/hook/fixtures/codex/pre-mcp-image.json
+  s_b7f30c572db9a8::t_365c634b30c075 1-12
+docs/spikes/codex-hooks.md
+  s_b7f30c572db9a8::t_62c77c58f95883 1-73
+src/hook/fixtures/codex/session-start-tui.json
+  s_b7f30c572db9a8::t_51bb11e31d507d 1-9
+src/hook/fixtures/codex/post-mcp-image.json
+  s_b7f30c572db9a8::t_88345fbe001231 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9ac0618c4e457910f590be14bedfe0dca1737fc",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
