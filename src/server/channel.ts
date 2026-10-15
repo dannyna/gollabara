@@ -1,6 +1,6 @@
 // Which sessions have a wake-up Stop hook waiting on their feedback, the long polls they wait in, and whether
 // each session is mid-turn. In memory only: a waiter polls again within seconds after a restart.
-import type { FeedbackVia, IncomingEvent } from '../shared/types'
+import type { FeedbackVia, IncomingEvent, SessionStartReason } from '../shared/types'
 
 /** A session counts as live this long after its last poll ended, covering the gap between polls */
 export const CHANNEL_GRACE_MS = 30_000
@@ -11,7 +11,7 @@ export type Activity = 'busy' | 'idle'
 /** What the server saw a session do: a feedback claim (from a hook or a wake-up) or an ingested event */
 export type ActivitySignal
   = | { claim: FeedbackVia, claimed: number }
-    | { event: IncomingEvent['kind'] }
+    | { event: IncomingEvent['kind'], reason?: SessionStartReason }
 
 /**
  * The session's state after a signal, or null when the signal says nothing new. A wake-up claims only from
@@ -19,7 +19,8 @@ export type ActivitySignal
  * - A prompt or a tool call means a turn is running; so does a question (PreToolUse).
  * - A Stop that claimed feedback continues the turn; one that claimed nothing ends it.
  * - A wake-up starts a turn, which may not run a prompt hook.
- * - SessionStart begins idle. A recap says nothing on its own: it races the Stop's claim, which decides.
+ * - SessionStart begins idle, except a compaction: it can fire mid-turn, and the turn goes on.
+ * - A recap says nothing on its own: it races the Stop's claim, which decides.
  */
 export function activityAfter(signal: ActivitySignal): Activity | null {
   if ('claim' in signal) {
@@ -28,7 +29,7 @@ export function activityAfter(signal: ActivitySignal): Activity | null {
     return 'busy'
   }
   if (signal.event === 'session')
-    return 'idle'
+    return signal.reason === 'compact' ? null : 'idle'
   return signal.event === 'question' || signal.event === 'image' ? 'busy' : null
 }
 

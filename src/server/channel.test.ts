@@ -74,6 +74,16 @@ describe('busy or idle (a wake-up claims only from an idle session)', () => {
     expect(live.isIdle('s1')).toBe(true)
   })
 
+  test('a compaction mid-turn keeps the session busy, while resume and clear make it idle', () => {
+    expect(activityAfter({ event: 'session', reason: 'compact' })).toBeNull()
+    for (const reason of ['startup', 'resume', 'clear'] as const)
+      expect(activityAfter({ event: 'session', reason })).toBe('idle')
+    const live = new ChannelLiveness()
+    live.observe('s1', { claim: 'post-tool-use', claimed: 0 })
+    live.observe('s1', { event: 'session', reason: 'compact' })
+    expect(live.isIdle('s1')).toBe(false)
+  })
+
   test('a session turning idle wakes its waiting poll; staying busy does not', async () => {
     const live = new ChannelLiveness()
     live.observe('s1', { claim: 'user-prompt-submit', claimed: 0 })
@@ -114,6 +124,19 @@ describe('wake-up waiters (one per session, stepping aside once the user takes o
     live.observe('s1', { claim: 'user-prompt-submit', claimed: 0 })
     await waiting
     expect(live.retired('s1', 1)).toBe('busy')
+  })
+
+  test('a compaction neither wakes nor retires the waiter', async () => {
+    const live = new ChannelLiveness()
+    live.enlist('s1', 1)
+    let woke = false
+    const waiting = live.wait('s1', 60_000).then(() => (woke = true))
+    live.observe('s1', { event: 'session', reason: 'compact' })
+    await Bun.sleep(5)
+    expect(woke).toBe(false)
+    expect(live.retired('s1', 1)).toBeNull()
+    live.wake('s1')
+    await waiting
   })
 
   test('a waiter that starts before its Stop reaches the server keeps waiting', () => {

@@ -142,6 +142,12 @@ describe('feedback', () => {
     expect(store.session('cc-1')).not.toHaveProperty('pid')
   })
 
+  test('a compaction keeps the session\'s pid link', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242, reason: 'startup' }, 600)
+    store.ingest({ kind: 'session', session: cc, pid: 4242, reason: 'compact' }, 700)
+    expect(store.sessionForPid(4242)).toBe('cc-1')
+  })
+
   test('a claim leaves other sessions\' feedback queued', () => {
     store.queueFeedback('od-1', 'for od', undefined, 1000)
     store.queueFeedback('cc-1', 'for cc', undefined, 1000)

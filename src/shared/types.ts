@@ -6,11 +6,17 @@ export type Harness = 'claude-code' | 'open-design' | 'codex' | 'claude-design'
 /** Event the hook sends to the server */
 export type IncomingEvent
   // `pid`: the harness process the session runs in, so a wake-up waiter can tell when it moved to another session
-  = | { kind: 'session', session: SessionInfo, pid?: number }
+  = | { kind: 'session', session: SessionInfo, pid?: number, reason?: SessionStartReason }
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
     | { kind: 'recap', session: SessionInfo, text: string, continuation?: boolean }
     | { kind: 'question', session: SessionInfo, questions: Question[] }
+
+/**
+ * Why a session (re)started: a fresh launch, a resumed or cleared conversation, or a context
+ * compaction, which can happen mid-turn and changes nothing about the running turn
+ */
+export type SessionStartReason = 'startup' | 'resume' | 'clear' | 'compact'
 
 export interface SessionInfo {
   /** Session id from the harness, stable across resumes */

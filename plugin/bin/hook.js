@@ -39,6 +39,7 @@ function clock(at) {
 // src/hook/map.ts
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
+var SESSION_START_REASONS = ["startup", "resume", "clear", "compact"];
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
@@ -134,8 +135,10 @@ function carriesFeedback(entry) {
 }
 function mapHook(input, session, opener = "unknown", fileRole) {
   switch (input.hook_event_name) {
-    case "SessionStart":
-      return { kind: "session", session };
+    case "SessionStart": {
+      const reason = SESSION_START_REASONS.find((r) => r === input.source);
+      return reason ? { kind: "session", session, reason } : { kind: "session", session };
+    }
     case "PostToolUse": {
       const images = extractImages(input.tool_response);
       if (images.length === 0)
