@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TriageEngine } from '../../../../src/shared/types'
 import type { Settings } from '../../settings'
 import type { ThemePreference } from '../../theme'
 import { onMounted, ref } from 'vue'
@@ -11,6 +12,7 @@ import { useToast } from './useToast'
 const saved: Settings = { server: 'http://127.0.0.1:4747', phone: 'https://my-mac.ts.net', retention: '30' }
 // Gallery theme picks stay local; they never touch the app's stored theme
 const theme = ref<ThemePreference>('dark')
+const engine = ref<TriageEngine>('off')
 
 const scrolled = ref<HTMLElement>()
 onMounted(() => {
@@ -32,7 +34,7 @@ function onSave(next: Settings) {
 <template>
   <GalleryCase title="열림 · 머리 · 본문 · 발 (≤767px에서는 아래에서 올라와요)">
     <GalleryStage :height="680">
-      <SettingsSheet :settings="saved" :theme="theme" preview />
+      <SettingsSheet :settings="saved" :theme="theme" engine="claude" preview />
     </GalleryStage>
   </GalleryCase>
   <GalleryCase title="스크롤해도 머리와 저장 버튼은 고정">
@@ -62,7 +64,7 @@ function onSave(next: Settings) {
       <button class="secondary demo-trigger" type="button" @click="open = true">
         설정 열기
       </button>
-      <SettingsSheet v-if="open" v-model:theme="theme" :settings="live" @close="open = false" @save="onSave" />
+      <SettingsSheet v-if="open" v-model:theme="theme" v-model:engine="engine" :settings="live" @close="open = false" @save="onSave" />
       <AppToast />
     </GalleryStage>
   </GalleryCase>

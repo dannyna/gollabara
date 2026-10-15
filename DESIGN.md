@@ -299,6 +299,10 @@ An image on `--surface` in a 12px cell with a 2px transparent border and the ima
 
 A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」 and 「멈춤」. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
 
+### Triage, advice, and drafts
+
+Only when 「대화 정리 · 조언」 is on (off by default). Lines judged noise drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a model-judged noise line never flashes in; a verdict later than that removes it quietly. Under a signal line or a question card, the advice is one muted 11px line with a muted bulb icon. A draft reply is a chip below it: `--surface` fill, `--border` line, 8px radius, a muted 「초안」 label, and the draft truncated to one line. Tapping the chip fills the composer and targets that session; it never sends. No yellow anywhere in triage.
+
 ### Question card
 
 A `--bg` card (16px radius, 16px padding) headed by a muted eyebrow 「세션에서 물었어요」, then the session's own question text. Below it, answer choices: `--surface` buttons with a `--border` line, mono letters, and a muted 「추천」 after the option the session itself recommended. A chosen answer inverts to `--fg`. 「직접 답하기」 is an underlined text button. When answered, a muted line replaces the actions: 「터미널에서 답함」, 「A로 답함 · 전달됨 ✓」, or 「직접 답변 전달됨 ✓」.
@@ -325,7 +329,7 @@ A full-screen dialog: a top bar (close, session · branch with mono time and siz
 
 ### Settings sheet
 
-A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), and the theme choice 「시스템」 / 「밝게」 / 「어둡게」, saved with 「설정 저장」. Settings live in this browser only; saving connects to nothing and deletes no files.
+A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), the theme choice 「시스템」 / 「밝게」 / 「어둡게」, and 「대화 정리 · 조언」 「끄기」 / 「Claude」 / 「Codex」, saved with 「설정 저장」. Those settings live in this browser only; saving connects to nothing and deletes no files. Theme and 「대화 정리 · 조언」 apply at once instead. The engine choice is stored on the server, because the server runs it, and changing it works only from this Mac or the tailnet. Its note says that message text goes to that CLI's model and images do not.
 
 ### Empty state
 
@@ -351,6 +355,8 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 | `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                                                                                                      | Live                     |
 | Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                                                                                                                  | **Drawn, disabled**      |
 | Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                                                                                                        | Live, client-side filter |
+| Triage             | With 「대화 정리 · 조언」 on, noise lines leave the chat; 「숨긴 메시지 n」 shows them dimmed. Signal lines and questions get an advice line.                                                                                                      | Live, opt-in             |
+| Draft reply        | Tapping a 「초안」 chip fills the composer, aimed at that session. The user edits and sends it, or not.                                                                                                                                            | Live, opt-in             |
 | Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                                                                                                                     | Live                     |
 | Browse history     | Scrolling back keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest.                                                                                                                                              | Live                     |
 | Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                                                                                                                  | Live                     |

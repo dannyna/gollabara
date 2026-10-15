@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import type { Feedback, Session, StreamMessage } from '../../../../src/shared/types'
+import type { Feedback, Session, StreamMessage, Triage, TriageEngine } from '../../../../src/shared/types'
 import type { PendingSend } from '../../feedback'
 import type { Thumb } from '../chat/ArtifactThumbs.vue'
 import type { SystemEvent } from '../chat/chat'
 import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
 import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
-import { computed, nextTick, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { artifactKey, clock, splitSessionName } from '../../artifacts'
 import { failureReason, mergeFeedback, postFeedback, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
 import { toSessionRows, useMutedSessions } from '../../sessions'
+import { triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
 import StateView from '../banner/StateView.vue'
+import AdviceLine from '../chat/AdviceLine.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
 import { toTimeline } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
 import DateLabel from '../chat/DateLabel.vue'
+import HiddenToggle from '../chat/HiddenToggle.vue'
 import MyMessage from '../chat/MyMessage.vue'
 import QuestionCard from '../chat/QuestionCard.vue'
 import QueueTray from '../chat/QueueTray.vue'
@@ -46,6 +49,12 @@ const props = defineProps<{
   scopeMuted?: boolean
   /** Every session is muted, so nothing is in view */
   allMuted?: boolean
+  /** Server triage engine; 'off' (the default) shows the chat exactly as it arrived */
+  engine?: TriageEngine
+  /** Verdicts and advice by triageKey */
+  triage?: ReadonlyMap<string, Triage>
+  /** When recap lines arrived live, so new ones can wait briefly for a verdict */
+  arrivals?: ReadonlyMap<string, number>
 }>()
 const emit = defineEmits<{
   thumb: [key: string]
@@ -83,7 +92,31 @@ const confirmed = shallowRef<Feedback[]>([])
 const pending = ref<PendingSend[]>([])
 const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
 const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
-const timeline = computed(() => toTimeline(props.messages, props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value))
+
+// Triage: noise drops out unless revealed; a new recap-only line waits up to HOLD_MS (10 s) for its verdict
+const showHidden = ref(false)
+const now = ref(Date.now())
+const view = computed(() => triageView(props.messages, {
+  engine: props.engine ?? 'off',
+  triage: props.triage ?? new Map(),
+  arrivals: props.arrivals,
+  now: now.value,
+  showHidden: showHidden.value,
+}))
+let holdTimer: ReturnType<typeof setTimeout> | undefined
+watch(() => view.value.nextCheck, (at) => {
+  clearTimeout(holdTimer)
+  if (at != null)
+    holdTimer = setTimeout(() => now.value = Date.now(), Math.max(0, at - Date.now()) + 20)
+}, { immediate: true })
+onBeforeUnmount(() => clearTimeout(holdTimer))
+watch(() => view.value.hidden, (n) => {
+  if (!n)
+    showHidden.value = false
+})
+const shown = computed(() => view.value.items.map(i => i.message))
+const viewOf = computed(() => new Map(view.value.items.map(i => [i.message.id, i])))
+const timeline = computed(() => toTimeline(shown.value, props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value))
 
 // Queued on the server, not yet picked up: the tray, one group per session
 const queue = computed<QueueGroup[]>(() => {
@@ -186,7 +219,14 @@ function retry(p: PendingSend) {
   pending.value = pending.value.map(x => x.key === p.key ? { ...x, state: 'queued', reason: undefined } : x)
   void deliver(p)
 }
-const recaps = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
+
+// A draft reply only fills the composer, aimed at its session; the user decides whether to send
+function fillDraft(sessionId: string, text: string) {
+  clearTarget()
+  mentioned.value = sessionId
+  closeMention()
+  composer.value?.fill(text)
+}
 const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
 
 // Stick to the bottom only when the reader is already there. Otherwise count what
@@ -195,9 +235,10 @@ const unseen = ref(0)
 const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
 let first = true
 // Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
-// Scope changes and unmuting reveal older messages; those are not counted.
+// Scope changes, unmuting and revealing noise show older messages; those are not counted.
+// Watching what is shown means a held line counts when it appears, and hidden noise never does.
 let lastId = -Infinity
-watch(() => props.messages, async (list) => {
+watch(shown, async (list) => {
   const arrived = list.filter(m => m.id > lastId).length
   lastId = Math.max(lastId, ...list.map(m => m.id))
   const el = feed.value
@@ -238,7 +279,10 @@ defineExpose({ reveal })
   <section class="chat-panel" aria-label="세션 대화">
     <div class="heading">
       <h2>세션 대화</h2>
-      <span>질문에 답하고, 피드백을 남겨요</span>
+      <div class="heading-end">
+        <span>질문에 답하고, 피드백을 남겨요</span>
+        <HiddenToggle v-if="view.hidden" v-model="showHidden" :count="view.hidden" />
+      </div>
     </div>
     <NoticeLine v-if="offline">
       연결을 기다리는 중이에요. 이전 대화는 계속 볼 수 있어요.
@@ -262,10 +306,14 @@ defineExpose({ reveal })
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
+            :class="{ dim: viewOf.get(item.message.id)?.dim }"
           >
-            <p v-for="(line, i) in recaps(item.message)" :key="i">
-              {{ line }}
-            </p>
+            <template v-for="line in viewOf.get(item.message.id)?.lines" :key="line.index">
+              <p :class="{ dim: line.dim }">
+                {{ line.text }}
+              </p>
+              <AdviceLine :advice="line.advice" :draft="line.draft" @draft="fillDraft(item.message.sessionId, $event)" />
+            </template>
             <ArtifactThumbs
               v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
               :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
@@ -275,6 +323,10 @@ defineExpose({ reveal })
               v-for="(q, qi) in item.message.questions" :key="`q${qi}`" :question="q" inert
               :state="offline ? 'offline' : 'open'"
               :count="item.message.questions!.length > 1 ? `${qi + 1} / ${item.message.questions!.length}` : undefined"
+            />
+            <AdviceLine
+              v-if="item.message.kind === 'question'" :advice="viewOf.get(item.message.id)?.advice"
+              :draft="viewOf.get(item.message.id)?.draft" @draft="fillDraft(item.message.sessionId, $event)"
             />
           </SessionMessage>
         </template>
@@ -325,9 +377,22 @@ defineExpose({ reveal })
   font-weight: 500;
   letter-spacing: 0;
 }
+.heading-end {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .heading span {
   font-size: 10px;
   color: var(--muted);
+}
+/* Noise revealed by 「숨긴 메시지 n」 */
+.dim {
+  opacity: 0.5;
+}
+.message.dim .dim {
+  opacity: 1;
 }
 .feed-box {
   position: relative;
@@ -350,7 +415,8 @@ defineExpose({ reveal })
     border-radius: 20px;
   }
   .heading {
-    height: 42px;
+    height: auto;
+    min-height: 42px;
   }
   .feed {
     padding: 0 26px 12px;
@@ -362,7 +428,9 @@ defineExpose({ reveal })
     border-radius: 22px 22px 0 0;
   }
   .heading {
-    height: 40px;
+    /* Grows to fit the 44px 「숨긴 메시지 n」 touch target */
+    height: auto;
+    min-height: 40px;
     padding: 0 18px;
   }
   .heading h2 {

@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, Session, SessionInfo, StoredImage, StreamMessage } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -8,6 +8,8 @@ import { Database } from 'bun:sqlite'
 import { imageSize } from './image-size'
 
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
+
+export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
 
 /** A crashed session never sends Stop, so an open turn closes after this long without events */
 export const TURN_IDLE_MS = 10 * 60 * 1000
@@ -91,6 +93,71 @@ export class Store {
       delivered_via TEXT
     )`)
     this.db.run('CREATE INDEX IF NOT EXISTS feedback_pending ON feedback (session_id) WHERE delivered_at IS NULL')
+    this.db.run('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    // One verdict per recap line (idx) of a message; a question message uses idx 0
+    this.db.run(`CREATE TABLE IF NOT EXISTS triage (
+      message_id INTEGER NOT NULL,
+      idx INTEGER NOT NULL,
+      verdict TEXT NOT NULL,
+      advice TEXT,
+      draft TEXT,
+      PRIMARY KEY (message_id, idx)
+    )`)
+    // Noise verdicts by normalized text, so repeated ticks skip the model
+    this.db.run('CREATE TABLE IF NOT EXISTS triage_cache (key TEXT PRIMARY KEY, verdict TEXT NOT NULL)')
+  }
+
+  settings(): ServerSettings {
+    const row = this.db.query('SELECT value FROM settings WHERE key = ?').get('triage') as { value: string } | null
+    const triage = row && (TRIAGE_ENGINES as string[]).includes(row.value) ? row.value as TriageEngine : 'off'
+    return { triage }
+  }
+
+  saveSettings(next: ServerSettings): ServerSettings {
+    this.db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['triage', next.triage])
+    return this.settings()
+  }
+
+  saveTriage(t: Triage): void {
+    this.db.run(`INSERT INTO triage (message_id, idx, verdict, advice, draft) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(message_id, idx) DO UPDATE SET verdict = excluded.verdict, advice = excluded.advice, draft = excluded.draft`, [t.messageId, t.index, t.verdict, t.advice ?? null, t.draft ?? null])
+  }
+
+  /** Verdicts for the given messages (those `recent()` returns) */
+  triageFor(messageIds: number[]): Triage[] {
+    if (!messageIds.length)
+      return []
+    const rows = this.db.query(`SELECT * FROM triage WHERE message_id >= ? AND message_id <= ? ORDER BY message_id, idx`)
+      .all(Math.min(...messageIds), Math.max(...messageIds)) as { message_id: number, idx: number, verdict: Verdict, advice: string | null, draft: string | null }[]
+    const ids = new Set(messageIds)
+    return rows.filter(r => ids.has(r.message_id)).map(r => ({
+      messageId: r.message_id,
+      index: r.idx,
+      verdict: r.verdict,
+      ...(r.advice ? { advice: r.advice } : {}),
+      ...(r.draft ? { draft: r.draft } : {}),
+    }))
+  }
+
+  cachedVerdict(key: string): Verdict | null {
+    const row = this.db.query('SELECT verdict FROM triage_cache WHERE key = ?').get(key) as { verdict: Verdict } | null
+    return row?.verdict ?? null
+  }
+
+  cacheVerdict(key: string, verdict: Verdict): void {
+    this.db.run('INSERT INTO triage_cache (key, verdict) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET verdict = excluded.verdict', [key, verdict])
+  }
+
+  /** One stored message, or null */
+  get(id: number): StreamMessage | null {
+    return this.message(id)
+  }
+
+  /** The session's latest messages before `beforeId`, oldest first: context for triage */
+  previous(sessionId: string, beforeId: number, limit: number): StreamMessage[] {
+    const rows = this.db.query(`SELECT id, body FROM messages WHERE id < ? AND json_extract(body, '$.sessionId') = ?
+      ORDER BY id DESC LIMIT ?`).all(beforeId, sessionId, limit) as { id: number, body: string }[]
+    return rows.reverse().map(r => ({ id: r.id, ...JSON.parse(r.body) }))
   }
 
   /** Upserts the event's session, then stores the event in its turn. message is null if there is nothing to stream */

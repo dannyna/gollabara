@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TriageEngine } from '../../src/shared/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { toArtifacts } from './artifacts'
 import { resolveNotices } from './components/banner/notices'
@@ -13,11 +14,11 @@ import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
 import { inScope, toSessionRows, useMutedSessions } from './sessions'
-import { useSettings } from './settings'
+import { putServerSettings, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, feedback, connected, restored } = useStream()
+const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, restored } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute } = useMutedSessions()
 const { toast } = useToast()
@@ -48,6 +49,16 @@ function saveSettings(next: typeof settings.value) {
   save(next)
   settingsOpen.value = false
   toast('이 브라우저에 설정을 저장했어요')
+}
+async function setEngine(engine: TriageEngine) {
+  try {
+    // The server broadcasts the change too, so every open view follows
+    serverSettings.value = await putServerSettings({ ...serverSettings.value, triage: engine })
+    toast(engine === 'off' ? '대화 정리를 껐어요' : '대화 정리를 켰어요. 새 메시지부터 적용돼요')
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
 }
 
 // 「다시 연결 중」 only after a connection dropped, or when the first one is slow,
@@ -124,12 +135,13 @@ function onThumb(key: string) {
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
+        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals"
         @thumb="onThumb" @sessions="sessionsOpen = true"
       />
     </main>
     <SettingsSheet
-      v-if="settingsOpen" :settings="settings" :theme="preference"
-      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme"
+      v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"
+      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine"
     />
     <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="artifacts" />
     <AppToast />

@@ -31,7 +31,7 @@ You don't change a session's prompt or workflow for this app. Sessions work as u
 
 ### Judgment stays with your eyes
 
-Whether a screen is right is for a person to judge, not a model. So gollabara judges nothing: it shows screenshots and mockups exactly as sessions captured them. The image is the star, so every column takes the image's own aspect ratio, uncropped.
+Whether a screen is right is for a person to judge, not a model. So gollabara never judges an artifact: it shows screenshots and mockups exactly as sessions captured them. The image is the star, so every column takes the image's own aspect ratio, uncropped.
 
 ### A quiet surface, a single signal
 

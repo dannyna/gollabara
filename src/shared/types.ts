@@ -116,12 +116,40 @@ export interface Feedback {
   deliveredVia?: FeedbackVia
 }
 
+/** CLI the server runs to triage chat text. Off unless the user opts in. */
+export type TriageEngine = 'off' | 'claude' | 'codex'
+
+/** Server-side settings (GET/PUT /api/settings): the server, not the browser, runs what they control */
+export interface ServerSettings {
+  triage: TriageEngine
+}
+
+/** signal: results, failures, blockers, decisions · progress: step updates · noise: waiting, ticks */
+export type Verdict = 'signal' | 'progress' | 'noise'
+
+/**
+ * A model's reading of one recap line, or of a question message. Shown only to the user;
+ * nothing here is ever sent to a session.
+ */
+export interface Triage {
+  messageId: number
+  /** Recap index within the turn; 0 for a question message or a legacy recap message */
+  index: number
+  verdict: Verdict
+  /** One sentence to the user, for signal lines and questions */
+  advice?: string
+  /** A reply the user might send to the session; it only fills the composer */
+  draft?: string
+}
+
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
-  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[] }
+  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings }
     | { type: 'message', message: StreamMessage }
     // An existing message changed in place: same id, new content
     | { type: 'message-upsert', message: StreamMessage }
     | { type: 'session', session: Session }
     // Same id moves from queued to delivered
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
+    | { type: 'triage', triage: Triage }
+    | { type: 'settings', settings: ServerSettings }

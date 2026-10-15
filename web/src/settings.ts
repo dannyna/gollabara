@@ -1,6 +1,8 @@
-// Settings from the settings sheet. They live in this browser only: saving
-// connects to nothing and deletes no files (DESIGN.md Settings sheet).
+// Settings from the settings sheet. Most live in this browser only: saving
+// connects to nothing and deletes no files (DESIGN.md Settings sheet). The triage
+// engine is the exception: the server runs it, so it is stored there.
 
+import type { ServerSettings, TriageEngine } from '../../src/shared/types'
 import { ref } from 'vue'
 
 export type Retention = '7' | '30' | 'forever'
@@ -62,3 +64,23 @@ export function useSettings() {
   }
   return { settings, save }
 }
+
+/** Changes a server-side setting; throws Error with the message to show */
+export async function putServerSettings(next: ServerSettings, fetcher: typeof fetch = fetch): Promise<ServerSettings> {
+  let res: Response
+  try {
+    res = await fetcher('/api/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(next) })
+  }
+  catch {
+    throw new Error('서버에 연결하지 못했어요')
+  }
+  if (res.status === 403)
+    throw new Error('이 Mac이나 tailnet에서만 바꿀 수 있어요')
+  if (res.status === 409)
+    throw new Error(`${next.triage} CLI를 이 Mac에서 찾지 못했어요`)
+  if (!res.ok)
+    throw new Error('설정을 바꾸지 못했어요')
+  return await res.json() as ServerSettings
+}
+
+export const ENGINE_LABEL: Record<TriageEngine, string> = { off: '끄기', claude: 'Claude', codex: 'Codex' }

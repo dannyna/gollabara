@@ -1,8 +1,9 @@
 // Connects to the server WebSocket for stream messages and feedback. Reconnects when dropped.
 
-import type { Feedback, ServerFrame, Session, StreamMessage } from '../../src/shared/types'
+import type { Feedback, ServerFrame, ServerSettings, Session, StreamMessage, Triage } from '../../src/shared/types'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { feedbackBySession, mergeFeedback, sortFeedback } from './feedback'
+import { newLines, toTriageMap, triageKey } from './triage'
 
 const RETRY_MS = 2000
 // How long 「다시 연결됐어요」 stays in the app bar (OD banner guide 02-03)
@@ -42,6 +43,11 @@ export function useStream() {
   const sessions = shallowRef<Session[]>([])
   /** The user's feedback to sessions, in send order; ids move from queued to delivered */
   const feedback = shallowRef<Feedback[]>([])
+  /** Verdicts and advice by triageKey; older servers send none */
+  const triage = shallowRef<Map<string, Triage>>(new Map())
+  const settings = shallowRef<ServerSettings>({ triage: 'off' })
+  /** When recap lines arrived live while triage was on, so new ones can wait for a verdict */
+  const arrivals = shallowRef<Map<string, number>>(new Map())
   const connected = ref(false)
   const flag = restoredFlag()
   let ws: WebSocket | null = null
@@ -62,11 +68,27 @@ export function useStream() {
         sessions.value = frame.sessions
         // Older servers send no feedback
         feedback.value = sortFeedback(frame.feedback ?? [])
+        triage.value = toTriageMap(frame.triage ?? [])
+        settings.value = frame.settings ?? { triage: 'off' }
+      }
+      else if (frame.type === 'triage') {
+        triage.value = new Map(triage.value).set(triageKey(frame.triage.messageId, frame.triage.index), frame.triage)
+      }
+      else if (frame.type === 'settings') {
+        settings.value = frame.settings
       }
       else if (frame.type === 'feedback') {
         feedback.value = mergeFeedback(feedback.value, frame.feedback)
       }
       else if (frame.type === 'message' || frame.type === 'message-upsert') {
+        if (settings.value.triage !== 'off') {
+          const fresh = newLines(messages.value.find(m => m.id === frame.message.id), frame.message)
+          if (fresh.length) {
+            const next = new Map(arrivals.value)
+            for (const key of fresh) next.set(key, Date.now())
+            arrivals.value = next
+          }
+        }
         messages.value = upsert(messages.value, frame.message)
       }
       else if (frame.type === 'session') {
@@ -91,7 +113,7 @@ export function useStream() {
     ws?.close()
   })
 
-  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), connected, restored: flag.restored }
+  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, restored: flag.restored }
 }
 
 /** Turn messages change in place as images and recaps arrive, so replace by id */
