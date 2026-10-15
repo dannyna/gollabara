@@ -133,22 +133,15 @@ export interface ServerSettings {
   triage: TriageEngine
 }
 
-/** signal: results, failures, blockers, decisions · progress: step updates · noise: waiting, ticks */
-export type Verdict = 'signal' | 'progress' | 'noise'
+/** Whether a recap line is shown in the chat; hidden lines sit under 「숨긴 메시지 n」 */
+export type Verdict = 'show' | 'hide'
 
-/**
- * A model's reading of one recap line, or of a question message. Shown only to the user;
- * nothing here is ever sent to a session.
- */
+/** A model's reading of one recap line. Shown only to the user; nothing here is ever sent to a session. */
 export interface Triage {
   messageId: number
-  /** Recap index within the turn; 0 for a question message or a legacy recap message */
+  /** Recap index within the turn; 0 for a legacy recap message */
   index: number
   verdict: Verdict
-  /** One sentence to the user, for signal lines and questions */
-  advice?: string
-  /** A reply the user might send to the session; it only fills the composer */
-  draft?: string
 }
 
 /** Frame sent to the UI over WebSocket */

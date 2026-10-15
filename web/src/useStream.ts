@@ -43,7 +43,7 @@ export function useStream() {
   const sessions = shallowRef<Session[]>([])
   /** The user's feedback to sessions, in send order; ids move from queued to delivered */
   const feedback = shallowRef<Feedback[]>([])
-  /** Verdicts and advice by triageKey; older servers send none */
+  /** Verdicts by triageKey; older servers send none */
   const triage = shallowRef<Map<string, Triage>>(new Map())
   const settings = shallowRef<ServerSettings>({ triage: 'off' })
   /** When recap lines arrived live while triage was on, so new ones can wait for a verdict */

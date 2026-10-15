@@ -2,13 +2,10 @@
 import type { StreamMessage, Triage } from '../../../../src/shared/types'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import ChatFrame from '../../gallery/ChatFrame.vue'
-import { HERO_SHORT, S, time } from '../../gallery/fixtures'
+import { S, time } from '../../gallery/fixtures'
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import { HOLD_MS, toTriageMap, triageKey, triageView } from '../../triage'
-import AdviceLine from './AdviceLine.vue'
-import ChatComposer from './ChatComposer.vue'
 import HiddenToggle from './HiddenToggle.vue'
-import QuestionCard from './QuestionCard.vue'
 import SessionMessage from './SessionMessage.vue'
 
 function turn(id: number, name: string, at: number, text: string): StreamMessage {
@@ -23,16 +20,13 @@ const feed = [
   turn(4, S.e2e, time(14, 38), '결제 e2e 2건 실패: 카드 입력 후 확인 버튼이 비활성으로 남음'),
 ]
 const verdicts: Triage[] = [
-  { messageId: 1, index: 0, verdict: 'noise' },
-  { messageId: 2, index: 0, verdict: 'progress' },
-  { messageId: 3, index: 0, verdict: 'noise' },
-  { messageId: 4, index: 0, verdict: 'signal', advice: '버튼 활성 조건부터 확인하게 하세요.', draft: '실패한 2건 로그 보여 주고, 확인 버튼 활성 조건부터 고쳐 줘' },
+  { messageId: 1, index: 0, verdict: 'hide' },
+  { messageId: 2, index: 0, verdict: 'show' },
+  { messageId: 3, index: 0, verdict: 'hide' },
+  { messageId: 4, index: 0, verdict: 'show' },
 ]
 const showHidden = ref(false)
 const view = computed(() => triageView(feed, { engine: 'claude', triage: toTriageMap(verdicts), now: Date.now(), showHidden: showHidden.value }))
-
-// The draft chip fills the composer and focuses it; nothing is sent
-const composer = ref<InstanceType<typeof ChatComposer>>()
 
 // Pending hold, live: a recap-only line waits up to HOLD_MS (10 s) for its verdict
 const arrivedAt = ref<number | null>(null)
@@ -49,63 +43,36 @@ function arrive(verdictAfter: number | null) {
   late.value = null
   timers = [setTimeout(() => now.value = Date.now(), HOLD_MS + 20)]
   if (verdictAfter != null)
-    timers.push(setTimeout(() => late.value = { messageId: 9, index: 0, verdict: 'noise' }, verdictAfter))
+    timers.push(setTimeout(() => late.value = { messageId: 9, index: 0, verdict: 'hide' }, verdictAfter))
 }
 onBeforeUnmount(() => timers.forEach(clearTimeout))
 </script>
 
 <template>
-  <GalleryCase title="01 · 조언 (signal 아래 muted 한 줄)">
-    <ChatFrame note="조언은 메시지 아래 muted 11px. 아이콘도 muted, 노란색 없음. 사용자에게만 보이고 세션에는 가지 않는다.">
-      <SessionMessage :name="S.e2e" :at="time(14, 38)">
-        <p>결제 e2e 2건 실패: 카드 입력 후 확인 버튼이 비활성으로 남음</p>
-        <AdviceLine advice="버튼 활성 조건부터 확인하게 하세요." />
-      </SessionMessage>
-      <SessionMessage :name="S.od" :at="time(14, 39)">
-        <QuestionCard :question="HERO_SHORT" inert />
-        <AdviceLine advice="세션 추천이 B예요. 하단 여백만 같이 물어보세요." draft="B로 가자. 하단 여백만 줄여 줘" />
-      </SessionMessage>
-    </ChatFrame>
-  </GalleryCase>
-  <GalleryCase title="02 · 초안 칩 (누르면 입력창만 채움)">
-    <ChatFrame note="칩은 surface 면에 border 선. 누르면 그 세션을 받는 사람으로 입력창을 채우고 포커스만 옮긴다. 자동으로 보내지 않는다.">
-      <SessionMessage :name="S.e2e" :at="time(14, 38)">
-        <p>결제 e2e 2건 실패: 카드 입력 후 확인 버튼이 비활성으로 남음</p>
-        <AdviceLine
-          advice="버튼 활성 조건부터 확인하게 하세요." draft="실패한 2건 로그 보여 주고, 확인 버튼 활성 조건부터 고쳐 줘"
-          @draft="composer?.fill($event)"
-        />
-      </SessionMessage>
-      <template #footer>
-        <ChatComposer ref="composer" can-send target="client-e2e" />
-      </template>
-    </ChatFrame>
-  </GalleryCase>
-  <GalleryCase title="03 · 숨긴 메시지 토글 (세션이 섞여도 메시지마다 판정)">
-    <ChatFrame note="piuda · e2e · piuda · e2e 순서. 잡담 두 줄은 빠지고 머리의 「숨긴 메시지 2」가 켜면 그 자리에 흐리게 보인다.">
+  <GalleryCase title="01 · 숨긴 메시지 토글 (세션이 섞여도 메시지마다 판정)">
+    <ChatFrame note="piuda · e2e · piuda · e2e 순서. 숨김 판정 두 줄은 빠지고 머리의 「숨긴 메시지 2」가 켜면 그 자리에 흐리게 보인다.">
       <div class="heading">
         <b>세션 대화</b>
         <HiddenToggle v-model="showHidden" :count="view.hidden" />
       </div>
       <SessionMessage v-for="item in view.items" :key="item.message.id" :name="item.message.sessionName" :at="item.message.at" :class="{ dim: item.dim }">
-        <template v-for="line in item.lines" :key="line.index">
-          <p>{{ line.text }}</p>
-          <AdviceLine :advice="line.advice" :draft="line.draft" />
-        </template>
+        <p v-for="line in item.lines" :key="line.index">
+          {{ line.text }}
+        </p>
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
-  <GalleryCase title="04 · 판정 대기 (새 리캡만, 최대 10초)">
-    <ChatFrame note="이미지 없는 새 리캡은 판정을 10초까지 기다린다. 그 안에 잡담 판정이 오면 한 번도 그리지 않고, 판정이 없으면 10초 뒤 그대로 보인다. 더 늦게 잡담 판정이 오면 조용히 빠진다. 질문과 이미지 있는 턴, 엔진이 꺼진 상태는 기다리지 않는다.">
+  <GalleryCase title="02 · 판정 대기 (새 리캡만, 최대 10초)">
+    <ChatFrame note="이미지 없는 새 리캡은 판정을 10초까지 기다린다. 그 안에 숨김 판정이 오면 한 번도 그리지 않고, 판정이 없으면 10초 뒤 그대로 보인다. 더 늦게 숨김 판정이 오면 조용히 빠진다. 질문과 이미지 있는 턴, 엔진이 꺼진 상태는 기다리지 않는다.">
       <div class="controls">
         <button type="button" class="text-button" @click="arrive(null)">
           새 리캡 · 판정 없음
         </button>
         <button type="button" class="text-button" @click="arrive(4000)">
-          새 리캡 · 4초 뒤 잡담 판정
+          새 리캡 · 4초 뒤 숨김 판정
         </button>
         <button type="button" class="text-button" @click="arrive(12_000)">
-          새 리캡 · 12초 뒤 잡담 판정
+          새 리캡 · 12초 뒤 숨김 판정
         </button>
       </div>
       <p v-if="!holdView" class="muted state">
@@ -115,7 +82,7 @@ onBeforeUnmount(() => timers.forEach(clearTimeout))
         판정 기다리는 중 · 아직 그리지 않음
       </p>
       <p v-else-if="!holdView.items.length" class="muted state">
-        잡담으로 판정돼 조용히 빠짐
+        숨김으로 판정돼 조용히 빠짐
       </p>
       <SessionMessage v-for="item in holdView?.items" :key="item.message.id" :name="item.message.sessionName" :at="item.message.at">
         {{ item.lines[0]?.text }}

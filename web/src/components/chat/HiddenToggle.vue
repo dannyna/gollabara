@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 「숨긴 메시지 n」 in the chat heading: reveals lines triage judged noise, inline and dimmed
+// 「숨긴 메시지 n」 in the chat heading: reveals lines triage hid, inline and dimmed
 defineProps<{ count: number }>()
 const shown = defineModel<boolean>({ default: false })
 </script>

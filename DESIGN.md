@@ -299,9 +299,9 @@ An image on `--surface` in a 12px cell with a 2px transparent border and the ima
 
 A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」 and 「멈춤」. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
 
-### Triage, advice, and drafts
+### Triage
 
-Only when 「대화 정리 · 조언」 is on (off by default). Lines judged noise drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a model-judged noise line never flashes in; a verdict later than that removes it quietly. Under a signal line or a question card, the advice is one muted 11px line with a muted bulb icon. A draft reply is a chip below it: `--surface` fill, `--border` line, 8px radius, a muted 「초안」 label, and the draft truncated to one line. Tapping the chip fills the composer and targets that session; it never sends. No yellow anywhere in triage.
+Only when 「대화 정리」 is on (off by default). Triage decides only whether a line is shown. Hidden lines drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a line the model hides never flashes in; a verdict later than that removes it quietly. No yellow anywhere in triage.
 
 ### Question card
 
@@ -329,7 +329,7 @@ A full-screen dialog: a top bar (close, session · branch with mono time and siz
 
 ### Settings sheet
 
-A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), the theme choice 「시스템」 / 「밝게」 / 「어둡게」, and 「대화 정리 · 조언」 「끄기」 / 「Claude」 / 「Codex」, saved with 「설정 저장」. Those settings live in this browser only; saving connects to nothing and deletes no files. Theme and 「대화 정리 · 조언」 apply at once instead. The engine choice is stored on the server, because the server runs it, and changing it works only from this Mac or the tailnet. Its note says that message text goes to that CLI's model and images do not.
+A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), the theme choice 「시스템」 / 「밝게」 / 「어둡게」, and 「대화 정리」 「끄기」 / 「Claude」 / 「Codex」, saved with 「설정 저장」. Those settings live in this browser only; saving connects to nothing and deletes no files. Theme and 「대화 정리」 apply at once instead. The engine choice is stored on the server, because the server runs it, and changing it works only from this Mac or the tailnet. Its note says that message text and the user's feedback text go to that CLI's model and images do not.
 
 ### Empty state
 
@@ -355,8 +355,7 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 | `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                                                                                                      | Live                     |
 | Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                                                                                                                  | **Drawn, disabled**      |
 | Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                                                                                                        | Live, client-side filter |
-| Triage             | With 「대화 정리 · 조언」 on, noise lines leave the chat; 「숨긴 메시지 n」 shows them dimmed. Signal lines and questions get an advice line.                                                                                                      | Live, opt-in             |
-| Draft reply        | Tapping a 「초안」 chip fills the composer, aimed at that session. The user edits and sends it, or not.                                                                                                                                            | Live, opt-in             |
+| Triage             | With 「대화 정리」 on, lines the model hides leave the chat; 「숨긴 메시지 n」 shows them dimmed.                                                                                                                                                  | Live, opt-in             |
 | Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                                                                                                                     | Live                     |
 | Browse history     | Scrolling back keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest.                                                                                                                                              | Live                     |
 | Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                                                                                                                  | Live                     |
