@@ -1,0 +1,27 @@
+web/src/triage.ts
+  s_b7f30c572db9a8::t_63b0bb0219deae 6-10
+web/src/triage.test.ts
+  s_b7f30c572db9a8::t_fb8565edf022ac 65-72
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_63b0bb0219deae 96
+web/src/components/chat/Triage.gallery.vue
+  s_b7f30c572db9a8::t_63b0bb0219deae 37,98-99,104-108
+DESIGN.md
+  s_b7f30c572db9a8::t_63b0bb0219deae 304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e91a6cae4e21c7d0ad292afd5e846902b6a5c8d",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
