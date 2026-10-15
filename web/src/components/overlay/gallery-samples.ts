@@ -26,8 +26,8 @@ export const SAMPLE_ARTIFACTS: Artifact[] = [
 ]
 
 export const SAMPLE_SESSIONS: SessionRow[] = [
-  { id: 'piuda', session: 'piuda', branch: 'desktop-shell', lastSeenAt: min(2), muted: false },
-  { id: 'od', session: 'od', branch: 'landing-hero', lastSeenAt: min(5), muted: false },
-  { id: 'client-e2e', session: 'client-e2e', branch: 'checkout', lastSeenAt: min(8), muted: false },
-  { id: 'api', session: 'api', branch: 'quota-refill', lastSeenAt: min(9), muted: true },
+  { id: 'piuda', session: 'piuda', branch: 'desktop-shell', lastSeenAt: min(2), muted: false, ended: false },
+  { id: 'od', session: 'od', branch: 'landing-hero', lastSeenAt: min(5), muted: false, ended: false },
+  { id: 'client-e2e', session: 'client-e2e', branch: 'checkout', lastSeenAt: min(8), muted: false, ended: false },
+  { id: 'api', session: 'api', branch: 'quota-refill', lastSeenAt: min(9), muted: true, ended: false },
 ]

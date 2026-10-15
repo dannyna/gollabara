@@ -30,10 +30,10 @@ describe('Codex mapping (payloads recorded in the spike)', () => {
     expect(codex(sessionStart)).toEqual({ id: sessionStart.session_id, name: 'demo · feat/hero', harness: 'codex', cwd: sessionStart.cwd })
   })
 
-  test('SessionStart keeps its source as the reason; SessionEnd posts nothing (#76)', () => {
+  test('SessionStart keeps its source as the reason; SessionEnd posts a session end', () => {
     expect(map(sessionStart)).toMatchObject({ kind: 'session', reason: 'startup' })
     expect(map(sessionStartResume)).toMatchObject({ kind: 'session', reason: 'resume' })
-    expect(map(sessionEnd)).toBeNull()
+    expect(map(sessionEnd)).toEqual({ kind: 'session-end', session: codex(sessionEnd) })
   })
 
   test('view_image becomes an image: the type sniffed from bytes, the path as source, a reference when the file is older than the turn', () => {

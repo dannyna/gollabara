@@ -59,6 +59,25 @@ import SystemLine from './SystemLine.vue'
       </template>
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="02c · 끝난 세션에 남은 건">
+    <ChatFrame note="기다리던 중 세션이 끝나면 그 묶음은 흐려지고 ‘끝나서 전달할 수 없어요’. 지우지는 않는다: 세션이 이어지면(resume) 그대로 전달된다.">
+      <SessionMessage :name="S.api" :at="time(14, 20)" ended>
+        쿼터 리필 배치 정리하고 종료.
+      </SessionMessage>
+      <template #footer>
+        <ChatComposer can-send target="od" route="바로 전달돼요">
+          <template #tray>
+            <QueueTray
+              note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
+                { session: 'od', items: ['모바일 360px도 한 장 찍어 줘'], route: '바로 전달돼요' },
+                { session: 'api', items: ['테스트 실패만 정리해 줘'], status: '끝나서 전달할 수 없어요', ended: true },
+              ]"
+            />
+          </template>
+        </ChatComposer>
+      </template>
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="03 · 가득 참 · 세션당 3건">
     <ChatFrame note="od로의 전송만 꺼진다. 대상을 다른 세션으로 바꾸면 다시 켜진다.">
       <SessionMessage :name="S.od" :at="time(14, 38)">

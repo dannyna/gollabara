@@ -85,6 +85,12 @@ export const MIGRATIONS: Migration[] = [
       created_at INTEGER NOT NULL
     )`)
   },
+  // 4: ended sessions (#76). ended_at: when it ended (NULL while running); pid_at: when the latest SessionStart
+  // linked the pid, so a process that started after it (the pid was reused) is not taken for the session's.
+  (db) => {
+    db.run('ALTER TABLE sessions ADD COLUMN ended_at INTEGER')
+    db.run('ALTER TABLE sessions ADD COLUMN pid_at INTEGER')
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

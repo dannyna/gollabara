@@ -11,6 +11,8 @@ export interface SessionRow {
   branch?: string
   lastSeenAt: number
   muted: boolean
+  /** The session ended (its process is gone); it fades but stays listed */
+  ended: boolean
 }
 
 /**
@@ -20,15 +22,20 @@ export interface SessionRow {
 export function toSessionRows(sessions: Session[], messages: StreamMessage[], muted: ReadonlySet<string>): SessionRow[] {
   const rows = new Map<string, SessionRow>()
   for (const s of sessions)
-    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id) })
+    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null })
   for (const m of messages) {
     const row = rows.get(m.sessionId)
     if (!row)
-      rows.set(m.sessionId, { id: m.sessionId, ...splitSessionName(m.sessionName), lastSeenAt: m.at, muted: muted.has(m.sessionId) })
+      rows.set(m.sessionId, { id: m.sessionId, ...splitSessionName(m.sessionName), lastSeenAt: m.at, muted: muted.has(m.sessionId), ended: false })
     else if (m.at > row.lastSeenAt)
       row.lastSeenAt = m.at
   }
   return [...rows.values()].sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+}
+
+/** Ids of the sessions that ended, so every surface can fade them */
+export function endedSessions(sessions: Session[]): ReadonlySet<string> {
+  return new Set(sessions.filter(s => s.endedAt != null).map(s => s.id))
 }
 
 /** Messages in view: never a muted session, and only the chosen one when scoped */

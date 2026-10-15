@@ -8,8 +8,8 @@ import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { clock, splitSessionName } from '../../artifacts'
-import { failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, VIA_LABEL } from '../../feedback'
-import { toSessionRows, useMutedSessions } from '../../sessions'
+import { ENDED_NOTE, ENDED_STATUS, failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, VIA_LABEL } from '../../feedback'
+import { endedSessions, toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
@@ -77,6 +77,8 @@ const emit = defineEmits<{
 const feed = ref<HTMLElement>()
 const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
 const shortName = (id: string) => splitSessionName(nameOf(id)).session
+// Ended sessions fade everywhere they appear, and take no feedback
+const ended = computed(() => endedSessions(props.sessions ?? []))
 
 // Mute is a client filter with no history, so its lines exist only for changes made
 // while this page is open, and only in 「전체 세션」 (OD chat guide 05)
@@ -170,8 +172,10 @@ const queue = computed<QueueGroup[]>(() => {
       continue
     let group = groups.get(f.sessionId)
     if (!group) {
-      const route = queueTrayNote.value.mixed ? sessionRouteNote(f.sessionId, props.sessions ?? []) : undefined
-      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [], ...(route ? { route } : {}) })
+      // Items queued before the session ended stay queued (a resume still gets them) but are said to be undeliverable
+      const gone = ended.value.has(f.sessionId)
+      const route = queueTrayNote.value.mixed && !gone ? sessionRouteNote(f.sessionId, props.sessions ?? []) : undefined
+      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [], ...(route ? { route } : {}), ...(gone ? { status: ENDED_STATUS, ended: true } : {}) })
     }
     group.items.push(f.image ? `↪ 이미지 · ${f.text}` : f.text)
   }
@@ -205,7 +209,7 @@ watch(target, async (next) => {
   composer.value?.focus()
 }, { flush: 'post' })
 
-// @세션: the list opens from the button or a typed `@`, and never offers a muted session
+// @세션: the list opens from the button or a typed `@`, and never offers a muted or ended session
 const mentioned = ref<string | null>(null)
 const mentionQuery = ref<string | null>(null)
 const mentionButton = ref(false)
@@ -213,7 +217,7 @@ const mentionList = ref<InstanceType<typeof MentionList>>()
 const mentionOptions = computed<MentionOption[]>(() => {
   const q = mentionQuery.value?.toLowerCase() ?? ''
   return toSessionRows(props.sessions ?? [], props.messages, muted.value)
-    .filter(r => !r.muted && r.session.toLowerCase().includes(q))
+    .filter(r => !r.muted && !r.ended && r.session.toLowerCase().includes(q))
     .map(r => ({ id: r.id, session: r.session, branch: r.branch }))
 })
 const mentionOpen = computed(() => (mentionButton.value || mentionQuery.value != null) && mentionOptions.value.length > 0)
@@ -232,7 +236,9 @@ const receiver = computed(() => resolveTarget({ attachment: target.value?.sessio
 const receiverRoute = computed(() => receiver.value == null ? undefined : sessionRouteNote(receiver.value, props.sessions ?? []))
 const blocked = computed(() => props.offline
   ? { icon: 'plug' as const, text: '다시 연결되면 보낼 수 있어요' }
-  : receiver.value == null ? { icon: 'alert' as const, text: '@로 보낼 세션을 골라 주세요' } : undefined)
+  : receiver.value == null
+    ? { icon: 'alert' as const, text: '@로 보낼 세션을 골라 주세요' }
+    : ended.value.has(receiver.value) ? { icon: 'alert' as const, text: ENDED_NOTE } : undefined)
 
 let sendSeq = 0
 async function deliver(p: PendingSend) {
@@ -338,7 +344,7 @@ defineExpose({ reveal })
             <!-- A muted session's messages are gone, so its menu opens from the mute line -->
             <template v-if="item.sessionId" #lead>
               <SessionMenuButton
-                small :name="nameOf(item.sessionId)" :muted="muted.has(item.sessionId)"
+                small :name="nameOf(item.sessionId)" :muted="muted.has(item.sessionId)" :ended="ended.has(item.sessionId)"
                 :scoped="scope === item.sessionId" @scope="toggleScope(item.sessionId)" @mute="emit('mute', item.sessionId)"
                 @delete="emit('delete', item.sessionId)"
               />
@@ -364,7 +370,7 @@ defineExpose({ reveal })
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
-            :scoped="scope === item.message.sessionId"
+            :scoped="scope === item.message.sessionId" :ended="ended.has(item.message.sessionId)"
             @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
             @delete="emit('delete', item.message.sessionId)"
           >

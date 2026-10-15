@@ -77,7 +77,7 @@ The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs n
 
 ## Storage
 
-`GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is. Migration 2 adds `hook_versions`, the latest hook seen per harness.
+`GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is. Migration 2 adds `hook_versions`, the latest hook seen per harness. Migration 4 adds `sessions.ended_at` and `sessions.pid_at` (see **Ended sessions**).
 
 It also holds `hook-health.jsonl`, the hook health log (see below). The hook writes it under its own `GOLLABARA_DATA`, so a session whose env doesn't match the server's logs elsewhere.
 
@@ -120,6 +120,7 @@ To try any of this without touching a real install, set `GOLLABARA_HOME`, `GOLLA
 | `Stop` (`hook.js wait`, background) | Nothing                                                                                | Exit 2 with the feedback on stderr, which starts a turn in an idle session |
 | `PreToolUse` (`AskUserQuestion`)    | The session's own question and options                                                 | —                                                                          |
 | `UserPromptSubmit`                  | Nothing                                                                                | `additionalContext` alongside the user's prompt                            |
+| `SessionEnd`                        | Nothing in the stream: the session is marked ended (`session-end`)                     | —                                                                          |
 
 An image's `source` is the file the tool names (`file_path`, `path`, or `filename` in the tool input), set only when the result holds exactly one image. The server stores it with a dHash in the message body. The stream hides earlier captures of the same screen behind the newest: identical bytes, or the same `source` and size within `DHASH_MAX_DISTANCE` bits of the newest capture.
 
@@ -144,6 +145,16 @@ An idle session (its turn ended, waiting for input) runs no hook, so hook delive
 - **Not covered.** `claude -p` kills background hooks at teardown, so headless runs, including Open Design runs, keep hook delivery only.
 - **Liveness.** A session with an open wake-up poll, or one that ended within 30 s, has `channel: true` in `GET /api/sessions` and the WebSocket session frames (the field keeps the name of the channel route it replaced), and `idle-wake` among its `routes` (see **Delivery routes**). The queue tray and the composer then say 「바로 전달돼요」 instead of 「세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요」. Rows delivered before that route was removed keep `deliveredVia: 'channel'`.
 - **Recap.** A wake-up turn opens with `turnOrigin: "task_notification"` and `origin.kind: "task-notification"`, and its content is `Stop hook blocking error from command "Stop": ` followed by the stderr. When that carries `[gollabara] Feedback from the user`, the turn is the user's (`rewake`). Its Stop arrives with `stop_hook_active: true`, yet the recap opens a new turn instead of joining the previous one; feedback delivered at that Stop continues it as usual. Another hook's wake-up stays a wake-up.
+
+### Ended sessions
+
+A session ends with a `session-end` event (the `SessionEnd` hook, from Claude Code and Codex alike), or when its process goes away without one: a crash, a closed terminal, a killed process.
+
+- **Process gone.** Every `SWEEP_MS` (20 s, and once at start) the server checks each running session that has a pid (`src/server/liveness.ts`): `process.kill(pid, 0)` failing (no such process, or another user's) means it is gone. Because a pid can be reused, after a reboot for instance, one `ps -o pid=,etime=` call also reads when each live pid's process started; a process that started more than 2 s after the SessionStart that linked it (`sessions.pid_at`) is not the session's. Links stored before #76 have no `pid_at` and get only the first check. A session ended this way is marked within one sweep.
+- **Relinking.** The latest SessionStart owns a pid. When it takes the pid from another session (`/clear`, a resume in the same process, or a reused pid), that session is marked ended too, even if its own SessionEnd never came.
+- **No pid.** A session that never reported a pid (older hooks) ends only through SessionEnd.
+- **Coming back.** Any later event from an ended session (a resume, or any other event) clears `ended_at`. Feedback claims and wake-up polls do not.
+- **Effects.** `endedAt` appears in `GET /api/sessions` and the session frames, with `routes: []` and no `channel`. `POST /api/feedback` to an ended session answers 409 `session ended`, and the UI says 「끝난 세션이에요」. A wake-up waiter for it gets 410 `ended` and exits. Feedback queued before the end stays queued: the tray marks it 「끝나서 전달할 수 없어요」, and a resumed session still picks it up. A session-end also closes the session's open turn and drops its pid.
 
 ### Delivery routes
 
@@ -171,7 +182,7 @@ Codex runs the same `plugin/bin/hook.js` as `hook.js codex`. The argument is the
 | `Stop`                              | First line of `last_assistant_message` (recap), for every Stop                                                                                                                    | `decision: "block"` with the feedback as `reason`, which continues the same turn |
 | `PreToolUse` (`request_user_input`) | The session's own question and options (no `multiSelect`; Codex asks only in Plan mode)                                                                                           | —                                                                                |
 | `UserPromptSubmit`                  | Nothing                                                                                                                                                                           | `additionalContext` alongside the user's prompt                                  |
-| `SessionEnd`                        | Nothing yet: ended sessions are #76. Registered now so that work changes only the script                                                                                          | —                                                                                |
+| `SessionEnd`                        | Nothing in the stream: the session is marked ended (`session-end`), as for Claude Code                                                                                            | —                                                                                |
 
 - **Recaps for every Stop.** Codex records no `turnOrigin`, and its hooks see no wake-ups of the kind Claude Code has (Monitor ticks, task notifications): each turn opens with a prompt from the user or `codex exec`. A Stop with `stop_hook_active` (after gollabara's block) posts its recap as a continuation of the turn.
 - **Loop guard.** Codex has no cap on Stop blocks, so a Stop with `stop_hook_active` never claims feedback: claiming marks items delivered, and that Stop must not block again. Queued items wait for the next tool call or prompt. Stop prints JSON or nothing (plain stdout, or `additionalContext`, fails a Codex Stop hook).

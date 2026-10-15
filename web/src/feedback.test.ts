@@ -90,6 +90,11 @@ describe('postFeedback', () => {
     expect(failureReason(error)).toBe('이 Mac이나 tailnet에서만 보낼 수 있어요')
   })
 
+  it('says the session ended when the server refuses with 409', async () => {
+    const fetcher = (async () => new Response('session ended', { status: 409 })) as unknown as typeof fetch
+    expect(failureReason(await postFeedback({ sessionId: 'a', text: 'hi' }, fetcher).catch(e => e))).toBe('끝난 세션이에요')
+  })
+
   it('keeps the generic copy when the server was not reached', async () => {
     const fetcher = (async () => {
       throw new TypeError('offline')
@@ -119,6 +124,12 @@ describe('queueNote', () => {
     expect(queueNote(['a', 'cx'], sessions)).toEqual({ note: '세션마다 전달 시점이 달라요', mixed: true })
     expect(sessionRouteNote('a', sessions)).toBe('바로 전달돼요')
     expect(sessionRouteNote('cx', sessions)).toBe('세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요')
+  })
+
+  it('says an ended session cannot get it, whatever its routes said', () => {
+    const ended = { ...s('gone', 'claude-code', true), endedAt: 5 }
+    expect(queueNote(['gone'], [ended])).toEqual({ note: '끝난 세션이라 전달할 수 없어요', mixed: false })
+    expect(queueNote(['gone', 'cx'], [ended, s('cx', 'codex')])).toEqual({ note: '세션마다 전달 시점이 달라요', mixed: true })
   })
 
   it('falls back for unknown sessions and servers from before routes', () => {

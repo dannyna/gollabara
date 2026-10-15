@@ -23,6 +23,8 @@ const props = defineProps<{
   selected?: boolean
   /** The rail holds this cell in place while new artifacts arrive */
   pinned?: boolean
+  /** Its session ended: the name fades and says 「끝남」. The image is shown as received, never faded */
+  ended?: boolean
   /** Text for the size slot when the artifact has no pixel size, e.g. 「HTML」 */
   sizeLabel?: string
   /** 「열기 ↗」 for artifacts that are not images (guide 07) */
@@ -59,11 +61,11 @@ const state = computed(() => props.face ?? loaded.value)
 <template>
   <article
     class="cell"
-    :class="[{ 'run-start': a.runStart && !reference, selected, pinned, reference }, preview && `preview-${preview}`]"
+    :class="[{ 'run-start': a.runStart && !reference, selected, pinned, reference, ended }, preview && `preview-${preview}`]"
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
-      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" /></strong>
+      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" /><span v-if="ended" class="ended-tag">끝남</span></strong>
       <p class="meta-line mono">
         <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
         <!-- Narrow cells shorten the stem and keep the extension, so the cut lands mid-name -->
@@ -157,8 +159,19 @@ const state = computed(() => props.face ?? loaded.value)
   text-overflow: ellipsis;
 }
 .meta strong {
+  display: flex;
+  gap: 6px;
   font-size: 12px;
   font-weight: 500;
+}
+/* An ended session: muted name (not opacity), and a plain 「끝남」 */
+.ended .meta strong {
+  color: var(--muted);
+}
+.ended-tag {
+  flex: none;
+  font-size: 10px;
+  font-weight: 400;
 }
 /* Later cells of a run: the session is named once, at the start */
 .meta strong.continued {

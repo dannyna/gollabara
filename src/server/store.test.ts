@@ -269,3 +269,64 @@ describe('settings', () => {
     expect(store.saveSettings({ phone: '' })).toEqual({ triage: 'off', retention: '7', phone: '' })
   })
 })
+
+describe('ended sessions', () => {
+  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
+
+  test('a session end marks the session, drops its pid, and refuses feedback with 409; any later event brings it back', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 500)
+    const { session, message } = store.ingest({ kind: 'session-end', session: cc }, 900)
+    expect(message).toBeNull()
+    expect(session).toMatchObject({ endedAt: 900, lastSeenAt: 900 })
+    expect(store.sessionForPid(4242)).toBeNull()
+    const refused = (() => {
+      try {
+        store.queueFeedback('cc-1', 'too late', undefined, 1000)
+      }
+      catch (error) {
+        return error
+      }
+    })()
+    expect(refused).toBeInstanceOf(FeedbackError)
+    expect(refused).toMatchObject({ status: 409, message: 'session ended' })
+    // A resume, or any event at all, means it runs again
+    expect(store.ingest({ kind: 'session', session: cc, reason: 'resume' }, 2000).session).not.toHaveProperty('endedAt')
+    expect(store.queueFeedback('cc-1', 'welcome back', undefined, 2100).text).toBe('welcome back')
+    store.ingest({ kind: 'session-end', session: cc }, 3000)
+    expect(store.ingest({ kind: 'recap', session: cc, text: 'late recap' }, 3100).session).not.toHaveProperty('endedAt')
+  })
+
+  test('a session end closes the open turn, so a resumed session starts a new one', () => {
+    const first = store.ingest(image(cc), 500).message!
+    store.ingest({ kind: 'session-end', session: cc }, 600)
+    expect(store.ingest(image(cc), 700).message!.id).not.toBe(first.id)
+  })
+
+  test('feedback queued before the end stays queued, so a resume still gets it', () => {
+    store.ingest({ kind: 'session', session: cc }, 500)
+    store.queueFeedback('cc-1', 'queued', undefined, 600)
+    store.ingest({ kind: 'session-end', session: cc }, 700)
+    expect(store.recentFeedback()[0]).not.toHaveProperty('deliveredAt')
+    store.ingest({ kind: 'session', session: cc, reason: 'resume' }, 800)
+    expect(store.claimFeedback('cc-1', 'user-prompt-submit', 900).map(f => f.text)).toEqual(['queued'])
+  })
+
+  test('only running sessions with a pid are checked; ending one twice keeps the first time', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 500)
+    store.ingest({ kind: 'session', session: od }, 500)
+    expect(store.pidLinks()).toEqual([{ id: 'cc-1', pid: 4242, at: 500 }])
+    expect(store.endSessions(['cc-1', 'od-1'], 900).map(s => [s.id, s.endedAt])).toEqual([['cc-1', 900], ['od-1', 900]])
+    expect(store.pidLinks()).toEqual([])
+    expect(store.sessionForPid(4242)).toBeNull()
+    expect(store.endSessions(['cc-1'], 1000)).toEqual([])
+    expect(store.session('cc-1')?.endedAt).toBe(900)
+  })
+
+  test('a session whose pid another session took ended with it (/clear, or a reused pid)', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 500)
+    store.ingest({ kind: 'session', session: { ...cc, id: 'cc-2' }, pid: 4242, reason: 'clear' }, 800)
+    expect(store.session('cc-1')?.endedAt).toBe(800)
+    expect(store.session('cc-2')).not.toHaveProperty('endedAt')
+    expect(store.pidLinks()).toEqual([{ id: 'cc-2', pid: 4242, at: 800 }])
+  })
+})

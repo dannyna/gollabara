@@ -21,7 +21,7 @@ import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { usePin } from './pin'
 import { usePush } from './push'
-import { deleteSessionData, inScope, toSessionRows, useMutedSessions } from './sessions'
+import { deleteSessionData, endedSessions, inScope, toSessionRows, useMutedSessions } from './sessions'
 import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
@@ -36,6 +36,7 @@ const scope = ref<string | null>(null)
 const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value))
 const scopeLabel = computed(() => sessions.value.find(s => s.id === scope.value)?.name ?? '전체 세션')
 const visible = computed(() => inScope(messages.value, scope.value, muted.value))
+const ended = computed(() => endedSessions(sessions.value))
 // Earlier captures of the same screen hide behind the newest; 「따로 보기」 takes one out
 const { split, cellOf, cellKey } = useCaptures()
 const artifacts = computed(() => toArtifacts(messages.value, visible.value, split.value))
@@ -258,7 +259,7 @@ function onThumb(key: string) {
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
-        @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
+        :ended="ended" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"

@@ -17,6 +17,8 @@ const props = defineProps<{
   /** The view is scoped to this session */
   scoped?: boolean
   muted?: boolean
+  /** The session ended: the avatar and name fade, and 「끝남」 follows the name */
+  ended?: boolean
   /** A system line's 17px avatar: the button wraps the name in the line's text, and the menu centres under the line */
   small?: boolean
 }>()
@@ -81,16 +83,17 @@ function onKeydown(e: KeyboardEvent) {
   <span class="menu-anchor" :class="{ small }">
     <button
       ref="trigger" class="head-hit" type="button" aria-haspopup="menu" :aria-expanded="open"
-      :aria-controls="open ? menuId : undefined" :aria-label="`${name} 세션 메뉴 열기`"
+      :aria-controls="open ? menuId : undefined" :aria-label="`${name}${ended ? ' · 끝남' : ''} 세션 메뉴 열기`"
       @click="toggle" @keydown="onKeydown"
     >
-      <SessionAvatar :name="name" :small="small" />
+      <SessionAvatar :name="name" :small="small" :ended="ended" />
       <span v-if="small">{{ name }}</span>
-      <strong v-else><SessionName :name="name" /></strong>
+      <strong v-else :class="{ ended }"><SessionName :name="name" /></strong>
+      <span v-if="ended && !small" class="ended-tag">끝남</span>
       <ChatIcon v-if="!small" class="caret" name="chev" />
     </button>
     <SessionMenu
-      v-if="open" :id="menuId" ref="menu" :name="name" :items="items" :trigger="trigger"
+      v-if="open" :id="menuId" ref="menu" :name="name" :ended="ended" :items="items" :trigger="trigger"
       :from-keys="fromKeys" @close="close" @choose="choose"
     />
   </span>
@@ -120,6 +123,16 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 0;
   font-size: 11px;
   font-weight: 600;
+}
+/* Ended: the name takes the muted colour (not opacity), and a plain 「끝남」 says why */
+.head-hit strong.ended {
+  color: var(--muted);
+}
+.ended-tag {
+  flex: none;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
 }
 .caret {
   width: 12px;

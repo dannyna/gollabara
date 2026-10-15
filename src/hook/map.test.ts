@@ -47,6 +47,14 @@ describe('Open Design (real payloads and env captured in the spike)', () => {
     expect(mapHook(input, odSession(input))).not.toHaveProperty('reason')
   })
 
+  test('SessionEnd posts a session end, whatever the reason, and claims nothing', () => {
+    for (const reason of ['clear', 'logout', 'prompt_input_exit', 'other']) {
+      const input = { ...odSessionStart, hook_event_name: 'SessionEnd', reason } as HookInput
+      expect(mapHook(input, odSession(input))).toEqual({ kind: 'session-end', session: odSession(input) })
+      expect(feedbackVia('SessionEnd', input)).toBeNull()
+    }
+  })
+
   test('Read image lands under the Open Design session', () => {
     const event = mapHook(odPostReadImage as HookInput, odSession(odPostReadImage as HookInput))
     expect(event).toMatchObject({ kind: 'image', toolName: 'Read', session: { harness: 'open-design', project: 'gollabara-spike' } })

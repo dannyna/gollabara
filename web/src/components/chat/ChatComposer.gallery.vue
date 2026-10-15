@@ -64,6 +64,13 @@ const MENTION: MentionOption[] = [
       </template>
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="04b · 끝난 세션">
+    <ChatFrame note="대상 세션이 끝났으면 전송을 끄고 그 이유를. 써 둔 글은 남는다. 세션이 다시 이어지면(resume) 풀린다.">
+      <template #footer>
+        <ChatComposer can-send target="api" text="테스트 실패만 정리해 줘" :blocked="{ icon: 'alert', text: '끝난 세션이에요' }" />
+      </template>
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="05 · 연결 끊김">
     <ChatFrame note="써 둔 글은 남기고 전송만 막는다.">
       <template #footer>

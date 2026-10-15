@@ -137,7 +137,15 @@ export const ROUTE_NOTE = {
   unknown: '세션이 다음 작업을 할 때 전달돼요',
   /** Waiting sessions that differ; each tray group then says its own */
   mixed: '세션마다 전달 시점이 달라요',
+  /** The session ended: nothing will pick feedback up unless it resumes */
+  ended: '끝난 세션이라 전달할 수 없어요',
 } as const
+
+/** Why the composer and a failed bubble cannot send to an ended session */
+export const ENDED_NOTE = '끝난 세션이에요'
+
+/** A queue tray group's state for an ended session, in place of its route */
+export const ENDED_STATUS = '끝나서 전달할 수 없어요'
 
 /** How feedback will reach a session with these routes */
 export function routeNote(routes?: readonly DeliveryRoute[]): string {
@@ -151,6 +159,8 @@ export function routeNote(routes?: readonly DeliveryRoute[]): string {
 /** One session's route note. A server from before routes sends only `channel`, its live wake-up hook */
 export function sessionRouteNote(sessionId: string, sessions: Session[]): string {
   const session = sessions.find(s => s.id === sessionId)
+  if (session?.endedAt != null)
+    return ROUTE_NOTE.ended
   return routeNote(session?.routes ?? (session?.channel ? ['idle-wake'] : undefined))
 }
 
@@ -179,6 +189,9 @@ export function failureReason(error: unknown): string | undefined {
     return '이 Mac이나 tailnet에서만 보낼 수 있어요'
   if (status === 404)
     return '세션을 찾지 못했어요'
+  // The session ended between picking it and sending
+  if (status === 409)
+    return ENDED_NOTE
   return undefined
 }
 

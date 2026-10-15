@@ -27,6 +27,8 @@ const props = defineProps<{
   scope?: string | null
   /** Every session is muted: the empty view points back to the session menu */
   allMuted?: boolean
+  /** Sessions that ended, faded on the rail */
+  ended?: ReadonlySet<string>
   /** Gallery: open scrolled back to the start with this many arrivals waiting */
   preview?: { unseen: number }
 }>()
@@ -209,7 +211,7 @@ const { setTarget } = useFeedbackTarget()
     <!-- With only references in view the rail still shows, so their folds can open -->
     <StateView v-else-if="!artifacts.length && !folds.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
     <StreamRail
-      v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin"
+      v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin" :ended="ended"
       @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"

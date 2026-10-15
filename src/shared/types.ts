@@ -11,6 +11,8 @@ export type IncomingEvent
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
     | { kind: 'recap', session: SessionInfo, text: string, continuation?: boolean }
     | { kind: 'question', session: SessionInfo, questions: Question[] }
+    // The session closed (the user quit, or its conversation was cleared): feedback to it is refused until it comes back
+    | { kind: 'session-end', session: SessionInfo }
 
 /**
  * Why a session (re)started: a fresh launch, a resumed or cleared conversation, or a context
@@ -34,6 +36,11 @@ export interface Session extends SessionInfo {
   /** First SessionStart, or the first event seen if the session started before the plugin was installed */
   startedAt: number
   lastSeenAt: number
+  /**
+   * When the session ended: a session-end event, or its harness process went away. Any later event from
+   * it (a resume) clears it. Feedback to an ended session is refused.
+   */
+  endedAt?: number
   /** A wake-up Stop hook is waiting on the session's feedback, so it reaches the session at once, even when idle */
   channel?: boolean
   /** How feedback can reach the session right now (`routesFor`); missing on records from older servers */

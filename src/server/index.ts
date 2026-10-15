@@ -13,6 +13,7 @@ import { routesFor } from '../shared/routes'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
+import { goneSessions, SWEEP_MS, systemProbe } from './liveness'
 import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
 import { loadVapidKeys, Pusher, sendPush, toSubscription } from './push'
@@ -33,8 +34,11 @@ const PHONE_MAX = 2048
 export function startServer() {
   const store = new Store(dataDir())
   const channels = new ChannelLiveness()
-  // Each session carries its delivery routes; `channel` stays for views from before routes
+  // Each session carries its delivery routes; `channel` stays for views from before routes.
+  // An ended session has none: a waiter's grace period must not read as 「바로 전달돼요」
   const withChannel = (session: Session): Session => {
+    if (session.endedAt)
+      return { ...session, routes: [] }
     const live = channels.isLive(session.id)
     return { ...session, ...(live ? { channel: true } : {}), routes: routesFor(session.harness, live) }
   }
@@ -87,8 +91,14 @@ export function startServer() {
         const { session, message, created } = store.ingest(event)
         seeHook(req, session.harness)
         // The process moved to a new session (/clear, resume): its wake-up waiter's open poll returns and retires
-        if (relinked && relinked !== session.id)
+        // The session that held the pid ended with it (store.ingest)
+        if (relinked && relinked !== session.id) {
           channels.wake(relinked)
+          publishSession(relinked)
+        }
+        // A waiter still polling for an ended session returns and retires
+        if (event.kind === 'session-end')
+          channels.wake(session.id)
         channels.observe(session.id, event.kind === 'session' ? { event: event.kind, reason: event.reason } : { event: event.kind })
         publish({ type: 'session', session: withChannel(session) })
         if (message)
@@ -201,7 +211,8 @@ export function startServer() {
       // Claims share the hook's atomic claim, so each item goes out once. It claims only while the session
       // is idle: mid-turn, the hook hands feedback over at the next tool call or Stop.
       // It gets 410 once it should exit: a newer Stop's waiter took over, the user started a turn, or its
-      // process (`pid`) moved to another session (/clear), which it would otherwise wake with the old session's feedback.
+      // process (`pid`) moved to another session (/clear), which it would otherwise wake with the old session's feedback,
+      // or the session ended.
       if (url.pathname === '/api/channel/wait' && req.method === 'GET') {
         if (!isTrustedSource(srv.requestIP(req)?.address))
           return new Response('forbidden', { status: 403 })
@@ -212,7 +223,7 @@ export function startServer() {
           return new Response('session and waiter are required', { status: 400 })
         seeHook(req, store.session(sessionId)?.harness)
         const moved = () => pid > 0 && (store.sessionForPid(pid) ?? sessionId) !== sessionId
-        const retired = () => channels.retired(sessionId, waiter) ?? (moved() ? 'moved' : null)
+        const retired = () => channels.retired(sessionId, waiter) ?? (moved() ? 'moved' : null) ?? (store.session(sessionId)?.endedAt ? 'ended' : null)
         channels.enlist(sessionId, waiter)
         srv.timeout(req, 0)
         const wasLive = channels.isLive(sessionId)
@@ -328,6 +339,20 @@ export function startServer() {
     if (session)
       publish({ type: 'session', session: withChannel(session) })
   }
+  // A session whose process went away sends no session-end: check the linked pids now and every SWEEP_MS
+  const sweep = () => {
+    try {
+      for (const session of store.endSessions(goneSessions(store.pidLinks(), systemProbe))) {
+        channels.wake(session.id)
+        publish({ type: 'session', session: withChannel(session) })
+      }
+    }
+    catch (error) {
+      console.warn(`gollabara could not check sessions: ${error instanceof Error ? error.message : error}`)
+    }
+  }
+  sweep()
+  setInterval(sweep, SWEEP_MS).unref()
   for (const server of servers)
     console.log(`gollabara is watching at ${server.url.href.replace(/\/$/, '')}`)
   return servers
