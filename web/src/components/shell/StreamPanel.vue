@@ -40,6 +40,13 @@ let userIntentUntil = 0
 function markUserIntent() {
   userIntentUntil = Date.now() + 1000
 }
+/** A step pauses following up front unless it lands on the latest, so a cell arriving mid-step cannot pull the rail back */
+function onStep(left: number) {
+  markUserIntent()
+  const el = track.value!
+  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }))
+    follow.value = 'paused'
+}
 function onScroll() {
   const el = track.value!
   if (atLatest(el)) {
@@ -115,7 +122,9 @@ watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevLis
     toLatest('smooth')
   }
   else if (arrived) {
-    restoreView(hold)
+    // Holding the view by setting scrollLeft would cut a step's smooth scroll short
+    if (!rail.value?.realign())
+      restoreView(hold)
     unseen.value += arrived
   }
 })
@@ -152,7 +161,7 @@ const { setTarget } = useFeedbackTarget()
     <StreamRail
       v-else ref="rail" :artifacts="artifacts" :selected="selected"
       @select="emit('select', $event)" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
-      @step="markUserIntent" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
+      @step="onStep" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"
     />
     <NewPill v-if="follow === 'paused' && unseen && artifacts.length" kind="artifact" :count="unseen" @click="jumpToLatest" />
