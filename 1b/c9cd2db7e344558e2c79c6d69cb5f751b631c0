@@ -1,0 +1,47 @@
+web/src/components/stream/follow.ts
+  s_b7f30c572db9a8::t_f8c9863acd0ff4 46-47
+  s_b7f30c572db9a8::t_81663230d6a87e 36-40
+web/src/App.vue
+  s_b7f30c572db9a8::t_e17557ee923787 17
+  s_b7f30c572db9a8::t_f515c389a9f21a 113-119
+  s_b7f30c572db9a8::t_cea0e092ada661 120
+web/src/components/stream/StreamCell.gallery.vue
+  s_b7f30c572db9a8::t_e6b9a25303180f 47
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_879258bd5563c3 56
+  s_b7f30c572db9a8::t_aa727d2c377058 89-90,95-97
+  s_b7f30c572db9a8::t_a1b5a66bb69520 4-5
+  s_b7f30c572db9a8::t_fc51e7c22bcbbe 226-228,232,238-242,245-260
+  s_b7f30c572db9a8::t_c9f806fb270501 72
+web/src/components/chat/ArtifactThumbs.vue
+  s_b7f30c572db9a8::t_4f06776c0ceede 48-49
+DESIGN.md
+  s_b7f30c572db9a8::t_cea0e092ada661 249,296,348-364
+web/src/components/shell/StreamPanel.gallery.vue
+  s_b7f30c572db9a8::t_ce40ea634c0cb7 26
+  s_b7f30c572db9a8::t_bd166b0dd01199 18
+web/src/components/stream/stream.test.ts
+  s_b7f30c572db9a8::t_2bc96a809e8ca1 5
+  s_b7f30c572db9a8::t_6c2f6670f4b101 80-82
+web/src/components/stream/StreamFooter.vue
+  s_b7f30c572db9a8::t_1af3f1a772e5e3 6,14-15
+  s_b7f30c572db9a8::t_341eecf1212597 32-47
+web/src/components/stream/StreamFooter.gallery.vue
+  s_b7f30c572db9a8::t_017a1b05a2ef0b 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bc9cd2db7e344558e2c79c6d69cb5f751b631c0",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
