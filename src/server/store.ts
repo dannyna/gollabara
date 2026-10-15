@@ -12,8 +12,12 @@ const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', '
 
 export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
 
-/** Larger captures are not decoded for a dHash; they still group by identical bytes */
-const DHASH_MAX_PIXELS = 40_000_000
+/**
+ * Larger captures are not decoded for a dHash; they still group by identical bytes.
+ * JPEG decoding runs about 14 ms per megapixel, so 12 MP stays near 170 ms and the
+ * hook's parallel feedback claim never waits out its 1.5 s budget behind it.
+ */
+const DHASH_MAX_PIXELS = 12_000_000
 
 /** A crashed session never sends Stop, so an open turn closes after this long without events */
 export const TURN_IDLE_MS = 10 * 60 * 1000
