@@ -388,7 +388,7 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 
 #### Scope of the current build
 
-Feedback delivery is live (#22): text the user writes in the composer, optionally about one image from the stream, is queued and delivered to the session, and the UI reports it as queued (the tray), then delivered (the bubble). Sending works only from this Mac or the tailnet; elsewhere the bubble says so. Answering a session's question, quote-reply from cells and messages, and pause/resume remain a later track. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
+Feedback delivery is live (#22): text the user writes in the composer, optionally about one image from the stream, is queued and delivered to the session, and the UI reports it as queued (the tray), then delivered (the bubble). Sending works only from this Mac or the tailnet; elsewhere the bubble says so. Answering a session's question and quote-reply from cells and messages remain a later track; pausing a session is out of scope. Until then those controls are drawn so the layout is final, but they are disabled and must not pretend to deliver. Mute ships as a filter in the client: it hides the session in this view and sends nothing to the session.
 
 ### State acceptance
 
