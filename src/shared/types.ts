@@ -28,7 +28,7 @@ export interface Session extends SessionInfo {
   /** First SessionStart, or the first event seen if the session started before the plugin was installed */
   startedAt: number
   lastSeenAt: number
-  /** A channel server is waiting on the session's feedback, so it reaches the session at once, even when idle */
+  /** A channel server or a wake-up Stop hook is waiting on the session's feedback, so it reaches the session at once, even when idle */
   channel?: boolean
 }
 
@@ -87,9 +87,10 @@ export interface StoredImage {
 
 /**
  * When a session picked up feedback: after a tool call, when it tried to end its turn,
- * alongside the next prompt, or pushed through a channel. Harnesses map their own hook points onto these.
+ * alongside the next prompt, pushed through a channel, or by a waiting hook that woke the idle session.
+ * Harnesses map their own hook points onto these.
  */
-export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit' | 'channel'
+export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit' | 'channel' | 'rewake'
 
 /** Body of POST /api/feedback. The user writes it; gollabara only carries it. */
 export interface FeedbackRequest {

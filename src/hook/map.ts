@@ -16,11 +16,11 @@ export interface HookInput {
 }
 
 /**
- * Who opened the current turn: a person (typed, or sent through the SDK), something the
- * session itself scheduled (task notification, Monitor event, peer message, ...), or unknown
- * when the transcript gave no answer.
+ * Who opened the current turn: a person (typed, or sent through the SDK), gollabara's wake-up hook
+ * carrying the user's feedback, something the session itself scheduled (task notification, Monitor
+ * event, peer message, ...), or unknown when the transcript gave no answer.
  */
-export type TurnOpener = 'human' | 'system' | 'unknown'
+export type TurnOpener = 'human' | 'rewake' | 'system' | 'unknown'
 
 /** `turnOrigin` values seen on real transcripts. A value not listed here counts as unknown, so the recap still posts */
 const HUMAN_TURN_ORIGINS = new Set(['human', 'sdk'])
@@ -60,7 +60,8 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
  * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
  * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
  * Feedback gollabara delivered after that opener, or a gollabara channel message that opened the turn
- * (recorded as a `peer` turn), makes the turn the user's: they wait on the reply.
+ * (recorded as a `peer` turn), makes the turn the user's: they wait on the reply. So does a wake-up
+ * (a `task_notification` turn whose system reminder carries the feedback), told apart as `rewake`.
  * The first line of a tail is usually cut off and is skipped like any unparsable line.
  */
 export function turnOpener(tail: string): TurnOpener {
@@ -86,6 +87,8 @@ export function turnOpener(tail: string): TurnOpener {
       continue
     if (isChannelFeedback(entry))
       return 'human'
+    if (isRewakeFeedback(entry))
+      return 'rewake'
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
   }
   return 'unknown'
@@ -101,8 +104,15 @@ function isFeedbackDelivery(entry: any): boolean {
 
 /** A turn a channel message opened, carrying gollabara feedback (another channel's message does not count) */
 function isChannelFeedback(entry: any): boolean {
-  if (entry?.origin?.kind !== 'channel')
-    return false
+  return entry?.origin?.kind === 'channel' && carriesFeedback(entry)
+}
+
+/** A turn gollabara's wake-up Stop hook opened: its stderr, the feedback, lands in the system reminder */
+function isRewakeFeedback(entry: any): boolean {
+  return entry?.origin?.kind === 'task-notification' && carriesFeedback(entry)
+}
+
+function carriesFeedback(entry: any): boolean {
   const content = entry.message?.content
   const texts: unknown[] = typeof content === 'string' ? [content] : Array.isArray(content) ? content.map((c: any) => c?.text) : []
   return texts.some(t => typeof t === 'string' && t.includes(FEEDBACK_PREFIX))
@@ -137,8 +147,9 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       const text = recapOf(input.last_assistant_message)
       if (!text)
         return null
-      // A second Stop after another stop hook let the turn continue; both recaps matter
-      return input.stop_hook_active ? { kind: 'recap', session, text, continuation: true } : { kind: 'recap', session, text }
+      // A second Stop after another stop hook let the turn continue; both recaps matter.
+      // A wake-up's Stop also comes as `stop_hook_active`, but the turn is new: the session sat idle before it
+      return input.stop_hook_active && opener !== 'rewake' ? { kind: 'recap', session, text, continuation: true } : { kind: 'recap', session, text }
     }
     default:
       return null

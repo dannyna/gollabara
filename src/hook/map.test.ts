@@ -189,6 +189,26 @@ describe('turn opener (real transcript tails, redacted)', () => {
     expect(turnOpener(other)).toBe('system')
   })
 
+  test('a turn gollabara\'s wake-up hook opened posts its recap as a new turn, though its Stop comes as a continuation', () => {
+    const opener = turnOpener(tail('transcript-rewake.jsonl'))
+    expect(opener).toBe('rewake')
+    const recap = mapHook({ ...stop, stop_hook_active: true } as HookInput, session, opener)
+    expect(recap).toMatchObject({ kind: 'recap' })
+    expect(recap).not.toHaveProperty('continuation')
+  })
+
+  test('a wake-up turn that then got feedback at its Stop continues as usual', () => {
+    const feedback = tail('transcript-monitor-feedback.jsonl').split('\n').find(l => l.includes('hook_additional_context'))!
+    const opener = turnOpener(`${tail('transcript-rewake.jsonl')}\n${feedback}`)
+    expect(opener).toBe('human')
+    expect(mapHook({ ...stop, stop_hook_active: true } as HookInput, session, opener)).toMatchObject({ kind: 'recap', continuation: true })
+  })
+
+  test('another hook\'s wake-up stays a wake-up', () => {
+    const other = tail('transcript-rewake.jsonl').replaceAll('[gollabara] Feedback from the user while you work (sent 12:18): ', '')
+    expect(turnOpener(other)).toBe('system')
+  })
+
   test('a continuation Stop keeps its recap whoever opened the turn', () => {
     expect(mapHook(odStopHookActive as HookInput, session, 'system')).toMatchObject({ kind: 'recap', continuation: true })
   })
