@@ -47,9 +47,21 @@ async function registration(): Promise<ServiceWorkerRegistration | undefined> {
 
 const state = ref<PushState>('off')
 const busy = ref(false)
+/** The server's key, fetched when the sheet opens: Safari wants subscribe() close to the click, with no request in between */
+let serverKey: Uint8Array<ArrayBuffer> | null = null
+
+async function fetchKey(): Promise<Uint8Array<ArrayBuffer> | null> {
+  const res = await fetch('/api/push/key').catch(() => null)
+  if (!res?.ok)
+    return null
+  const { publicKey } = await res.json() as { publicKey: string }
+  return Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+}
 
 async function refresh(): Promise<void> {
   const reg = await registration()
+  if (reg)
+    serverKey = await fetchKey() ?? serverKey
   const subscribed = !!(await reg?.pushManager.getSubscription().catch(() => null))
   state.value = pushState({
     supported: !!reg,
@@ -87,11 +99,9 @@ async function enable(): Promise<void> {
     return
   if (await Notification.requestPermission() !== 'granted')
     return
-  const res = await fetch('/api/push/key').catch(() => null)
-  if (!res?.ok)
+  const key = serverKey ??= await fetchKey()
+  if (!key)
     throw new Error('서버에 연결하지 못했어요')
-  const { publicKey } = await res.json() as { publicKey: string }
-  const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
   let sub = await reg.pushManager.getSubscription()
   // Subscribed under another server key (a new data directory): that subscription can't hear this server
   if (sub && !sameKey(sub.options.applicationServerKey, key)) {

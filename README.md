@@ -43,7 +43,7 @@ On the desktop, images flow sideways while recaps and questions flow down. Pick 
 
 ### Stays on your machine
 
-Artifacts are stored only on your machine and never go to third-party storage. Remote viewing is designed to stay inside your Tailscale tailnet, never on the public internet. The one thing that can leave is a notification you turn on per device: a signal that a session needs you, encrypted end to end and carrying no session text, name or image. It passes through your browser vendor's push service, which learns only that a ping arrived.
+Artifacts are stored only on your machine and never go to third-party storage. Remote viewing is designed to stay inside your Tailscale tailnet, never on the public internet. The one thing that can leave is a notification you turn on per device: a signal that a session needs you, encrypted end to end and carrying no session text, name or image. It passes through your browser vendor's push service, which sees when a ping goes to your device, never what it says.
 
 The server listens only on this machine and, when Tailscale is up, on its tailnet address, so other devices on the same Wi-Fi can't open it. To watch from your phone, join it to the same tailnet and open `http://<your machine's tailnet name or 100.x address>:4747`. Start Tailscale before the server; an address that comes up later is picked up on the next restart. `GOLLABARA_HOST` overrides the listen addresses (comma-separated, e.g. `0.0.0.0`), at your own risk. The server answers only to its own addresses and names, so a page in your browser can't reach it under another name; add any other name you open it by (a reverse proxy, say) to `GOLLABARA_ALLOWED_HOSTS`.
 
