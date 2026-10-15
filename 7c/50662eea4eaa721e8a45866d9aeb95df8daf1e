@@ -21,6 +21,7 @@ web/src/components/chat/icons.ts
   s_b7f30c572db9a8::t_9cea3cc481b2da 27-28
 src/server/migrations.ts
   s_b7f30c572db9a8::t_97da3687d579a0 102-106
+  s_b7f30c572db9a8::t_fd65b5a57c853e 100-101
 web/src/components/shell/StreamPanel.vue
   s_b7f30c572db9a8::t_04243614bf0494 99-104,107
   s_b7f30c572db9a8::t_f3d5a919379956 7-9,13,42-43,45-49,83-98,108-114,131-135,181-203,206-208,210-220,279-282,310-316,318
@@ -74,10 +75,13 @@ src/server/index.ts
 web/src/App.vue
   s_b7f30c572db9a8::t_38efe6663a0762 254-257,259,265
   s_b7f30c572db9a8::t_848a53cc7c7dcb 2,11,24,32,192-197,258,260-264,266-306,339,346-354
+  s_b7f30c572db9a8::t_0364d4fb4275ac 344
+  s_b7f30c572db9a8::t_89c905d172c3ee 338
 src/server/routes.test.ts
   s_b7f30c572db9a8::t_b88fec98c02611 2,95-109
 web/src/sessions.test.ts
   s_b7f30c572db9a8::t_1f0734b9d73b8c 30-37
+  s_b7f30c572db9a8::t_defd2741cba9cb 3
 ---
 {
   "schema_version": "authorship/3.0.0",
