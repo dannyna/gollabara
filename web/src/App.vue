@@ -171,7 +171,7 @@ function onThumb(key: string) {
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
         :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals"
-        @thumb="onThumb" @sessions="sessionsOpen = true"
+        @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute"
       />
     </main>
     <SettingsSheet

@@ -23,6 +23,7 @@ import MyMessage from '../chat/MyMessage.vue'
 import QuestionCard from '../chat/QuestionCard.vue'
 import QueueTray from '../chat/QueueTray.vue'
 import RecapLine from '../chat/RecapLine.vue'
+import SessionMenuButton from '../chat/SessionMenuButton.vue'
 import SessionMessage from '../chat/SessionMessage.vue'
 import SessionStarts from '../chat/SessionStarts.vue'
 import SystemLine from '../chat/SystemLine.vue'
@@ -63,6 +64,10 @@ const emit = defineEmits<{
   openImage: [image: Thumb]
   /** Open the session menu */
   sessions: []
+  /** From a session's avatar menu: scope to it, or back to 「전체 세션」 (null) */
+  scope: [id: string | null]
+  /** From a session's avatar menu: mute or unmute it */
+  mute: [id: string]
 }>()
 
 // Answering questions is not built yet: question cards are drawn inert.
@@ -79,13 +84,15 @@ watch(muted, (next, prev) => {
   const at = Date.now()
   for (const id of next) {
     if (!prev.has(id))
-      muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: `${nameOf(id)} 음소거함` })
+      muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: '음소거함', sessionId: id })
   }
   for (const id of prev) {
     if (!next.has(id))
       muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
   }
 })
+// Avatar menu: 「이 세션만 보기」, or 「전체 세션 보기」 when already scoped to it
+const toggleScope = (id: string) => emit('scope', props.scope === id ? null : id)
 // Feedback follows the same view rules as messages: never a muted session, only the scope
 const inView = (sessionId: string) => !muted.value.has(sessionId) && (props.scope == null || sessionId === props.scope)
 // POST responses, merged so a bubble never waits on the WebSocket frame
@@ -320,7 +327,15 @@ defineExpose({ reveal })
       <div ref="feed" class="feed" role="log" aria-label="세션 메시지" tabindex="-1" @scroll.passive="onScroll">
         <template v-for="item in timeline" :key="item.key">
           <DateLabel v-if="item.type === 'date'" :label="item.label" />
-          <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text" />
+          <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text">
+            <!-- A muted session's messages are gone, so its menu opens from the mute line -->
+            <template v-if="item.sessionId" #lead>
+              <SessionMenuButton
+                small :name="nameOf(item.sessionId)" :muted="muted.has(item.sessionId)"
+                :scoped="scope === item.sessionId" @scope="toggleScope(item.sessionId)" @mute="emit('mute', item.sessionId)"
+              />
+            </template>
+          </SystemLine>
           <SessionStarts v-else-if="item.type === 'starts'" :rows="item.rows" :lead="item.lead" />
           <HiddenRow
             v-else-if="item.type === 'hidden'" :lines="item.lines"
@@ -341,6 +356,8 @@ defineExpose({ reveal })
           <SessionMessage
             v-else :name="item.message.sessionName" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
+            :scoped="scope === item.message.sessionId"
+            @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
           >
             <template v-for="part in viewOf.get(item.message.id)?.parts" :key="part.type === 'line' ? part.line.index : part.key">
               <RecapLine
