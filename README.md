@@ -45,6 +45,8 @@ On the desktop, images flow sideways while recaps and questions flow down. Pick 
 
 Artifacts are stored only on your machine and never go to third-party storage. Remote viewing is designed to stay inside your Tailscale tailnet, never on the public internet.
 
+The server listens only on this machine and, when Tailscale is up, on its tailnet address, so other devices on the same Wi-Fi can't open it. To watch from your phone, join it to the same tailnet and open `http://<your machine's tailnet name or 100.x address>:4747`. Start Tailscale before the server; an address that comes up later is picked up on the next restart. `GOLLABARA_HOST` overrides the listen addresses (comma-separated, e.g. `0.0.0.0`), at your own risk.
+
 ## The name
 
 gollabara spells out the Korean 골라 봐라 as it sounds, and it reads two ways. Said in one breath, it means "go on, pick one." Split apart, it becomes 골라, 봐라: "pick, and look." Both are what the app asks of you: let your sessions stream, watch the artifacts and decisions they produce, check them, and give feedback when something needs you.
