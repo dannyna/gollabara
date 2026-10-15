@@ -1,0 +1,63 @@
+web/src/components/stream/StreamRail.vue
+  s_b7f30c572db9a8::t_6aeeac51108e23 21
+  s_b7f30c572db9a8::t_503909bd129e35 133
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_106ac57cab4ec1 97-99
+  s_b7f30c572db9a8::t_c7e33ecb3cfe08 21-22
+  s_b7f30c572db9a8::t_ca9305c7d1ba22 3-5
+  s_b7f30c572db9a8::t_3e66362c306070 79-80
+  s_b7f30c572db9a8::t_2289b74c274f48 34-40
+  s_b7f30c572db9a8::t_1e686f129f8f4e 64
+  s_b7f30c572db9a8::t_9d780e051307e7 232-252
+web/src/components/stream/StreamFooter.gallery.vue
+  s_b7f30c572db9a8::t_44d38dc59b3785 22-26
+web/src/components/shell/StreamPanel.gallery.vue
+  s_b7f30c572db9a8::t_cf6e8ee5db5242 12,18,20-28
+web/src/components/stream/follow.ts
+  s_b7f30c572db9a8::t_652151beba8465 35-86
+web/src/pin.ts
+  s_b7f30c572db9a8::t_d87cd3d1363167 1-33
+web/src/components/stream/stream.test.ts
+  s_b7f30c572db9a8::t_fcc3a163bb71ef 5
+  s_b7f30c572db9a8::t_c19e3d3a17a68a 40-85
+web/src/App.vue
+  s_b7f30c572db9a8::t_c7dfd4193af1f2 109-127
+  s_b7f30c572db9a8::t_3eb6adbd38199c 3
+  s_b7f30c572db9a8::t_c1872903ec6699 17
+  s_b7f30c572db9a8::t_8f0ff6773d42a0 157-158
+DESIGN.md
+  s_b7f30c572db9a8::t_6e1542e32cae36 249,296,350,360
+web/src/components/stream/StreamFooter.vue
+  s_b7f30c572db9a8::t_2f96fe62c3f7d8 3,6,8,14
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_749d1413b35b70 210
+  s_b7f30c572db9a8::t_8e339042b91ffb 96-99,101,106-108
+  s_b7f30c572db9a8::t_844060ae7fa4ab 65-67
+  s_b7f30c572db9a8::t_5f7fabfc4527de 29,34-41
+  s_b7f30c572db9a8::t_e76106ba1336ed 4-5,13,20-21
+  s_b7f30c572db9a8::t_3a078e889ce588 78-80
+  s_b7f30c572db9a8::t_084abcdd245749 167-168,175-180
+  s_b7f30c572db9a8::t_5e1dfc1d8dbe26 204-205
+  s_b7f30c572db9a8::t_e61c038ed1f5ab 125-128,131,134-138,140-143,145-146,148,151,159-164
+  s_b7f30c572db9a8::t_e8131e640383ef 42
+  s_b7f30c572db9a8::t_ceb3ed2220c573 165-166
+web/src/components/stream/StreamCell.gallery.vue
+  s_b7f30c572db9a8::t_c277266a7d7825 47-51
+  s_b7f30c572db9a8::t_b5a3ba009dd092 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87153ea502fdfe7ea6caff6dad18a1b828886c05",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
