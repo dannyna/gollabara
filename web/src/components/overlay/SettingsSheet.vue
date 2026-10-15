@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { TriageEngine } from '../../../../src/shared/types'
 import type { Settings, SettingsErrors } from '../../settings'
 import type { ThemePreference } from '../../theme'
 import { nextTick, onMounted, ref, useId } from 'vue'
-import { validateSettings } from '../../settings'
+import { ENGINE_LABEL, validateSettings } from '../../settings'
 import OverlayIcon from './OverlayIcon.vue'
 import { useOverlay } from './useOverlay'
 
@@ -10,6 +11,8 @@ const props = withDefaults(defineProps<{
   /** Saved values; the sheet edits a copy and drops it when closed without saving */
   settings: Settings
   theme: ThemePreference
+  /** 대화 정리 · 조언: the server's triage engine */
+  engine?: TriageEngine
   /** Gallery: start from these values instead of the saved ones */
   draft?: Partial<Settings>
   /** Gallery: show field errors right away */
@@ -25,6 +28,8 @@ const emit = defineEmits<{
   'save': [settings: Settings]
   // Theme applies at once, like the dock button; it is not part of the saved draft
   'update:theme': [theme: ThemePreference]
+  // Applies at once too: it is stored on the server, not in this browser
+  'update:engine': [engine: TriageEngine]
 }>()
 
 const THEMES: { value: ThemePreference, label: string }[] = [
@@ -32,6 +37,8 @@ const THEMES: { value: ThemePreference, label: string }[] = [
   { value: 'light', label: '밝게' },
   { value: 'dark', label: '어둡게' },
 ]
+
+const ENGINES = (['off', 'claude', 'codex'] as const).map(value => ({ value, label: ENGINE_LABEL[value] }))
 
 const id = useId()
 const panel = ref<HTMLElement>()
@@ -137,6 +144,21 @@ async function save() {
             {{ t.label }}
           </button>
         </div>
+
+        <p :id="`${id}-triage`" class="label">
+          대화 정리 · 조언
+        </p>
+        <div class="theme-options" role="group" :aria-labelledby="`${id}-triage`" :aria-describedby="`${id}-triage-note`">
+          <button
+            v-for="e in ENGINES" :key="e.value" type="button" :aria-pressed="(engine ?? 'off') === e.value"
+            @click="emit('update:engine', e.value)"
+          >
+            {{ e.label }}
+          </button>
+        </div>
+        <p :id="`${id}-triage-note`" class="description">
+          이 Mac의 claude 또는 codex CLI가 새 세션 메시지를 읽고, 잡담은 숨기고 답장 초안을 제안해요. 메시지 글은 그 CLI의 모델로 전송되고, 이미지는 보내지 않아요. 초안은 직접 보내기 전엔 세션에 가지 않아요.
+        </p>
 
         <div class="brand">
           <div class="wordmark">

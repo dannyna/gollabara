@@ -99,7 +99,12 @@ function pickedMention() {
   draft.value = draft.value.replace(MENTION, m => m.startsWith('@') ? '' : m[0]!)
   input.value?.focus()
 }
-defineExpose({ focus: () => input.value?.focus(), pickedMention })
+/** Replaces the draft (an advisor's draft reply) and focuses it; never sends */
+function fill(text: string) {
+  draft.value = text
+  input.value?.focus()
+}
+defineExpose({ focus: () => input.value?.focus(), pickedMention, fill })
 </script>
 
 <template>
