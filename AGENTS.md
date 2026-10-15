@@ -47,15 +47,26 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 ## Configuration
 
-| Variable         | Default                 | Description                                                                               |
-| ---------------- | ----------------------- | ----------------------------------------------------------------------------------------- |
-| `GOLLABARA_PORT` | `4747`                  | Server port                                                                               |
-| `GOLLABARA_HOST` | unset                   | Comma-separated listen addresses (e.g. `0.0.0.0`); setting it also lifts the source check |
-| `GOLLABARA_URL`  | `http://127.0.0.1:4747` | Server the hook posts events to and the wake-up hook polls                                |
-| `GOLLABARA_DATA` | `~/.gollabara/data`     | Where messages and images are stored                                                      |
-| `GOLLABARA_HOOK` | unset                   | `off`: the hooks exit at once, posting and claiming nothing                               |
+| Variable                  | Default                 | Description                                                                               |
+| ------------------------- | ----------------------- | ----------------------------------------------------------------------------------------- |
+| `GOLLABARA_PORT`          | `4747`                  | Server port                                                                               |
+| `GOLLABARA_HOST`          | unset                   | Comma-separated listen addresses (e.g. `0.0.0.0`); setting it also lifts the source check |
+| `GOLLABARA_URL`           | `http://127.0.0.1:4747` | Server the hook posts events to and the wake-up hook polls                                |
+| `GOLLABARA_DATA`          | `~/.gollabara/data`     | Where messages and images are stored                                                      |
+| `GOLLABARA_HOOK`          | unset                   | `off`: the hooks exit at once, posting and claiming nothing                               |
+| `GOLLABARA_ALLOWED_HOSTS` | unset                   | Comma-separated extra host names the server answers to (e.g. a reverse proxy's name)      |
 
 `golla serve` listens on `127.0.0.1` plus each Tailscale address found on the network interfaces at start (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`), one listener per address sharing the handlers and the WebSocket fan-out (`src/server/listen.ts`). A tailnet address that appears later is picked up on the next restart. Requests from any other source get 403 for every path. `GOLLABARA_HOST` replaces the addresses, and because it is the user's explicit opt-in, it also lifts that check; the feedback, settings and wake-up endpoints still accept only loopback and tailnet sources.
+
+### Request checks
+
+The source address is not enough: any web page open in this machine's browser also comes from loopback. `src/server/origin.ts` adds three checks to every request, whatever `GOLLABARA_HOST` says:
+
+- **Host.** The `Host` header must be loopback (`localhost`, `127.0.0.1`, `[::1]`), a bound address (every interface address when the bind is a wildcard), a `.ts.net` name, this machine's hostname (with and without `.local`, or its first label), or a name in `GOLLABARA_ALLOWED_HOSTS`, with any port. Otherwise 403; this stops DNS rebinding.
+- **Origin.** Mutations and the `/ws` upgrade get 403 when an `Origin` header names any other host (a `.ts.net` origin must equal the request's host), or when `Sec-Fetch-Site` is `cross-site`. Requests without `Origin` (the hook, curl) pass.
+- **JSON.** Mutations under `/api/` need `Content-Type: application/json` (charset allowed), otherwise 415, so a page cannot send a preflight-free `text/plain` POST.
+
+The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs no `changeOrigin`.
 
 ## Capture (Claude Code)
 
