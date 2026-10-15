@@ -1,11 +1,12 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, IncomingEvent, ServerFrame } from '../shared/types'
+import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, IncomingEvent, ServerFrame, ServerSettings, TriageEngine } from '../shared/types'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { dataDir, serverPort } from '../shared/config'
-import { FeedbackError, Store } from './store'
+import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
+import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
 
 const WEB_DIST = resolve(import.meta.dir, '../../web/dist')
@@ -14,6 +15,12 @@ const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 
 export function startServer() {
   const store = new Store(dataDir())
+  // Set once the server is up; verdicts go out on the same topic as messages
+  let publish: (frame: ServerFrame) => void = () => {}
+  const triager = new Triager(store, triage => publish({ type: 'triage', triage }), {
+    dataDir: dataDir(),
+    selfUrl: `http://127.0.0.1:${serverPort()}`,
+  })
 
   const server = Bun.serve({
     port: serverPort(),
@@ -32,7 +39,29 @@ export function startServer() {
         srv.publish(TOPIC, JSON.stringify({ type: 'session', session } satisfies ServerFrame))
         if (message)
           srv.publish(TOPIC, JSON.stringify({ type: created ? 'message' : 'message-upsert', message } satisfies ServerFrame))
+        // Queued, never awaited: the model never holds up ingestion
+        triager.onIngest(event, { session, message, created })
         return Response.json({ ok: true, id: message?.id ?? null })
+      }
+
+      if (url.pathname === '/api/settings') {
+        if (req.method === 'GET')
+          return Response.json(store.settings())
+        if (req.method === 'PUT') {
+          // Turning triage on makes this machine run a CLI: loopback and tailnet only, like feedback
+          if (!isTrustedSource(srv.requestIP(req)?.address))
+            return new Response('forbidden', { status: 403 })
+          const body = await req.json().catch(() => null) as Partial<ServerSettings> | null
+          if (!TRIAGE_ENGINES.includes(body?.triage as TriageEngine))
+            return new Response('triage must be off, claude or codex', { status: 400 })
+          const engine = body!.triage!
+          if (engine !== 'off' && !Bun.which(engine))
+            return new Response(`${engine} is not installed`, { status: 409 })
+          const settings = store.saveSettings({ triage: engine })
+          triager.onSettings(engine)
+          srv.publish(TOPIC, JSON.stringify({ type: 'settings', settings } satisfies ServerFrame))
+          return Response.json(settings)
+        }
       }
 
       if (url.pathname.startsWith('/api/feedback') && req.method === 'POST') {
@@ -87,12 +116,21 @@ export function startServer() {
     websocket: {
       open(ws) {
         ws.subscribe(TOPIC)
-        ws.send(JSON.stringify({ type: 'hello', messages: store.recent(), sessions: store.sessions(), feedback: store.recentFeedback() } satisfies ServerFrame))
+        const messages = store.recent()
+        ws.send(JSON.stringify({
+          type: 'hello',
+          messages,
+          sessions: store.sessions(),
+          feedback: store.recentFeedback(),
+          triage: store.triageFor(messages.map(m => m.id)),
+          settings: store.settings(),
+        } satisfies ServerFrame))
       },
       message() {},
     },
   })
 
+  publish = frame => server.publish(TOPIC, JSON.stringify(frame))
   console.log(`gollabara is watching at http://localhost:${server.port}`)
   return server
 }
