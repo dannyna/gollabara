@@ -68,6 +68,10 @@ The source address is not enough: any web page open in this machine's browser al
 
 The vite dev server's proxy (`localhost:4748`) passes as loopback, so it needs no `changeOrigin`.
 
+## Storage
+
+`GOLLABARA_DATA` holds `stream.db` (SQLite, WAL) and `images/`. The schema is versioned with `PRAGMA user_version`: `src/server/migrations.ts` lists numbered migrations, and opening the store applies each one past the stored version in order, every one in its own transaction together with its version bump. Change the schema only by appending a migration; never edit a shipped one, and never add `CREATE TABLE IF NOT EXISTS` or column checks to `store.ts`. Migration 1 is the schema from before versioning: it brings any version-0 database, with or without the columns once added on open (`sessions.pid`, `triage.tone`), to that schema in place without losing rows. A database newer than the code is left as is.
+
 ## Capture (Claude Code)
 
 | hook                                | What lands in the stream                                                               | Feedback delivered to the session                                          |
@@ -116,7 +120,7 @@ With 「대화 정리」 set to Claude or Codex (`PUT /api/settings`, loopback/t
 - Each call runs with `GOLLABARA_HOOK=off`, no tools, and no user settings or MCP servers where the CLI allows it, so the call never becomes a session of its own.
 - Hide verdicts are cached by normalized text (numbers ignored), so repeated ticks skip the model.
 - The schema requires `tone` with `verdict` (codex strict mode), but only a shown line keeps it. A missing or unknown tone on a shown line reads as `default`, so it never costs the verdict. Lines that answer feedback get a tone like any other.
-- The tone is stored in the `triage` table's nullable `tone` column, added on open when missing. A NULL tone (hidden lines, verdicts from before tones) reads as `default`.
+- The tone is stored in the `triage` table's nullable `tone` column, which migration 1 adds when missing. A NULL tone (hidden lines, verdicts from before tones) reads as `default`.
 - The UI folds only recap-only lines judged `hide`, into in-place 「숨긴 메시지 n」 rows; consecutive hidden messages merge into one row, across sessions. Turns with images and questions are always shown; a hide there reads as `default`.
 - A line already on screen is never removed by a later `hide`: it dims in place (muted, 11px). The chat tracks which lines it has drawn; after a reload the line folds like any other.
 - Only a session's latest non-default line is drawn as a filled box; earlier stated lines keep only their icon. A `default` line does not clear an earlier state.

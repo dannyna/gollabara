@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { dHash } from './dhash'
 import { imageSize } from './image-size'
+import { migrate } from './migrations'
 
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
@@ -72,60 +73,7 @@ export class Store {
     mkdirSync(this.imageDir, { recursive: true })
     this.db = new Database(join(dir, 'stream.db'))
     this.db.run('PRAGMA journal_mode = WAL')
-    this.db.run(`CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      at INTEGER NOT NULL,
-      body TEXT NOT NULL
-    )`)
-    // open_turn: the turn message images join; last_turn: where a stop-hook continuation recap goes;
-    // pid: the harness process, so a wake-up waiter can tell when /clear or resume moved it to another session
-    this.db.run(`CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      harness TEXT NOT NULL,
-      project TEXT,
-      cwd TEXT NOT NULL,
-      started_at INTEGER NOT NULL,
-      last_seen_at INTEGER NOT NULL,
-      open_turn INTEGER,
-      last_turn INTEGER,
-      pid INTEGER
-    )`)
-    const sessionColumns = this.db.query('PRAGMA table_info(sessions)').all() as { name: string }[]
-    if (!sessionColumns.some(c => c.name === 'pid'))
-      this.db.run('ALTER TABLE sessions ADD COLUMN pid INTEGER')
-    // image: stored file name; image_at / image_session: when and where it was captured, looked up once at queue time
-    this.db.run(`CREATE TABLE IF NOT EXISTS feedback (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      text TEXT NOT NULL,
-      image TEXT,
-      image_at INTEGER,
-      image_session TEXT,
-      created_at INTEGER NOT NULL,
-      delivered_at INTEGER,
-      delivered_via TEXT
-    )`)
-    this.db.run('CREATE INDEX IF NOT EXISTS feedback_pending ON feedback (session_id) WHERE delivered_at IS NULL')
-    this.db.run('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-    // One verdict per recap line (idx) of a message. Databases from before #37 also have
-    // advice and draft columns, which are no longer read or written.
-    this.db.run(`CREATE TABLE IF NOT EXISTS triage (
-      message_id INTEGER NOT NULL,
-      idx INTEGER NOT NULL,
-      verdict TEXT NOT NULL,
-      tone TEXT,
-      PRIMARY KEY (message_id, idx)
-    )`)
-    // Hide verdicts by normalized text, so repeated ticks skip the model
-    this.db.run('CREATE TABLE IF NOT EXISTS triage_cache (key TEXT PRIMARY KEY, verdict TEXT NOT NULL)')
-    // Tones came after the table did; older rows keep a NULL tone, which reads as default
-    const triageColumns = this.db.query('PRAGMA table_info(triage)').all() as { name: string }[]
-    if (!triageColumns.some(c => c.name === 'tone'))
-      this.db.run('ALTER TABLE triage ADD COLUMN tone TEXT')
-    // Before #37 a verdict was signal, progress or noise: only signal stays shown
-    this.db.run(`UPDATE triage SET verdict = CASE verdict WHEN 'signal' THEN 'show' ELSE 'hide' END WHERE verdict IN ('signal', 'progress', 'noise')`)
-    this.db.run(`UPDATE triage_cache SET verdict = 'hide' WHERE verdict IN ('progress', 'noise')`)
+    migrate(this.db)
   }
 
   settings(): ServerSettings {
