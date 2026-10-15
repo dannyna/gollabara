@@ -30,7 +30,6 @@ export interface HookEnv {
   OD_PROJECT_ID?: string
 }
 
-const RECAP_MAX = 160
 /** Start of every feedback line, also how a delivery is recognised in the transcript */
 const FEEDBACK_PREFIX = '[gollabara] Feedback from the user'
 
@@ -181,9 +180,8 @@ export function recapOf(message?: string): string | null {
     .split('\n')
     .map(l => l.replace(/^[#>*\-\s]+/, '').replace(/[*`]/g, '').trim())
     .find(l => l.length > 0)
-  if (!line)
-    return null
-  return line.length > RECAP_MAX ? `${line.slice(0, RECAP_MAX - 1)}…` : line
+  // The whole first line, never cut: a recap that ends in … loses its point
+  return line || null
 }
 
 /**

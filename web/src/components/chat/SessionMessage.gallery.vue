@@ -11,7 +11,7 @@ const checkout = [{ key: '1', label: '1', ...IMG.c1 }, { key: '2', label: '2', .
 
 <template>
   <GalleryCase title="01 · 리캡">
-    <ChatFrame note="첫 줄 최대 160자. 넘치면 서버가 …로 자른다.">
+    <ChatFrame note="마지막 답의 첫 줄 전체. 자르지 않는다.">
       <SessionMessage :name="S.piuda" :at="time(14, 32)">
         사이드바 접힘 상태 저장 구현 끝. 테스트 12개 통과.
       </SessionMessage>

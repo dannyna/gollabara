@@ -21,7 +21,6 @@ function serverUrl() {
 // src/hook/map.ts
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
-var RECAP_MAX = 160;
 var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
@@ -121,9 +120,7 @@ function recapOf(message) {
     return null;
   const line = message.split(`
 `).map((l) => l.replace(/^[#>*\-\s]+/, "").replace(/[*`]/g, "").trim()).find((l) => l.length > 0);
-  if (!line)
-    return null;
-  return line.length > RECAP_MAX ? `${line.slice(0, RECAP_MAX - 1)}\u2026` : line;
+  return line || null;
 }
 function extractImages(response) {
   const out = [];

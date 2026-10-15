@@ -56,13 +56,13 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 ## Capture (Claude Code)
 
-| hook                             | What lands in the stream                                                                | Feedback delivered to the session               |
-| -------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message                         | —                                               |
-| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design), with their `source`   | `additionalContext` next to the tool result     |
-| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars), only for turns a human started | `additionalContext`, which continues the turn   |
-| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                                                  | —                                               |
-| `UserPromptSubmit`               | Nothing                                                                                 | `additionalContext` alongside the user's prompt |
+| hook                             | What lands in the stream                                                              | Feedback delivered to the session               |
+| -------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message                       | —                                               |
+| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design), with their `source` | `additionalContext` next to the tool result     |
+| `Stop`                           | First line of the turn's last reply, in full (recap), only for turns a human started  | `additionalContext`, which continues the turn   |
+| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                                                | —                                               |
+| `UserPromptSubmit`               | Nothing                                                                               | `additionalContext` alongside the user's prompt |
 
 An image's `source` is the file the tool names (`file_path`, `path`, or `filename` in the tool input), set only when the result holds exactly one image. The server stores it with a dHash in the message body. The stream hides earlier captures of the same screen behind the newest: identical bytes, or the same `source` and size within `DHASH_MAX_DISTANCE` bits of the newest capture.
 
