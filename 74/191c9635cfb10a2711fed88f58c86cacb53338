@@ -1,0 +1,53 @@
+src/server/channel.test.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 4,49,62
+web/src/feedback.test.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 103
+package.json
+  s_b7f30c572db9a8::t_d780d2cb34a001 14
+.github/workflows/ci.yml
+  s_b7f30c572db9a8::t_d780d2cb34a001 6,8-9,55
+src/server/channel.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 1-2,8,11,17-18,21,26
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_d780d2cb34a001 4
+README.md
+  s_b7f30c572db9a8::t_814611fb168211 71
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 126,128
+src/shared/types.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 8,31,90-91
+src/hook/index.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 33-34
+AGENTS.md
+  s_b7f30c572db9a8::t_814611fb168211 7,16-25,33,44,46,50-55,59-66,74,78-79,82,85
+README.ko.md
+  s_b7f30c572db9a8::t_814611fb168211 71
+src/hook/map.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 62
+web/src/feedback.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 131
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_50b45fb682cb6c 151
+src/shared/feedback.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 2
+src/server/store.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 81
+src/server/index.ts
+  s_b7f30c572db9a8::t_50b45fb682cb6c 16,45,113-115,117,122,124,127-128,138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74191c9635cfb10a2711fed88f58c86cacb53338",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
