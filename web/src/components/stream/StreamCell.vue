@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // One received artifact on the stream rail (OD stream guide 02): meta · image face ·
-// caption, with 답장 · 멈춤 · 확대 ↗ on hover or focus. Only the first cell of a run
-// names the session; later ones keep the row empty so every face stays the same height. The width comes from the
+// caption, with 답장 · 멈춤 · 확대 ↗ on hover or focus. A click on the face selects the
+// cell and pins or unpins it (the panel decides); only 확대 ↗ opens the viewer (OD
+// message-state guide 04). Only the first cell of a run names the session; later ones keep the row empty so every face stays the same height. The width comes from the
 // original ratio and the face height, so the image fills it uncropped (contain).
 //
 // The face height is the container height minus `--stream-chrome` (the fixed rows
@@ -16,6 +17,8 @@ import FloatingActions from '../overlay/FloatingActions.vue'
 const props = defineProps<{
   artifact: Artifact
   selected?: boolean
+  /** The rail holds this cell in place while new artifacts arrive */
+  pinned?: boolean
   /** Text for the size slot when the artifact has no pixel size, e.g. 「HTML」 */
   sizeLabel?: string
   /** 「열기 ↗」 for artifacts that are not images (guide 07) */
@@ -50,7 +53,7 @@ const state = computed(() => props.face ?? loaded.value)
 <template>
   <article
     class="cell"
-    :class="[{ 'run-start': a.runStart, 'selected': selected }, preview && `preview-${preview}`]"
+    :class="[{ 'run-start': a.runStart, selected, pinned }, preview && `preview-${preview}`]"
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
@@ -65,8 +68,8 @@ const state = computed(() => props.face ?? loaded.value)
       </p>
     </div>
     <button
-      class="hit" type="button" :aria-pressed="!!selected" :aria-label="`${name} 선택. 다시 누르면 크게 보기`"
-      @click="selected ? emit('open') : emit('select')"
+      class="hit" type="button" :aria-pressed="!!pinned" :aria-label="pinned ? `${name} 고정됨. 누르면 고정 해제` : `${name} 선택하고 고정`"
+      @click="emit('select')"
     >
       <slot name="face">
         <img
@@ -83,10 +86,15 @@ const state = computed(() => props.face ?? loaded.value)
           <span>이미지를 불러오지 못했어요</span>
         </span>
       </slot>
+      <span v-if="pinned" class="pin-badge" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 3.5h6l-1 6.5 3.5 3.5h-11L10 10Z" /><path d="M12 13.5V21" /></svg>
+      </span>
     </button>
     <div class="caption">
       <span>{{ caption }}<span v-if="hint" class="hint"> · {{ hint }}</span></span>
-      <span class="mono">{{ String(a.seq).padStart(2, '0') }}</span>
+      <span class="mono seq">
+        <svg v-if="pinned" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l-1 6.5 3.5 3.5h-11L10 10Z" /><path d="M12 13.5V21" /></svg>{{ String(a.seq).padStart(2, '0') }}
+      </span>
     </div>
     <FloatingActions
       reply :reply-label="`${name}에 답장`" :pause-label="`${a.session} 세션 멈춤`"
@@ -214,6 +222,42 @@ const state = computed(() => props.face ?? loaded.value)
 .preview-focus .hit {
   outline: 2px solid var(--fg);
   outline-offset: 3px;
+}
+/* The pin badge (OD message-state guide 04): an ink circle in a white ring, so its edge
+   reads on light and dark captures alike; yellow stays the selection outline's alone */
+.pin-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: oklch(1 0 0);
+  box-shadow:
+    0 0 0 2px oklch(1 0 0 / 0.92),
+    0 2px 8px oklch(0 0 0 / 0.3);
+  pointer-events: none;
+}
+.pin-badge .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.8;
+}
+.caption .seq {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.caption .seq .icon {
+  width: 11px;
+  height: 11px;
+}
+.cell.pinned .caption .seq {
+  color: var(--fg);
 }
 .hit img {
   display: block;

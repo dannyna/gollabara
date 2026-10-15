@@ -18,6 +18,7 @@ import StreamCell from './StreamCell.vue'
 defineProps<{
   artifacts: Artifact[]
   selected?: string | null
+  pinned?: string | null
   bare?: boolean
 }>()
 const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
@@ -129,7 +130,7 @@ defineExpose({ el, align, realign })
     @wheel="onWheel" @keydown="onKeydown"
   >
     <StreamCell
-      v-for="a in artifacts" :key="a.key" :artifact="a" :selected="selected === a.key"
+      v-for="a in artifacts" :key="a.key" :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key"
       @select="emit('select', a.key)" @open="emit('open', a.key)" @reply="emit('reply', a)"
     />
   </div>

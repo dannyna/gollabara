@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TriageEngine } from '../../src/shared/types'
-import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { cellKeys, toArtifacts } from './artifacts'
 import { useCaptures } from './captures'
 import { resolveNotices } from './components/banner/notices'
@@ -14,6 +14,8 @@ import AppBar from './components/shell/AppBar.vue'
 import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
+import { activePin } from './components/stream/follow'
+import { usePin } from './pin'
 import { inScope, toSessionRows, useMutedSessions } from './sessions'
 import { putServerSettings, useSettings } from './settings'
 import { useTheme } from './theme'
@@ -105,6 +107,30 @@ function select(key: string) {
   if (selectedMessage.value != null)
     chat.value?.reveal(selectedMessage.value)
 }
+// A pinned cell holds the rail; the pin survives a reload while its cell is still there
+const { pinned, setPin } = usePin()
+watch(artifacts, (list) => {
+  // Before the server's hello the list is empty, not missing the pinned cell
+  if (!messages.value.length || !pinned.value)
+    return
+  // A cell that left the rail (a new scope, a muted session, gone) lets go of its pin
+  if (!activePin(pinned.value, new Set(list.map(a => a.key))))
+    setPin(null)
+  // A restored pin comes back selected, as it was left
+  else selected.value ??= pinned.value
+}, { immediate: true })
+// Esc lets go of the pin, unless it already closed something (overlays prevent default,
+// and run first on document) or is meant for a text field
+function unpinOnEscape(e: KeyboardEvent) {
+  if (e.key !== 'Escape' || e.defaultPrevented || viewerKey.value || !pinned.value)
+    return
+  if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches('input, textarea, select')))
+    return
+  setPin(null)
+}
+onMounted(() => window.addEventListener('keydown', unpinOnEscape))
+onBeforeUnmount(() => window.removeEventListener('keydown', unpinOnEscape))
+
 function onThumb(key: string) {
   // Mobile has no stream surface: a thumbnail opens the viewer directly
   if (matchMedia('(max-width: 767px)').matches) {
@@ -134,8 +160,8 @@ function onThumb(key: string) {
     <EmptyState v-if="showEmpty" :connected="connected" />
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
-        ref="stream" :artifacts="artifacts" :selected="selected" :scope="scope" :all-muted="allMuted"
-        @select="select" @open="openCell" @sessions="sessionsOpen = true"
+        ref="stream" :artifacts="artifacts" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
+        @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
