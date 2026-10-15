@@ -1,0 +1,64 @@
+README.md
+  s_b7f30c572db9a8::t_ab3849b5ac7e87 59,63,83
+src/hook/entry.ts
+  s_b7f30c572db9a8::t_8cd081556b6329 6-16,19,21
+src/setup/codex.test.ts
+  s_b7f30c572db9a8::t_133a87bbfbac62 3,5,8-10,36-41,43-54,61-62,64,87-88,93-94,101-102
+AGENTS.md
+  s_b7f30c572db9a8::t_7ee39d8c04880d 7-8,12,149-152,161-169,171-172,174-175
+  s_b7f30c572db9a8::t_ca9ccd0a1dc76d 153-160
+  s_b7f30c572db9a8::t_ab8e347cd8d680 176
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_ddb033f22fe73d 6,80,99,107-108,112,160-179,236,249,259-261,264,268-269,307-312,319-339,362,370,372-373,376,400,415-416,422,424,446,462,560-564
+src/hook/map.ts
+  s_b7f30c572db9a8::t_be2991a7b13b78 316,319
+  s_b7f30c572db9a8::t_0a58887744fd5b 136-161
+  s_b7f30c572db9a8::t_33f754102e6803 246
+  s_b7f30c572db9a8::t_c253d6ab3cb185 264-265,278-285,290,294-297,360
+  s_b7f30c572db9a8::t_645710c5a211b6 365-366
+  s_b7f30c572db9a8::t_722660417ac486 1,4,18,22-29
+  s_b7f30c572db9a8::t_a6378507163dd8 65,67-68,72
+  s_b7f30c572db9a8::t_89490f7aa44d9d 253-254
+  s_b7f30c572db9a8::t_fb894df338acdf 361-364,367-387
+  s_b7f30c572db9a8::t_dd5ca3fe045740 348-353
+  s_b7f30c572db9a8::t_7ed1197cceb741 30
+src/hook/index.ts
+  s_b7f30c572db9a8::t_679631d32a1e18 14
+  s_b7f30c572db9a8::t_7fc05cffb9fb64 78
+  s_b7f30c572db9a8::t_78a4e9efbf67d3 104-105
+  s_b7f30c572db9a8::t_28d7666e43f6bb 116,118
+  s_b7f30c572db9a8::t_509b5c11cada98 1
+  s_b7f30c572db9a8::t_018489ddef2c32 25-30,40,42-47,50
+  s_b7f30c572db9a8::t_6e4b9b9465558c 6
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_408bfbb29ba3e7 352
+src/cli.ts
+  s_b7f30c572db9a8::t_ea694e4f48f82d 48,51-52,68-70
+src/hook/codex.test.ts
+  s_b7f30c572db9a8::t_02682ac451330d 1-2,4-63,65-92,95-96,98-154
+  s_b7f30c572db9a8::t_debe63fcd53668 3
+  s_b7f30c572db9a8::t_1093b3c95be4be 64,93-94,97
+README.ko.md
+  s_b7f30c572db9a8::t_ab3849b5ac7e87 59,63,83
+src/hook/never-block.test.ts
+  s_b7f30c572db9a8::t_1093b3c95be4be 156
+  s_b7f30c572db9a8::t_cfa14d783d8116 1-155,157-159
+src/setup/codex.ts
+  s_b7f30c572db9a8::t_1114901bc66e04 2-8,14-16,18-19,21-42,49,62-63,69-71,75,115-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e809f9c57a7fdbc05d9c4e7087f0976e86bc8b6",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
