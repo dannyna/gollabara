@@ -25,7 +25,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.3.0",
+  version: "0.3.1",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -520,8 +520,11 @@ async function waitForFeedback(poll, options) {
   }
   return null;
 }
+function headless(entrypoint) {
+  return entrypoint?.startsWith("sdk-") ?? false;
+}
 async function runWait() {
-  if (process3.env.GOLLABARA_HOOK === "off")
+  if (process3.env.GOLLABARA_HOOK === "off" || headless(process3.env.CLAUDE_CODE_ENTRYPOINT))
     return 0;
   try {
     const input = JSON.parse(await Bun.stdin.text());
