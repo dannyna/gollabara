@@ -16,6 +16,12 @@ colors:
   accent-hover: "oklch(0.81 0.14 95)"
   on-accent: "oklch(0.267 0.009 250)"
   shade: "oklch(0 0 0 / 0.2)"
+  dark-ok: "oklch(0.80 0.12 160)"
+  dark-warn: "oklch(0.82 0.12 70)"
+  dark-risk: "oklch(0.74 0.14 25)"
+  light-ok: "oklch(0.50 0.11 160)"
+  light-warn: "oklch(0.55 0.12 60)"
+  light-risk: "oklch(0.53 0.17 25)"
 typography:
   wordmark:
     fontFamily: "Space Grotesk, Noto Sans KR, sans-serif"
@@ -169,7 +175,7 @@ components:
 
 gollabara is a UX engineer's viewfinder for watching, from one step back, the artifacts that Open Design, Claude Code, Codex, and Claude Design sessions produce. It stays open on a side monitor or phone all day. Night Dock is a near-monochrome dark developer surface: two separate rounded work surfaces sit on a darker ground, a small tool dock floats on the right of the app bar, and the screenshots and mockups take center stage.
 
-**Source.** The design source is the Open Design project `gollabara-app` ("Night Dock"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins. `session-chat-components.html` in the same project is the companion reference for chat rows.
+**Source.** The design source is the Open Design project `gollabara-app` ("Night Dock"). Its `app-night-dock.html` is authoritative for screens and interactions; its `DESIGN.md` records the confirmed decisions. This file carries those decisions into the repo. When the two disagree, the HTML wins. `session-chat-components.html` in the same project is the companion reference for chat rows, and `message-state-components.html` for recap line states, hidden-line rows, and session start rows.
 
 The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
 
@@ -200,6 +206,9 @@ The app starts with `data-theme="dark"` on `<html>`. The user can pick 「시스
 | `--accent`    | `oklch(0.871579 0.150779 94.9011)`  | same                                | Logo symbol background, selection outline, primary actions                         |
 | `--on-accent` | `oklch(.267 0.009 250)`             | same                                | Content on accent: the symbol mark, primary button text                            |
 | `--shade`     | `oklch(0 0 0 / .2)`                 | same                                | Shadow color for floating layers                                                   |
+| `--ok`        | `oklch(.80 .12 160)`                | `oklch(.50 .11 160)`                | Recap line state 성공 (`success`): icon, box border and fill only                  |
+| `--warn`      | `oklch(.82 .12 70)`                 | `oklch(.55 .12 60)`                 | Recap line state 주의 (`warning`), amber pushed towards orange                     |
+| `--risk`      | `oklch(.74 .14 25)`                 | `oklch(.53 .17 25)`                 | Recap line state 위험 (`danger`)                                                   |
 
 Primary buttons darken to `oklch(.81 .14 95)` on hover.
 
@@ -208,6 +217,8 @@ Primary buttons darken to `oklch(.81 .14 95)` on hover.
 **The Three Yellows Rule.** Yellow (`--accent`) marks exactly three things: the logo symbol background, the selection outline on the selected artifact, and primary actions. Not status, not badges, not the connection state, not chosen answers or focus rings (those use `--fg`).
 
 **The No Yellow Text Rule.** Yellow is only ever a fill or an outline. Never set text in yellow, and never put yellow text on a light surface. Content on yellow uses `--on-accent`.
+
+**The State Color Rule.** The surface stays near-monochrome: no warning colors, not even for failures. The one exception is the state of a session's recap lines. Success (`--ok`, h160), warning (`--warn`, h60–70, an amber pushed towards orange so it never reads as the accent yellow), and danger (`--risk`, h25) color only the icon, the 1px box border (35%), and a faint fill (8%). Body text stays `--fg` in every state. There is no info state: a shown line is already worth reading, and that is the default. Delivery failures, the composer, and question cards stay achromatic.
 
 ## Typography
 
@@ -247,7 +258,7 @@ Night Dock is an app bar over two separate rounded work surfaces with an 18px gu
 - **App bar:** Logo symbol and wordmark on the left; the control dock on the right. The dock is a `--surface` capsule (54px, 4px inset, 17px radius) holding the session menu button, the theme button, and the settings button. On mobile the dock spans the full width and the session button stretches.
 - **Artifact track:** Inside 「산출물 스트림」, artifacts flow sideways, newest on the right. Each cell is as tall as the surface allows and as wide as the image ratio gives (`width: calc((100cqh - 209px) * var(--ratio))`). Consecutive cells from one session within 5 minutes form a run: 10px between them, and only the first names the session (later cells keep the row empty so faces line up). Between runs (another session, a new day, or a longer pause) the gap is 22px plus a dashed `--border` divider and an extra 17px. Above each image: session and branch on the run's first cell, then mono time, file name (middle-truncated, full path on hover) when known, and size. Below: label, a muted 「같은 화면 n장」 when earlier captures of the same screen are hidden behind this one, and the mono sequence number. The wheel, a trackpad swipe, and ←/→ move the rail one cell at a time, landing its left edge on the rail's content start. A footer line reads 「이미지는 원래 비율 그대로」 and the follow state.
 - **Follow latest:** The track follows the right end. Scrolling back pauses following (「이전 산출물 · 자동 따라가기 일시 정지」); new arrivals then raise the 「새 산출물 n →」 pill instead of moving the reader. **Pinned:** clicking a cell's image pins it, one cell at a time. Following stops and the rail holds that cell in place while arrivals only raise the pill; the wheel, arrows and drag still move the rail. The footer reads 「고정한 산출물 · Esc로 풀기」 (「고정한 산출물 · 다시 눌러 풀기」 on touch screens), with how to let go in `--fg`; the arrival count shows only on the pill. Clicking the pinned cell again (the selection stays), Esc when no menu, viewer or dialog is open, or the pill lets go; the pill also jumps to the latest and follows again. A pinned cell that leaves the rail (a new scope, a muted session) lets go of the pin. The pin is kept in this browser and comes back after a reload while its cell is still in the stream. A new capture of the pinned screen moves its cell to the end but keeps the pin; the view stays where the reader was.
-- **Chat feed:** 「세션 대화」 flows down: a centered date label, session messages (23px avatar, name · branch, mono time, body indented 31px), thumbnails, question cards, my bubbles aligned right, and centered system lines. The composer sits at the bottom of the chat surface.
+- **Chat feed:** 「세션 대화」 flows down: a centered date label, session start rows left-aligned in the message column, session messages (23px avatar, name · branch, mono time, body indented 31px), thumbnails, question cards, 「숨긴 메시지 n」 rows where triage hid lines, my bubbles aligned right, and centered system lines (mute and connection changes). Only the date label and those system lines are centered. The composer sits at the bottom of the chat surface.
 
 **The Image Sets the Width Rule.** Artifact cells and chat thumbnails keep the original aspect ratio and are never cropped (`object-fit: contain`, or fixed height with `width: auto`). Only the tiny quote previews in a reply context or a sent bubble may use `cover`.
 
@@ -297,11 +308,17 @@ An image on `--surface` in a 12px cell with a 2px transparent border and the ima
 
 ### Chat message and thumbnails
 
-A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」 and 「멈춤」. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
+A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the name and muted branch, a mono time, then the body. The name is one line: the dir is never cut, only a long branch ends in 「…」, and the full name is in the tooltip. Session start rows use the same rule; the stream cell name follows it in a later change. Thumbnails are 77px tall (120px on mobile), ratio kept, 9px corners; the one matching the selected artifact gets a 2px `--fg` inset outline. Variant labels (A/B/C) sit in a small mono tag. Hovering a message shows 「답장」 and 「멈춤」. The message linked to the selected artifact is highlighted with a `--bg` fill and a `--border` outline.
 
 ### Triage
 
-Only when 「대화 정리」 is on (off by default). Triage decides only whether a line is shown. Hidden lines drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a line the model hides never flashes in; a verdict later than that removes it quietly. No yellow anywhere in triage.
+Only when 「대화 정리」 is on (off by default; off, every line is 기본). Triage decides whether a recap line is shown and, if so, its state.
+
+- **States:** 기본, 성공, 주의, 위험 (`default`, `success`, `warning`, `danger`). All four share one box: 5px 10px padding, a 1px border, 10px corners, reaching back over the 31px indent so the state icon (15px) sits in the avatar column and the text starts where it does in 기본. 기본 has a transparent border, no fill and no icon, so a late verdict only changes color and the text never moves. 성공 is a check in a circle, 주의 a warning triangle, 위험 an × in a circle; screen readers hear 「성공: 」 and the like before the text. Colors follow the State Color Rule. Lines of one turn sit 4px apart.
+- **Latest state only:** within a session only the most recent stated line is a filled box. Earlier stated lines drop the fill and border and keep their icon. A 기본 line does not clear an earlier state. The app never says 「해결됨」: it can't tell whether a success resolved an earlier failure.
+- **Images and questions:** in a turn with images the box wraps only the recap line; thumbnails stay outside it. Question cards never carry a state.
+- **Hidden lines:** there is no heading toggle. Where lines were hidden, a 28px muted row 「숨긴 메시지 n」 takes their place: an eye-off icon in the avatar column, a mono count, a chevron, and the mono time span at the right end. Consecutive hidden lines merge into one row, even across sessions; anything drawn between them splits it. Inside a multi-line turn the row sits in the message at the gap. Expanded (「숨긴 메시지 n 접기」), the lines sit inside a `--border` hairline in the avatar column as `--muted` 11px text (not opacity), each under a mono 9px 「session · time」, with no avatar, box or thumbnails.
+- **Timing:** a new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a line the model hides never flashes in. A line already shown is never removed by a later hide verdict: it dims in place to `--muted` 11px, and after a reload it folds into a row. Turns with images and question cards are never hidden.
 
 ### Question card
 
@@ -310,6 +327,8 @@ A `--bg` card (16px radius, 16px padding) headed by a muted eyebrow 「세션에
 ### My bubble and system line
 
 My messages sit on the right in a `--bg` bubble with a muted quote line (「↪ session · quoted」, optional tiny image) and a 9px muted delivery note 「전달됨 ✓」 on each session's latest delivered bubble (the tooltip says how the session picked it up). A send in flight shows 「보내는 중」; a failed one shows the reason and 「다시 보내기」. Feedback the server queued but the session has not picked up yet waits in the queue tray above the composer (「대기 n건」), and becomes a bubble at the moment the session receives it. System lines are centered 10px muted text such as 「client-e2e · checkout 멈춤」 or 「api · quota-refill 음소거함」.
+
+Session starts are not system lines. A start row is left-aligned in the message column: a 23px dashed `--border` square with the start icon in the avatar column, the name (dir `--fg` 500, muted branch), 「시작」, and a mono time at the right end. Starts with nothing between them, within 5 minutes, group 2px apart; with 4 or more, three show and the rest fold into an underlined 「외 n개」. The gap below is 8px when the next item is a message from one of those sessions, 20px otherwise.
 
 ### Composer
 
@@ -354,7 +373,7 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 | Answer a question  | Pick a choice or 「직접 답하기」. A question already answered in the terminal shows 「터미널에서 답함」 and blocks a second answer.                                                                                                                    | **Drawn, disabled**      |
 | `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                                                                                                          | Live                     |
 | Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                                                                                                            | Live, client-side filter |
-| Triage             | With 「대화 정리」 on, lines the model hides leave the chat; 「숨긴 메시지 n」 shows them dimmed.                                                                                                                                                      | Live, opt-in             |
+| Triage             | With 「대화 정리」 on, lines the model hides fold into 「숨긴 메시지 n」 rows in place, and shown lines carry a state (기본 · 성공 · 주의 · 위험).                                                                                                     | Live, opt-in             |
 | Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                                                                                                                         | Live                     |
 | Browse history     | Scrolling back, or pinning a cell, keeps the position when new artifacts arrive; 「새 산출물 n →」 returns to the latest and lets go of the pin.                                                                                                       | Live                     |
 | Viewer             | Zoom, pan, prev/next, arrow keys.                                                                                                                                                                                                                      | Live                     |
@@ -401,6 +420,7 @@ On every state: no horizontal page scroll on mobile, visible focus, and text and
 ### Don't:
 
 - **Don't** set text in yellow, and never yellow text on a light surface.
+- **Don't** color body text with a state, use state colors outside recap lines, or label a line 「해결됨」.
 - **Don't** show image or session counts or an always-on 「구경 중」 badge in the app bar.
 - **Don't** split the session control into a segmented filter plus a separate manage button.
 - **Don't** let a muted session be selected, or leave the scope on a session you just muted.

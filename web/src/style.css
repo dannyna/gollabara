@@ -14,6 +14,13 @@
   --on-accent: oklch(0.267 0.009 250);
   --ink: oklch(0.267 0.009 250);
   --shade: oklch(0 0 0 / 0.2);
+  /*
+   * Recap line states (OD message-state-components.html): only icons, the 1px box border and
+   * its faint fill use them, never text. Warning leans orange, away from the accent yellow.
+   */
+  --ok: oklch(0.5 0.11 160);
+  --warn: oklch(0.55 0.12 60);
+  --risk: oklch(0.53 0.17 25);
   /* Overlays (OD modal-components.html §08). The scrim is one value for both themes. */
   --scrim: oklch(0 0 0 / 0.38);
   --z-message-actions: 1;
@@ -35,6 +42,9 @@
     --fg: oklch(0.966197 0.003428 247.8584);
     --muted: oklch(0.769881 0.016843 253.9307);
     --border: oklch(0.395448 0.015664 255.6039);
+    --ok: oklch(0.8 0.12 160);
+    --warn: oklch(0.82 0.12 70);
+    --risk: oklch(0.74 0.14 25);
     color-scheme: dark;
   }
 }
@@ -44,6 +54,9 @@
   --fg: oklch(0.966197 0.003428 247.8584);
   --muted: oklch(0.769881 0.016843 253.9307);
   --border: oklch(0.395448 0.015664 255.6039);
+  --ok: oklch(0.8 0.12 160);
+  --warn: oklch(0.82 0.12 70);
+  --risk: oklch(0.74 0.14 25);
   color-scheme: dark;
 }
 

@@ -1,6 +1,6 @@
 // Sample data for gallery cases only; the app bundle never imports this
 
-import type { Question } from '../../../src/shared/types'
+import type { Question, Session, StreamMessage, Tone, Triage } from '../../../src/shared/types'
 
 /** A fake screen with only the original aspect ratio, as in the OD guide */
 export function shot(w: number, h: number, tone = '#2b3038'): string {
@@ -22,7 +22,23 @@ export const S = {
   od: 'od · landing-hero',
   piuda: 'piuda · desktop-shell',
   e2e: 'client-e2e · checkout',
+  api: 'api · quota-refill',
+  starwrite: 'starwrite · fix/1011-zoomed-out-star-brightness',
+  docs: 'docs · feat/971-search-index-rebuild',
+  infra: 'infra',
 }
+
+/** A turn of the session named `name` (the name doubles as its id) */
+export function turn(id: number, name: string, at: number, recaps: string | string[], extra: Partial<StreamMessage> = {}): StreamMessage {
+  const list = typeof recaps === 'string' ? [recaps] : recaps
+  return { id, at, sessionId: name, sessionName: name, kind: 'turn', recaps: list, text: list.join('\n'), ...extra }
+}
+
+/** Verdicts as the server sends them */
+export const show = (messageId: number, tone?: Tone, index = 0): Triage => ({ messageId, index, verdict: 'show', ...(tone ? { tone } : {}) })
+export const hide = (messageId: number, index = 0): Triage => ({ messageId, index, verdict: 'hide' })
+
+export const started = (name: string, at: number): Session => ({ id: name, name, harness: 'claude-code', cwd: '/', startedAt: at, lastSeenAt: at })
 
 export const HERO_SHORT: Question = {
   header: '히어로 방향',

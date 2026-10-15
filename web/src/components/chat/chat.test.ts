@@ -1,6 +1,7 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
+import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, dayLabel, outputLabel, toChoice, toTimeline } from './chat'
+import { answerLabel, choiceLayout, dayLabel, outputLabel, START_GROUP_MS, toChoice, toFeed, toTimeline } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
@@ -62,7 +63,56 @@ describe('toTimeline', () => {
     expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'f-1', 'm-2'])
   })
 
+  it('gives a start its own row type with the session and its full name', () => {
+    const items = toTimeline([msg(0, 'x', at(14, 7)), msg(1, 'a', at(14, 9))], [session('a', at(14, 8))], [], at(14, 20))
+    expect(items[2]).toEqual({ type: 'start', key: 'start-a', sessionId: 'a', name: 'a · main', at: at(14, 8) })
+  })
+
   it('labels older days with the date', () => {
     expect(dayLabel(at(10, 9), at(14, 9))).toContain('10월 10일')
+  })
+})
+
+describe('toFeed', () => {
+  const min = (m: number) => at(14, 9) + m * 60_000
+  const hiddenLine = (m: StreamMessage) => ({ key: `${m.id}:0`, sessionName: m.sessionName, at: m.at, text: `line ${m.id}` })
+  const keys = (items: FeedItem[]) => items.map(i => i.type === 'hidden' ? `${i.key}[${i.lines.map(l => l.key).join(',')}]` : i.key)
+
+  it('merges consecutive hidden messages into one row, across sessions', () => {
+    const messages = [msg(1, 'a', min(0)), msg(2, 'a', min(1)), msg(3, 'b', min(2)), msg(4, 'a', min(3)), msg(5, 'b', min(4))]
+    const hide = new Set([2, 3, 5])
+    const feed = toFeed(toTimeline(messages, [], [], min(10)), m => hide.has(m.id) ? [hiddenLine(m)] : null)
+    expect(keys(feed).slice(1)).toEqual(['m-1', 'h-2:0[2:0,3:0]', 'm-4', 'h-5:0[5:0]'])
+  })
+
+  it('anything drawn between hidden messages splits the row', () => {
+    const messages = [msg(1, 'a', min(0)), msg(2, 'b', min(2))]
+    const mine = { key: 'f-1', at: min(1), sessionId: 'a', text: 'hi', state: 'delivered' as const }
+    const feed = toFeed(toTimeline(messages, [], [], min(10), [mine]), m => [hiddenLine(m)])
+    expect(keys(feed).slice(1)).toEqual(['h-1:0[1:0]', 'f-1', 'h-2:0[2:0]'])
+  })
+
+  // Starts older than the oldest loaded message get no row, so each case opens with one
+  const earlier = msg(0, 'x', min(-1))
+
+  it('groups starts that come together; the next message of one of them leads closer', () => {
+    const sessions = [session('a', min(0)), session('b', min(0)), session('c', min(1))]
+    const feed = toFeed(toTimeline([earlier, msg(1, 'c', min(2)), msg(2, 'a', min(3)), msg(3, 'b', min(4))], sessions, [], min(10)), () => null)
+    expect(feed[2]).toMatchObject({ type: 'starts', lead: true })
+    expect(feed[2]?.type === 'starts' && feed[2].rows.map(r => r.sessionId)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('keeps starts apart when far apart in time, and leads only into their own message', () => {
+    const sessions = [session('a', min(0)), session('b', min(START_GROUP_MS / 60_000 + 1))]
+    const feed = toFeed(toTimeline([earlier, msg(1, 'a', min(30)), msg(2, 'b', min(31))], sessions, [], min(40)), () => null)
+    expect(feed.slice(2).map(i => i.type === 'starts' ? [i.rows.map(r => r.sessionId), i.lead] : i.key)).toEqual([[['a'], false], [['b'], false], 'm-1', 'm-2'])
+    const lone = toFeed(toTimeline([earlier, msg(1, 'b', min(1)), msg(2, 'a', min(2))], [session('a', min(0))], [], min(10)), () => null)
+    expect(lone[2]).toMatchObject({ type: 'starts', lead: false })
+  })
+
+  it('a start right before a hidden row does not lead', () => {
+    const feed = toFeed(toTimeline([earlier, msg(1, 'a', min(1))], [session('a', min(0))], [], min(10)), m => m.id ? [hiddenLine(m)] : null)
+    expect(feed.slice(2).map(i => i.type)).toEqual(['starts', 'hidden'])
+    expect(feed[2]).toMatchObject({ lead: false })
   })
 })

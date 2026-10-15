@@ -9,16 +9,17 @@ import MyMessage from './MyMessage.vue'
 import QuestionCard from './QuestionCard.vue'
 import QueueTray from './QueueTray.vue'
 import SessionMessage from './SessionMessage.vue'
-import SystemLine from './SystemLine.vue'
+import SessionStarts from './SessionStarts.vue'
 
 const hero = [{ key: 'a', label: 'A', ...IMG.hero }, { key: 'b', label: 'B', ...IMG.heroB }]
+const odStart = [{ key: 'od', sessionId: S.od, name: S.od, at: time(14, 33) }]
 </script>
 
 <template>
   <GalleryCase title="01 · 한 장면에 여섯 줄">
-    <ChatFrame note="세션 메시지 · 산출물 묶음 · 질문 카드 · 내 메시지 · 시스템 줄이 한 흐름에 섞인다. 간격은 메시지 사이 20, 날짜 줄 아래 21.">
+    <ChatFrame note="세션 메시지 · 산출물 묶음 · 질문 카드 · 내 메시지 · 시작 줄이 한 흐름에 섞인다. 간격은 메시지 사이 20, 날짜 줄 아래 21.">
       <DateLabel label="오늘" />
-      <SystemLine icon="start" :text="`${S.od} 시작`" />
+      <SessionStarts :rows="odStart" lead />
       <SessionMessage :name="S.od" :at="time(14, 34)">
         히어로 시안 두 장 찍었어.
         <ArtifactThumbs :thumbs="hero" tool-name="mcp__open-design__screenshot" />
@@ -39,7 +40,7 @@ const hero = [{ key: 'a', label: 'A', ...IMG.hero }, { key: 'b', label: 'B', ...
   <GalleryCase title="app · 지금 앱이 그리는 장면 (답하기 · 보내기 꺼짐)">
     <ChatFrame note="실제 앱은 받은 것만 그린다: 날짜 줄 · 시작 줄 · 턴 · 질문 카드. 내 메시지와 트레이는 없다.">
       <DateLabel label="오늘" />
-      <SystemLine icon="start" :text="`${S.od} 시작`" />
+      <SessionStarts :rows="odStart" lead />
       <SessionMessage :name="S.od" :at="time(14, 34)">
         <p>히어로 시안 두 장 찍었어.</p>
         <ArtifactThumbs :thumbs="hero" />
