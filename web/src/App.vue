@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'v
 import { cellKeys, toArtifacts } from './artifacts'
 import { useCaptures } from './captures'
 import { resolveNotices } from './components/banner/notices'
+import StateView from './components/banner/StateView.vue'
 import AppToast from './components/overlay/AppToast.vue'
 import ImageViewer from './components/overlay/ImageViewer.vue'
 import SessionPopover from './components/overlay/SessionPopover.vue'
@@ -21,7 +22,7 @@ import { putServerSettings, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, restored } = useStream()
+const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute } = useMutedSessions()
 const { toast } = useToast()
@@ -69,21 +70,16 @@ async function setEngine(engine: TriageEngine) {
   }
 }
 
-// 「다시 연결 중」 only after a connection dropped, or when the first one is slow,
-// so a normal page load does not flash it
-const everConnected = ref(false)
-const graceOver = ref(false)
-watch(connected, (c) => {
-  if (c)
-    everConnected.value = true
-})
-onMounted(() => setTimeout(() => graceOver.value = true, 2000))
-const offline = computed(() => !connected.value && (everConnected.value || graceOver.value))
+// 「다시 연결 중」 only once the connection has been down for 2 s (useStream), so a normal
+// page load or a quick server restart does not flash it
 
 // First-connection guide once the server's hello says there is nothing yet
 const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
-const showEmpty = computed(() => !messages.value.length && (ready.value || graceOver.value))
+const showEmpty = computed(() => !messages.value.length && ready.value)
+// No hello yet and the server does not answer (the installed app opened offline): the shell
+// says so instead of a blank stream
+const unreachable = computed(() => !ready.value && offline.value)
 
 // Every session muted: the stream says so and points back to the session menu
 const allMuted = computed(() => sessionRows.value.length > 0 && sessionRows.value.every(s => s.muted))
@@ -162,6 +158,7 @@ function onThumb(key: string) {
       </template>
     </AppBar>
     <EmptyState v-if="showEmpty" :connected="connected" />
+    <StateView v-else-if="unreachable" icon="plug" title="서버에 연결할 수 없어요" description="다시 연결하는 중이에요. 서버가 돌아오면 바로 이어서 보여요." />
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
