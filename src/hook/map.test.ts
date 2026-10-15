@@ -1,5 +1,7 @@
 import type { Feedback, SessionInfo } from '../shared/types'
 import type { HookInput } from './map'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import odEnv from './fixtures/od-env.json'
 import odPostReadImage from './fixtures/od-post-read-image.json'
@@ -10,7 +12,7 @@ import odStop from './fixtures/od-stop.json'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, feedbackOutput, feedbackVia, mapHook, recapOf, sessionInfo, sessionName } from './map'
+import { extractImages, feedbackOutput, feedbackVia, mapHook, recapOf, sessionInfo, sessionName, turnOpener } from './map'
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 
@@ -102,6 +104,62 @@ describe('mapHook (real payloads captured in the spike)', () => {
   test('Stop uses the first line of the last reply as the recap', () => {
     const event = mapHook(stop as HookInput, session)
     expect(event).toEqual({ kind: 'recap', session, text: '`echo hi` 결과는 `hi`였습니다.'.replace(/`/g, '') })
+  })
+})
+
+describe('turn opener (real transcript tails, redacted)', () => {
+  const tail = (name: string) => readFileSync(join(import.meta.dir, 'fixtures', name), 'utf8')
+
+  test('a turn the user typed posts its recap, even right after a Monitor-opened turn', () => {
+    const opener = turnOpener(tail('transcript-human.jsonl'))
+    expect(opener).toBe('human')
+    expect(mapHook(stop as HookInput, session, opener)).toMatchObject({ kind: 'recap' })
+  })
+
+  test('a turn sent through the SDK (the e2e runs) counts as the user\'s', () => {
+    expect(turnOpener(tail('transcript-sdk.jsonl'))).toBe('human')
+  })
+
+  test('a background-task notification wake-up posts no recap', () => {
+    const opener = turnOpener(tail('transcript-task-notification.jsonl'))
+    expect(opener).toBe('system')
+    expect(mapHook(stop as HookInput, session, opener)).toBeNull()
+  })
+
+  test('a Monitor event wake-up posts no recap', () => {
+    const opener = turnOpener(tail('transcript-monitor.jsonl'))
+    expect(opener).toBe('system')
+    expect(mapHook(stop as HookInput, session, opener)).toBeNull()
+  })
+
+  test('a Monitor-opened turn that received gollabara feedback posts its recap', () => {
+    const opener = turnOpener(tail('transcript-monitor-feedback.jsonl'))
+    expect(opener).toBe('human')
+    expect(mapHook(stop as HookInput, session, opener)).toMatchObject({ kind: 'recap' })
+  })
+
+  test('feedback delivered before the turn opened does not count', () => {
+    const lines = tail('transcript-monitor-feedback.jsonl').split('\n')
+    const feedback = lines.find(l => l.includes('hook_additional_context'))!
+    const rest = lines.filter(l => l !== feedback)
+    const opener = rest.findLastIndex(l => l.includes('"turnOrigin"'))
+    expect(turnOpener([...rest.slice(0, opener), feedback, ...rest.slice(opener)].join('\n'))).toBe('system')
+  })
+
+  test('a continuation Stop keeps its recap whoever opened the turn', () => {
+    expect(mapHook(odStopHookActive as HookInput, session, 'system')).toMatchObject({ kind: 'recap', continuation: true })
+  })
+
+  test('a tail without the opening entry or one that does not parse falls back to posting', () => {
+    const lines = tail('transcript-monitor.jsonl').split('\n')
+    const afterOpener = lines.slice(lines.findLastIndex(l => l.includes('"turnOrigin"')) + 1).join('\n')
+    expect(turnOpener(afterOpener)).toBe('unknown')
+    expect(turnOpener('not json\n{"type":"user"')).toBe('unknown')
+    expect(mapHook(stop as HookInput, session, 'unknown')).toMatchObject({ kind: 'recap' })
+  })
+
+  test('an origin not seen before counts as unknown, so the recap still posts', () => {
+    expect(turnOpener('{"type":"user","turnOrigin":"some_new_origin"}')).toBe('unknown')
   })
 })
 

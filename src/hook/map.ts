@@ -11,7 +11,19 @@ export interface HookInput {
   tool_response?: any
   last_assistant_message?: string
   stop_hook_active?: boolean
+  transcript_path?: string
 }
+
+/**
+ * Who opened the current turn: a person (typed, or sent through the SDK), something the
+ * session itself scheduled (task notification, Monitor event, peer message, ...), or unknown
+ * when the transcript gave no answer.
+ */
+export type TurnOpener = 'human' | 'system' | 'unknown'
+
+/** `turnOrigin` values seen on real transcripts. A value not listed here counts as unknown, so the recap still posts */
+const HUMAN_TURN_ORIGINS = new Set(['human', 'sdk'])
+const WAKE_UP_TURN_ORIGINS = new Set(['task_notification', 'peer', 'system', 'scheduled'])
 
 /** Hook process env. Only the keys read here; never pass the rest along (it holds tool tokens). */
 export interface HookEnv {
@@ -19,6 +31,8 @@ export interface HookEnv {
 }
 
 const RECAP_MAX = 160
+/** Start of every feedback line, also how a delivery is recognised in the transcript */
+const FEEDBACK_PREFIX = '[gollabara] Feedback from the user'
 
 export function sessionName(cwd: string, branch?: string): string {
   const dir = cwd.split('/').filter(Boolean).pop() ?? cwd
@@ -45,7 +59,47 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
   return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: 'claude-code', cwd: input.cwd }
 }
 
-export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent | null {
+/**
+ * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
+ * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
+ * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply.
+ * The first line of a tail is usually cut off and is skipped like any unparsable line.
+ */
+export function turnOpener(tail: string): TurnOpener {
+  const lines = tail.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]
+    // Cheap filter first: screenshot turns carry multi-MB base64 lines
+    const opens = line.includes('"turnOrigin"')
+    if (!opens && !line.includes(FEEDBACK_PREFIX))
+      continue
+    let entry: any
+    try {
+      entry = JSON.parse(line)
+    }
+    catch {
+      continue
+    }
+    if (entry?.isSidechain)
+      continue
+    if (isFeedbackDelivery(entry))
+      return 'human'
+    if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
+      continue
+    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
+  }
+  return 'unknown'
+}
+
+/** Hook context that handed gollabara feedback to the session (PostToolUse, Stop or UserPromptSubmit) */
+function isFeedbackDelivery(entry: any): boolean {
+  const attachment = entry?.type === 'attachment' ? entry.attachment : undefined
+  return attachment?.type === 'hook_additional_context'
+    && Array.isArray(attachment.content)
+    && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
+}
+
+export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown'): IncomingEvent | null {
   switch (input.hook_event_name) {
     case 'SessionStart':
       return { kind: 'session', session }
@@ -63,6 +117,10 @@ export function mapHook(input: HookInput, session: SessionInfo): IncomingEvent |
       return questions.length ? { kind: 'question', session, questions } : null
     }
     case 'Stop': {
+      // A wake-up the user did not start (Monitor tick, task notification) is not worth a line.
+      // A continuation follows a stop hook such as gollabara feedback, so it keeps its recap
+      if (opener === 'system' && !input.stop_hook_active)
+        return null
       const text = recapOf(input.last_assistant_message)
       if (!text)
         return null
@@ -103,7 +161,7 @@ export function feedbackLine(item: Feedback): string {
   const about = item.image
     ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ''}`
     : ''
-  return `[gollabara] Feedback from the user while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
 }
 
 function clock(at: number): string {

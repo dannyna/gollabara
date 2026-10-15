@@ -47,23 +47,26 @@ CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, 
 
 ## Configuration
 
-| Variable         | Default                 | Description                          |
-| ---------------- | ----------------------- | ------------------------------------ |
-| `GOLLABARA_PORT` | `4747`                  | Server port                          |
-| `GOLLABARA_URL`  | `http://127.0.0.1:4747` | Server the hook posts events to      |
-| `GOLLABARA_DATA` | `~/.gollabara/data`     | Where messages and images are stored |
+| Variable         | Default                 | Description                                                 |
+| ---------------- | ----------------------- | ----------------------------------------------------------- |
+| `GOLLABARA_PORT` | `4747`                  | Server port                                                 |
+| `GOLLABARA_URL`  | `http://127.0.0.1:4747` | Server the hook posts events to                             |
+| `GOLLABARA_DATA` | `~/.gollabara/data`     | Where messages and images are stored                        |
+| `GOLLABARA_HOOK` | unset                   | `off`: the hook exits at once, posting and claiming nothing |
 
 ## Capture (Claude Code)
 
-| hook                             | What lands in the stream                                         | Feedback delivered to the session               |
-| -------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------- |
-| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message  | —                                               |
-| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design) | `additionalContext` next to the tool result     |
-| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars)          | `additionalContext`, which continues the turn   |
-| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                           | —                                               |
-| `UserPromptSubmit`               | Nothing                                                          | `additionalContext` alongside the user's prompt |
+| hook                             | What lands in the stream                                                                | Feedback delivered to the session               |
+| -------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message                         | —                                               |
+| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design)                        | `additionalContext` next to the tool result     |
+| `Stop`                           | First line of the turn's last reply (recap, ≤160 chars), only for turns a human started | `additionalContext`, which continues the turn   |
+| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                                                  | —                                               |
+| `UserPromptSubmit`               | Nothing                                                                                 | `additionalContext` alongside the user's prompt |
 
 Feedback is queued with `POST /api/feedback`, which accepts only loopback and tailnet sources. On the three hooks above, the hook claims the session's pending feedback with one `POST /api/feedback/claim` in parallel with its event, inside the same 1.5 s budget. The claim marks the items delivered atomically, so a Stop that continued the turn for feedback lets the re-entered Stop (`stop_hook_active`) end the turn. The hook prints one JSON object on stdout only when it claimed something, and nothing otherwise. Feedback about an image carries the stored file's absolute path, so the session can open it.
+
+To tell who started a turn, Stop reads the tail of `transcript_path` and takes the last main-thread `user` entry with a `turnOrigin`. Only the entry that opens a turn has one. The tail starts at 256 KB and widens to 1, 4, then 8 MB until it holds an opener, because turns that Read screenshots can put megabytes after it. `human` and `sdk` count as the user. `task_notification` (Monitor events and background tasks), `peer`, `system` and `scheduled` post no recap, unless gollabara feedback was delivered after the opener (a `hook_additional_context` attachment starting with `[gollabara] Feedback from the user`): the user waits on that reply. Feedback claiming is the same either way. When the transcript can't be read, the opener isn't in the tail, or `turnOrigin` has another value, the recap is posted as before. A continuation Stop (`stop_hook_active`) always posts its recap.
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
 
