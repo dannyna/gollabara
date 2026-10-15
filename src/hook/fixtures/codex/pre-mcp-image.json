@@ -1,0 +1,12 @@
+{
+  "session_id": "01a14016-2c15-75d0-8b69-9fe1bc60ae3f",
+  "turn_id": "01a14016-2c5b-7092-b7a4-025096aed376",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-02-37-01a14016-2c15-75d0-8b69-9fe1bc60ae3f.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "mcp__spikeimg__snapshot",
+  "tool_input": {},
+  "tool_use_id": "call_hbZe17m9LmaYc9WO6MX6PNWE"
+}

@@ -1,0 +1,11 @@
+{
+  "session_id": "01a14016-f713-7403-a131-fc6b4e3266a9",
+  "turn_id": "01a14016-f758-7401-83ce-00cc3093ac75",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-03-29-01a14016-f713-7403-a131-fc6b4e3266a9.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "Stop",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "stop_hook_active": true,
+  "last_assistant_message": "PINEAPPLE"
+}

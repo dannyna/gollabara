@@ -1,0 +1,15 @@
+{
+  "session_id": "01a14015-8137-7931-8ffe-5f9ede2318b0",
+  "turn_id": "01a14015-818c-71b2-bd5a-d476697b4c29",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-01-53-01a14015-8137-7931-8ffe-5f9ede2318b0.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "file pic.png"
+  },
+  "tool_response": "pic.png: PNG image data, 8 x 8, 8-bit/color RGB, non-interlaced\n",
+  "tool_use_id": "call_JL3sdCU6GtUgqrilZxhYq6gW"
+}
