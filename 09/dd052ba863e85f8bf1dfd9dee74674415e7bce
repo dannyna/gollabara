@@ -1,0 +1,73 @@
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_fabcebf62b6798 2
+  s_b7f30c572db9a8::t_8f35c09cc00bdd 207-271
+src/server/retention.ts
+  s_b7f30c572db9a8::t_49cde01ed88b8a 1-18
+web/src/settings.ts
+  s_b7f30c572db9a8::t_7822cc42991e0a 106-109
+  s_b7f30c572db9a8::t_7cad1e941a87d0 1-3,5,8,10,23-35,57,60,63,67,70-71,73,77-105,110-111,115
+web/src/components/chat/SessionMessage.vue
+  s_b7f30c572db9a8::t_ac4eb8acabb845 19,27
+web/src/App.vue
+  s_b7f30c572db9a8::t_ec7c65bbb159c5 192-193,195-197,199,201-202
+  s_b7f30c572db9a8::t_2a27417ac91a2c 3,10,14,24-25,60-84,117-118,174-191,194,198,200,203-204,242,250-261
+web/src/components/chat/SessionMenuButton.vue
+  s_b7f30c572db9a8::t_ac4eb8acabb845 28-29,66,68-69
+src/server/retention.test.ts
+  s_b7f30c572db9a8::t_74fc6fc0b43f53 1-12
+web/src/components/overlay/AppToast.gallery.vue
+  s_b7f30c572db9a8::t_abe7dcc377ba66 8,16
+web/src/components/overlay/SettingsSheet.gallery.vue
+  s_b7f30c572db9a8::t_abe7dcc377ba66 45,76
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_cd1cd9fbac4268 123-131
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_4f9f732ae57956 142-145,149,152-153
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_9dbbfc3770662a 71-72,343,369
+web/src/components/overlay/overlay.test.ts
+  s_b7f30c572db9a8::t_ea267b43c8aa0c 2,28-43
+  s_b7f30c572db9a8::t_341d2a1b43bbae 44-45
+src/shared/types.ts
+  s_b7f30c572db9a8::t_03e47c83d31b51 160-166,169-172,175-177,224-225
+src/server/index.ts
+  s_b7f30c572db9a8::t_3d7d4cf16b117b 115-116,119
+  s_b7f30c572db9a8::t_4a1b5ce05ce2a3 4,19-20,31,107,110-114,118,120,122-124,129-140,308-325,336-353
+  s_b7f30c572db9a8::t_a4dc87b0b2607f 5
+  s_b7f30c572db9a8::t_1ba33545163cc3 354-355
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_cd1cd9fbac4268 81,88-89,99
+AGENTS.md
+  s_b7f30c572db9a8::t_a15923e32bfed2 84-97
+DESIGN.md
+  s_b7f30c572db9a8::t_19e2895229e46b 304,306,356
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_09b1598ea63db0 62-93
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_2accdf034f4b95 151
+web/src/components/chat/icons.ts
+  s_b7f30c572db9a8::t_cd1cd9fbac4268 26
+web/src/components/overlay/ConfirmDialog.gallery.vue
+  s_b7f30c572db9a8::t_31bfc1de722673 8-9,27,31,33-34,54
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_4b4ad4b02337b5 39-54
+src/server/store.ts
+  s_b7f30c572db9a8::t_cb80c02726f49d 3,5,16-24,90-99,102-111,166-217,425-428
+  s_b7f30c572db9a8::t_420e49b3bf442b 429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09dd052ba863e85f8bf1dfd9dee74674415e7bce",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
