@@ -42,6 +42,7 @@ defineEmits<{ action: [] }>()
   flex-direction: column;
   align-items: center;
   /* A guide taller than a short band (tablet) scrolls instead of losing its top */
+  justify-content: center;
   justify-content: safe center;
   overflow-y: auto;
   padding: 70px 15px;

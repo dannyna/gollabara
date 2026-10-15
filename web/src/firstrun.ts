@@ -92,7 +92,7 @@ export function stepCopy(step: NextStep, place: GuidePlace): StepCopy {
     case 'start':
       return { title: '세션을 시작해 보세요', description: 'Claude Code나 Codex에서 세션을 열면 여기에 보여요.' }
     case 'ended':
-      return { title: '끝난 세션이에요', description: '세션을 다시 이어서 열면 여기에 이어서 보여요.' }
+      return { title: '끝난 세션이에요', description: '세션을 다시 열면 이어서 보여요.' }
     case 'wait':
       return place === 'chat'
         ? { title: '세션이 턴을 마치면 여기에 보여요', description: '한 줄 요약과 세션의 질문이 이어서 올라와요.' }
