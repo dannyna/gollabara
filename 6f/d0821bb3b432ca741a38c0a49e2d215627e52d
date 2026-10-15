@@ -37,6 +37,7 @@ plugin/.claude-plugin/plugin.json
   s_b7f30c572db9a8::t_8f1eac0ceaf195 3
 src/server/store.test.ts
   s_b7f30c572db9a8::t_b89d24fc26d7da 207,273-332
+  s_b7f30c572db9a8::t_be73d41e0dbcae 272
 web/src/components/chat/QueueTray.vue
   s_b7f30c572db9a8::t_c6fbcc8e227c2b 17-18,35,37,110-111
   s_b7f30c572db9a8::t_1ccdc355455637 112
@@ -57,6 +58,7 @@ plugin/hooks/hooks.json
   s_b7f30c572db9a8::t_8f1eac0ceaf195 12-13
 web/src/App.vue
   s_b7f30c572db9a8::t_d5fe2bdc63c5f6 39,262
+  s_b7f30c572db9a8::t_be73d41e0dbcae 24
 web/src/components/overlay/SessionPopover.gallery.vue
   s_b7f30c572db9a8::t_a126e3b1bb85cb 42-50
 src/server/liveness.test.ts
@@ -75,6 +77,7 @@ src/server/store.ts
   s_b7f30c572db9a8::t_cc3e287768f9e1 55-56,71-77,80,248-249,258-265,315-328,335,337-338,340-342,410,412-414,416,479
 src/server/routes.test.ts
   s_b7f30c572db9a8::t_5a25c7683f5691 62,95-111
+  s_b7f30c572db9a8::t_be73d41e0dbcae 94
 web/src/sessions.test.ts
   s_b7f30c572db9a8::t_b0a60e03471a6a 3,21-22,24-26,29-31
   s_b7f30c572db9a8::t_3e1c288500f9e4 32
@@ -83,9 +86,11 @@ web/src/components/chat/QueueTray.gallery.vue
 DESIGN.md
   s_b7f30c572db9a8::t_b15c714f7a9a07 300
   s_b7f30c572db9a8::t_2609d26e10cab7 318-322,324-328
+  s_b7f30c572db9a8::t_3b70b7d0b9971c 323
 web/src/components/chat/SessionMessage.vue
   s_b7f30c572db9a8::t_eff784e3190602 17-18,25,50-51
   s_b7f30c572db9a8::t_2ab82bc8d10b50 52
+  s_b7f30c572db9a8::t_be73d41e0dbcae 29
 web/src/sessions.ts
   s_b7f30c572db9a8::t_7c3568fc6a8c3c 14-15,25,29,36-38
   s_b7f30c572db9a8::t_93e15aa2973dce 39-40
