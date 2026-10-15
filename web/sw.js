@@ -2,6 +2,7 @@
 // The build (web/vite.config.ts) fills in BUILD and the SHELL list and emits it as /sw.js; a new build
 // is a new file, so the browser installs it, and the old cache goes on activate.
 // Stream data never goes through a cache here: /api, /ws and /img are left to the browser.
+// It also shows the content-free push notifications a device opted into (web/src/push.ts).
 
 const BUILD = '__BUILD__'
 const SHELL = ['__SHELL__']
@@ -43,6 +44,37 @@ addEventListener('fetch', (event) => {
     }
     return response
   })))
+})
+
+// Web Push (#64): the payload is one fixed letter and never session text, so the copy lives here.
+// One tag: a newer ping replaces the one still on screen instead of piling up.
+const PUSH_COPY = {
+  q: '세션이 기다리고 있어요',
+  r: '피드백에 답이 왔어요',
+}
+
+addEventListener('push', (event) => {
+  let kind = 'q'
+  try {
+    kind = event.data?.json().t
+  }
+  catch {}
+  // Chrome shows its own notice when a push shows nothing, so an unknown payload still gets the question copy
+  const title = PUSH_COPY[kind] ?? PUSH_COPY.q
+  event.waitUntil(globalThis.registration.showNotification(title, {
+    tag: 'gollabara',
+    renotify: true,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+  }))
+})
+
+addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(globalThis.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+    const open = windows.find(w => new URL(w.url).origin === location.origin)
+    return open ? open.focus() : globalThis.clients.openWindow('/')
+  }))
 })
 
 function withTimeout(promise, ms) {

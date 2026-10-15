@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { TriageEngine } from '../../../../src/shared/types'
+import type { PushState } from '../../push'
 import type { Settings, SettingsErrors } from '../../settings'
 import type { ThemePreference } from '../../theme'
-import { nextTick, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onMounted, ref, useId } from 'vue'
 import { ENGINE_LABEL, validateSettings } from '../../settings'
 import OverlayIcon from './OverlayIcon.vue'
 import { useOverlay } from './useOverlay'
@@ -13,6 +14,10 @@ const props = withDefaults(defineProps<{
   theme: ThemePreference
   /** 대화 정리: the server's triage engine */
   engine?: TriageEngine
+  /** 알림 받기: this device's push subscription */
+  push?: PushState
+  /** Turning push on or off is in progress */
+  pushBusy?: boolean
   /** Gallery: start from these values instead of the saved ones */
   draft?: Partial<Settings>
   /** Gallery: show field errors right away */
@@ -30,6 +35,8 @@ const emit = defineEmits<{
   'update:theme': [theme: ThemePreference]
   // Applies at once too: it is stored on the server, not in this browser
   'update:engine': [engine: TriageEngine]
+  // Applies at once: it subscribes this device with its browser
+  'update:push': [on: boolean]
 }>()
 
 const THEMES: { value: ThemePreference, label: string }[] = [
@@ -39,6 +46,17 @@ const THEMES: { value: ThemePreference, label: string }[] = [
 ]
 
 const ENGINES = (['off', 'claude', 'codex'] as const).map(value => ({ value, label: ENGINE_LABEL[value] }))
+
+// The ping goes through the browser vendor's push service, so the note says what leaves: a signal, no content
+const PUSH_ABOUT = '세션이 질문하거나 피드백에 답하면 이 기기에 알려요. 이 Mac 밖으로는 내용 없는 신호만 나가요.'
+const PUSH_NOTE: Record<PushState, string> = {
+  'off': PUSH_ABOUT,
+  'on': PUSH_ABOUT,
+  'denied': '이 브라우저에서 알림을 막아 두었어요. 브라우저 설정에서 허용하면 켤 수 있어요.',
+  'unsupported': '이 브라우저에서는 알림을 받을 수 없어요.',
+  'ios-browser': 'iPhone에서는 홈 화면에 추가한 앱에서만 알림을 받을 수 있어요.',
+}
+const pushReady = computed(() => props.push === 'on' || props.push === 'off')
 
 const id = useId()
 const panel = ref<HTMLElement>()
@@ -158,6 +176,21 @@ async function save() {
         </div>
         <p :id="`${id}-triage-note`" class="description">
           이 Mac의 claude 또는 codex CLI가 새 세션 메시지를 읽고 볼 필요 없는 줄은 숨겨요. 메시지 글과 그 세션에 보낸 피드백 글은 그 CLI의 모델로 전송되고, 이미지는 보내지 않아요.
+        </p>
+
+        <p :id="`${id}-push`" class="label">
+          알림 받기
+        </p>
+        <div class="theme-options" role="group" :aria-labelledby="`${id}-push`" :aria-describedby="`${id}-push-note`">
+          <button
+            v-for="on in [false, true]" :key="String(on)" type="button" :disabled="!pushReady || pushBusy"
+            :aria-pressed="(push === 'on') === on" @click="emit('update:push', on)"
+          >
+            {{ on ? '켜기' : '끄기' }}
+          </button>
+        </div>
+        <p :id="`${id}-push-note`" class="description">
+          {{ PUSH_NOTE[push ?? 'off'] }}
         </p>
 
         <div class="brand">
