@@ -46,7 +46,7 @@ useOverlay({
         </button>
       </div>
       <p class="hint">
-        세션을 고르거나 음소거할 수 있어요.
+        볼 세션을 고르거나, 음소거해 숨길 수 있어요.
       </p>
 
       <button

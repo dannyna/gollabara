@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { clock } from '../../artifacts'
 import FloatingActions from '../overlay/FloatingActions.vue'
-import SessionAvatar from './SessionAvatar.vue'
-import SessionName from './SessionName.vue'
+import SessionMenuButton from './SessionMenuButton.vue'
 
 // Avatar · session · branch · time, then the body. Text without a surface; recap lines with a
-// state and the question card are the only boxes inside it.
+// state and the question card are the only boxes inside it. The avatar and the name open the
+// session's avatar menu.
 defineProps<{
   /** `<dir>` or `<dir> · <branch>` */
   name: string
   at: number
   /** Paired with the artifact picked in the stream */
   highlighted?: boolean
+  /** The view is scoped to this session: the menu offers 「전체 세션 보기」 */
+  scoped?: boolean
 }>()
+
+defineEmits<{ scope: [], mute: [] }>()
 </script>
 
 <template>
@@ -20,8 +24,7 @@ defineProps<{
     <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
     <FloatingActions variant="message" />
     <div class="message-head">
-      <SessionAvatar :name="name" />
-      <strong><SessionName :name="name" /></strong>
+      <SessionMenuButton :name="name" :scoped="scoped" @scope="$emit('scope')" @mute="$emit('mute')" />
       <time>{{ clock(at) }}</time>
     </div>
     <div class="message-body">
@@ -48,12 +51,6 @@ defineProps<{
   gap: 8px;
   margin-bottom: 7px;
 }
-.message-head strong {
-  display: flex;
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 600;
-}
 .message-head time {
   margin-left: auto;
   flex: none;
@@ -79,9 +76,6 @@ defineProps<{
 @media (max-width: 767px) {
   .message {
     margin-bottom: 21px;
-  }
-  .message-head strong {
-    font-size: 10px;
   }
   .message-body {
     --indent: 29px;

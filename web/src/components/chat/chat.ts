@@ -72,6 +72,31 @@ export interface SystemEvent {
   at: number
   icon: IconName
   text: string
+  /** A mute line: the avatar before `text` opens that session's menu */
+  sessionId?: string
+}
+
+/** One row of the avatar menu. `why` disables it and says why at its right end. */
+export interface SessionMenuItem {
+  action: 'scope' | 'mute'
+  icon: IconName
+  label: string
+  why?: string
+}
+
+/**
+ * The avatar menu's two rows (OD chat guide 07). Each flips with the state it changes, and a
+ * muted session cannot become the scope, as in the session menu.
+ */
+export function sessionMenuItems(scoped: boolean, muted: boolean): SessionMenuItem[] {
+  return [
+    scoped
+      ? { action: 'scope', icon: 'all', label: '전체 세션 보기' }
+      : { action: 'scope', icon: 'scope', label: '이 세션만 보기', ...(muted ? { why: '음소거 중' } : {}) },
+    muted
+      ? { action: 'mute', icon: 'sound', label: '음소거 해제' }
+      : { action: 'mute', icon: 'mute', label: '음소거' },
+  ]
 }
 
 /** One 「… 시작」 row */

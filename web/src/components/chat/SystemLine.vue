@@ -2,13 +2,16 @@
 import type { IconName } from './icons'
 import ChatIcon from './ChatIcon.vue'
 
-// One centred muted line, only for changes the reader needs to know about
+// One centred muted line, only for changes the reader needs to know about. The `lead` slot
+// takes the icon's place: a mute line puts the session's avatar menu button there.
 defineProps<{ icon: IconName, text: string }>()
 </script>
 
 <template>
   <div class="system-line">
-    <ChatIcon :name="icon" />{{ text }}
+    <span class="line">
+      <slot name="lead"><ChatIcon :name="icon" /></slot>{{ text }}
+    </span>
   </div>
 </template>
 
@@ -18,6 +21,10 @@ defineProps<{ icon: IconName, text: string }>()
   text-align: center;
   font-size: 10px;
   color: var(--muted);
+}
+/* Positioned, so a menu from the lead slot centres under the line */
+.line {
+  position: relative;
 }
 .system-line .chat-icon {
   display: inline-block;

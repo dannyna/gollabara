@@ -1,7 +1,7 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, dayLabel, outputLabel, START_GROUP_MS, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
+import { answerLabel, choiceLayout, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
@@ -133,5 +133,21 @@ describe('turnThumbs', () => {
     const { artifacts, references } = turnThumbs(m)
     expect(artifacts.map(t => t.key)).toEqual(['7-1', '7-2'])
     expect(references.map(t => [t.key, t.url])).toEqual([['7-0', 'ref']])
+  })
+})
+
+describe('sessionMenuItems', () => {
+  const labels = (scoped: boolean, muted: boolean) => sessionMenuItems(scoped, muted).map(i => [i.label, i.why ?? null])
+
+  it('offers scoping and muting a session in 「전체 세션」', () => {
+    expect(labels(false, false)).toEqual([['이 세션만 보기', null], ['음소거', null]])
+  })
+
+  it('flips the scope row to 「전체 세션 보기」 while scoped to that session', () => {
+    expect(labels(true, false)).toEqual([['전체 세션 보기', null], ['음소거', null]])
+  })
+
+  it('a muted session offers unmuting, and cannot become the scope', () => {
+    expect(labels(false, true)).toEqual([['이 세션만 보기', '음소거 중'], ['음소거 해제', null]])
   })
 })
