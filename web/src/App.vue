@@ -19,16 +19,17 @@ import ChatPanel from './components/shell/ChatPanel.vue'
 import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
+import { firstRunGuide, useHealth } from './firstrun'
 import { usePin } from './pin'
 import { usePush } from './push'
-import { deleteSessionData, endedSessions, inScope, toSessionRows, useMutedSessions } from './sessions'
+import { deleteSessionData, endedSessions, goneMutes, inScope, toSessionRows, useMutedSessions } from './sessions'
 import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
 const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
-const { muted, toggleMute } = useMutedSessions()
+const { muted, toggleMute, forget } = useMutedSessions()
 const { toast } = useToast()
 
 // Session scope; muted sessions are hidden in every scope
@@ -141,10 +142,21 @@ async function seedRetention(ok: boolean) {
   }
   forgetLegacyRetention()
 }
-const showEmpty = computed(() => !messages.value.length && ready.value)
+// The first-run page only before anything is known; once a session exists the panels say what comes next
+const showEmpty = computed(() => ready.value && !messages.value.length && !sessions.value.length)
 // No hello yet and the server does not answer (the installed app opened offline): the shell
 // says so instead of a blank stream
 const unreachable = computed(() => !ready.value && offline.value)
+
+// Connected harnesses and the next step for the empty views, from the hooks the server heard from (#75)
+const { health, loaded: healthLoaded, refresh: refreshHealth, schedule: scheduleHealth } = useHealth()
+watch(connected, up => up && refreshHealth())
+// Every hook event refreshes its session; only an empty view needs the hooks again
+watch(sessions, () => {
+  if (showEmpty.value || !artifacts.value.length || !visible.value.length)
+    scheduleHealth()
+})
+const guide = computed(() => healthLoaded.value ? firstRunGuide(health.value?.hooks ?? [], sessions.value, scope.value) : null)
 
 // Every session muted: the stream says so and points back to the session menu
 const allMuted = computed(() => sessionRows.value.length > 0 && sessionRows.value.every(s => s.muted))
@@ -226,6 +238,9 @@ watch([messages, sessions], ([list, known]) => {
   const exists = (id: string) => known.some(s => s.id === id) || list.some(m => m.sessionId === id)
   if (scope.value && !exists(scope.value))
     scope.value = null
+  // A deleted session leaves this browser's muted list too, without the 「음소거 해제」 line an unmute posts
+  if (ready.value)
+    forget(goneMutes(muted.value, known, list))
 })
 
 function onThumb(key: string) {
@@ -254,17 +269,17 @@ function onThumb(key: string) {
         />
       </template>
     </AppBar>
-    <EmptyState v-if="showEmpty" :connected="connected" />
+    <EmptyState v-if="showEmpty" :connected="connected" :guide="guide" />
     <StateView v-else-if="unreachable" icon="plug" title="서버에 연결할 수 없어요" description="다시 연결하는 중이에요. 서버가 돌아오면 바로 이어서 보여요." />
-    <main v-else-if="messages.length" class="workspace">
+    <main v-else-if="messages.length || sessions.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
-        :ended="ended" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
+        :ended="ended" :guide="guide" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
-        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals"
+        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide"
         @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
       />
     </main>

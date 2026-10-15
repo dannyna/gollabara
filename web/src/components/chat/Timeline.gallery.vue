@@ -31,7 +31,7 @@ const odStart = [{ key: 'od', sessionId: S.od, name: S.od, at: time(14, 33) }]
       <template #footer>
         <ChatComposer can-send target="od">
           <template #tray>
-            <QueueTray note="턴이 끝나면 보낼게요" :groups="[{ session: 'od', status: '작업 중', items: ['모바일 360px도 한 장 찍어 줘'], next: true }]" />
+            <QueueTray note="턴이 끝나면 보낼게요" :groups="[{ id: 'od', session: 'od', status: '작업 중', items: [{ text: '모바일 360px도 한 장 찍어 줘' }], next: true }]" />
           </template>
         </ChatComposer>
       </template>

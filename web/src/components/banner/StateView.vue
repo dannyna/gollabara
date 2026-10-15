@@ -29,6 +29,8 @@ defineEmits<{ action: [] }>()
     <button v-if="action" class="secondary" type="button" @click="$emit('action')">
       {{ action }}
     </button>
+    <!-- More to read under the title, e.g. the first-run guide -->
+    <slot />
   </div>
 </template>
 
@@ -39,7 +41,9 @@ defineEmits<{ action: [] }>()
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* A guide taller than a short band (tablet) scrolls instead of losing its top */
+  justify-content: safe center;
+  overflow-y: auto;
   padding: 70px 15px;
   text-align: center;
   color: var(--muted);

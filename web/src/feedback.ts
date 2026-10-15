@@ -3,6 +3,7 @@
 
 import type { DeliveryRoute, Feedback, FeedbackRequest, FeedbackVia, Session } from '../../src/shared/types'
 import type { DeliveryState } from './components/chat/MyMessage.vue'
+import type { QueueGroup } from './components/chat/QueueTray.vue'
 import { clock, splitSessionName } from './artifacts'
 
 const byCreated = (a: Feedback, b: Feedback) => a.createdAt - b.createdAt || a.id - b.id
@@ -22,6 +23,16 @@ export function mergeFeedback(list: Feedback[], next: Feedback): Feedback[] {
   if (current.deliveredAt != null && next.deliveredAt == null)
     return list
   return list.map((f, j) => j === i ? next : f)
+}
+
+/**
+ * POST responses this page keeps until the stream has them, without the items the stream just dropped
+ * (discarded, or their session deleted), so a removed item never comes back from a stale response
+ */
+export function withoutRemoved(confirmed: Feedback[], prev: Feedback[] = [], next: Feedback[] = []): Feedback[] {
+  const kept = new Set(next.map(f => f.id))
+  const gone = new Set(prev.filter(f => !kept.has(f.id)).map(f => f.id))
+  return gone.size ? confirmed.filter(f => !gone.has(f.id)) : confirmed
 }
 
 /** Each session's feedback in send order */
@@ -173,6 +184,43 @@ export function queueNote(sessionIds: string[], sessions: Session[]): { note: st
   if (notes.size > 1)
     return { note: ROUTE_NOTE.mixed, mixed: true }
   return { note: [...notes][0] ?? ROUTE_NOTE.unknown, mixed: false }
+}
+
+/**
+ * The queue tray: one group per waiting session, keyed by its id, so two sessions with the same
+ * short name never share a group. With `mixed` routes each group names its own. Items queued before
+ * the session ended stay (a resume still gets them) but are said to be undeliverable, and can be discarded.
+ */
+export function toQueueGroups(feedback: Feedback[], sessions: Session[], mixed: boolean, nameOf: (id: string) => string): QueueGroup[] {
+  const groups = new Map<string, QueueGroup>()
+  for (const f of feedback) {
+    if (f.deliveredAt != null)
+      continue
+    let group = groups.get(f.sessionId)
+    if (!group) {
+      const gone = sessions.some(s => s.id === f.sessionId && s.endedAt != null)
+      const route = mixed && !gone ? sessionRouteNote(f.sessionId, sessions) : undefined
+      groups.set(f.sessionId, group = { id: f.sessionId, session: nameOf(f.sessionId), items: [], ...(route ? { route } : {}), ...(gone ? { status: ENDED_STATUS, ended: true } : {}) })
+    }
+    group.items.push({ id: f.id, text: f.image ? `↪ 이미지 · ${f.text}` : f.text })
+  }
+  return [...groups.values()]
+}
+
+/** Drops items still queued for a session; returns the ids the server removed. Throws Error with the message to show */
+export async function discardFeedback(sessionId: string, ids: number[], fetcher: typeof fetch = fetch): Promise<number[]> {
+  let res: Response
+  try {
+    res = await fetcher('/api/feedback/discard', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, ids }) })
+  }
+  catch {
+    throw new Error('서버에 연결하지 못했어요')
+  }
+  if (res.status === 403)
+    throw new Error('이 Mac이나 tailnet에서만 지울 수 있어요')
+  if (!res.ok)
+    throw new Error('대기 메시지를 지우지 못했어요')
+  return (await res.json() as { feedbackIds: number[] }).feedbackIds
 }
 
 /** A failed POST: the status, or 0 when the server was not reached */

@@ -91,6 +91,12 @@ export const MIGRATIONS: Migration[] = [
     db.run('ALTER TABLE sessions ADD COLUMN ended_at INTEGER')
     db.run('ALTER TABLE sessions ADD COLUMN pid_at INTEGER')
   },
+  // 5: when each cached hide verdict was last written or used, so retention can prune the cache (#98). Rows from
+  // before count as used now, so an upgrade drops none of them before a full window passes.
+  (db) => {
+    db.run('ALTER TABLE triage_cache ADD COLUMN seen_at INTEGER NOT NULL DEFAULT 0')
+    db.run('UPDATE triage_cache SET seen_at = ?', [Date.now()])
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

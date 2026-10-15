@@ -324,7 +324,7 @@ A session ends when its harness says so or its process goes away. An ended sessi
 - **Artifact cell:** the run's session name turns `--muted`, followed by 「끝남」. The image, the meta line and the caption are unchanged.
 - **Session menu:** the row's name turns `--muted`, and the state slot reads 「끝남」 (「음소거 · 끝남」 when it is also muted). An ended session can still be selected, so its history stays easy to read.
 - **Composer:** with an ended target, sending is blocked with 「끝난 세션이에요」, like the other blocked reasons. The draft stays. `@` does not offer ended sessions. A send the server refuses because the session ended reads the same on the failed bubble.
-- **Queue tray:** items queued before the session ended stay in the tray, faded to `--muted` with a dashed avatar. In place of a route, the group says 「끝나서 전달할 수 없어요」. When every waiting session has ended, the header says 「끝난 세션이라 전달할 수 없어요」. A session that resumes picks the items up as usual.
+- **Queue tray:** items queued before the session ended stay in the tray, faded to `--muted` with a dashed avatar. In place of a route, the group says 「끝나서 전달할 수 없어요」. When every waiting session has ended, the header says 「끝난 세션이라 전달할 수 없어요」. A session that resumes picks the items up as usual. Each of its items has a plain 「지우기」 text button that discards it on the server, for every view; there is no confirm, since only an undeliverable item can go. Groups are keyed by session id, so two sessions with the same directory name never share one.
 
 ### Triage
 
@@ -368,7 +368,12 @@ A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「�
 
 ### Empty state
 
-Before anything arrives the surfaces give way to a centered setup guide: a muted symbol, 「세션에서 만든 산출물이 여기에 모입니다」, 「켜 두고 구경하세요. 말을 걸고 싶을 때만 한마디.」, and three numbered steps (server running, install the Claude Code plugin with a copy button, watch from your phone with a QR code). The session menu button is hidden.
+The Night Dock source has no first-run screen yet; these states are drawn within this file and the existing components (#75). What is connected comes only from what the server knows: the hooks `GET /api/health` heard from per harness (version, last seen, outdated) and the sessions.
+
+- **First-run page.** Before any message or session exists, the surfaces give way to a centered guide: a muted symbol, 「세션에서 만든 산출물이 여기에 모입니다」, 「켜 두고 구경하세요. 말을 걸고 싶을 때만 한마디.」, and three numbered steps. 1 server (「서버 실행 중 ✓」, or 「서버를 켜 주세요」 with `bunx gollabara setup`); 2 「Claude Code나 Codex 연결」, with `bunx gollabara setup` while no harness ever posted, the harness list once one did, and `golla update` when a hook is outdated; 3 「세션을 시작해 보세요」. The first step not done is current (`--fg` disc); later ones wait in muted text. Commands sit in mono in a `--surface` box with a 44px copy button. The session menu button is hidden.
+- **Empty panels.** Once a session exists the workspace shows, and an area with nothing in view keeps its muted one-line title (「아직 산출물이 없어요.」, 「이 세션에는 아직 산출물이 없어요.」, 「아직 대화가 없어요.」) and adds the guide under it: a 12px-corner `--border` list of harnesses (name 600 `--fg`, 「연결됨」 with a check, or 「플러그인이 오래됐어요」 with the alert icon and the hook's mono version, then the mono last-seen time, or `M/D` before today), or 「아직 연결된 하네스가 없어요」 with a plug, and then the next step: a 13px 600 title, a muted line and, when it has one, a command to copy.
+- **Next step.** No harness ever posted: 「플러그인을 설치해 주세요」 with `bunx gollabara setup`. A hook outdated: 「세션을 다시 시작해 주세요」 with `golla update`. No session running today: 「세션을 시작해 보세요」. A session running: 「세션이 만든 이미지가 여기에 모여요」 in the stream, 「세션이 턴을 마치면 여기에 보여요」 in the chat. Scoped to one session, only its harness is listed, and an ended one reads 「끝난 세션이에요」.
+- **No color, drawn once.** Outdated is said in words and an icon, never `--warn`, and nothing is yellow. In the chat the harness list shows only at ≤767px, where the stream is hidden; wider, the stream carries it and the chat shows only the next step.
 
 ### Copy
 
@@ -408,7 +413,7 @@ The app must reproduce each state the Night Dock HTML exposes through its query 
 | State            | Query                 | What must show                                                 |
 | ---------------- | --------------------- | -------------------------------------------------------------- |
 | Default          | (none)                | Dark theme, both surfaces, track at the latest artifact        |
-| First connection | `?state=empty`        | Setup guide; session menu button hidden                        |
+| First connection | `?state=empty`        | Setup guide with the next step; session menu button hidden     |
 | Session menu     | `?state=sessions`     | Session menu open under its button                             |
 | Viewer           | `?state=viewer`       | Full-screen viewer on an artifact                              |
 | Mention          | `?state=mention`      | Composer holding `@` with the mention list open                |

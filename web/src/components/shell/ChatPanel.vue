@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Feedback, Session, StreamMessage, Triage, TriageEngine } from '../../../../src/shared/types'
 import type { PendingSend } from '../../feedback'
+import type { Guide } from '../../firstrun'
 import type { Thumb } from '../chat/ArtifactThumbs.vue'
 import type { SystemEvent } from '../chat/chat'
 import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
@@ -8,8 +9,8 @@ import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { clock, splitSessionName } from '../../artifacts'
-import { ENDED_NOTE, ENDED_STATUS, failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, VIA_LABEL } from '../../feedback'
-import { endedSessions, toSessionRows, useMutedSessions } from '../../sessions'
+import { discardFeedback, ENDED_NOTE, failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, toQueueGroups, VIA_LABEL, withoutRemoved } from '../../feedback'
+import { endedSessions, muteChanges, toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
@@ -30,6 +31,8 @@ import SystemLine from '../chat/SystemLine.vue'
 import MentionList from '../overlay/MentionList.vue'
 import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
 import { useImageViewer } from '../overlay/useImageViewer'
+import { useToast } from '../overlay/useToast'
+import HarnessGuide from './HarnessGuide.vue'
 
 const props = defineProps<{
   messages: StreamMessage[]
@@ -57,6 +60,8 @@ const props = defineProps<{
   triage?: ReadonlyMap<string, Triage>
   /** When recap lines arrived live, so new ones can wait briefly for a verdict */
   arrivals?: ReadonlyMap<string, number>
+  /** Connected harnesses and the next step, for an empty chat; null until the server's health answered */
+  guide?: Guide | null
 }>()
 const emit = defineEmits<{
   thumb: [key: string]
@@ -82,18 +87,17 @@ const ended = computed(() => endedSessions(props.sessions ?? []))
 
 // Mute is a client filter with no history, so its lines exist only for changes made
 // while this page is open, and only in 「전체 세션」 (OD chat guide 05)
-const { muted } = useMutedSessions()
+const { muted, forgotten } = useMutedSessions()
 const muteEvents = ref<SystemEvent[]>([])
 watch(muted, (next, prev) => {
   const at = Date.now()
-  for (const id of next) {
-    if (!prev.has(id))
-      muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: '음소거함', sessionId: id })
-  }
-  for (const id of prev) {
-    if (!next.has(id))
-      muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
-  }
+  const { muted: added, unmuted } = muteChanges(next, prev, forgotten)
+  for (const id of added)
+    muteEvents.value.push({ key: `mute-${id}-${at}`, at, icon: 'mute', text: '음소거함', sessionId: id })
+  for (const id of unmuted)
+    muteEvents.value.push({ key: `unmute-${id}-${at}`, at, icon: 'sound', text: `${nameOf(id)} 음소거 해제` })
+  // A deleted session's mute line would open a menu for a session that is gone
+  muteEvents.value = muteEvents.value.filter(e => !e.sessionId || !forgotten.has(e.sessionId))
 })
 // Avatar menu: 「이 세션만 보기」, or 「전체 세션 보기」 when already scoped to it
 const toggleScope = (id: string) => emit('scope', props.scope === id ? null : id)
@@ -101,6 +105,8 @@ const toggleScope = (id: string) => emit('scope', props.scope === id ? null : id
 const inView = (sessionId: string) => !muted.value.has(sessionId) && (props.scope == null || sessionId === props.scope)
 // POST responses, merged so a bubble never waits on the WebSocket frame
 const confirmed = shallowRef<Feedback[]>([])
+// Items the server removed (discarded, or their session deleted) must not come back from a POST response
+watch(() => props.feedback, (next, prev) => confirmed.value = withoutRemoved(confirmed.value, prev, next))
 const pending = ref<PendingSend[]>([])
 const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
 const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
@@ -164,23 +170,19 @@ const queueTrayNote = computed(() => queueNote(
   [...new Set(feedback.value.filter(f => f.deliveredAt == null).map(f => f.sessionId))],
   props.sessions ?? [],
 ))
-// Queued on the server, not yet picked up: the tray, one group per session
-const queue = computed<QueueGroup[]>(() => {
-  const groups = new Map<string, QueueGroup>()
-  for (const f of feedback.value) {
-    if (f.deliveredAt != null)
-      continue
-    let group = groups.get(f.sessionId)
-    if (!group) {
-      // Items queued before the session ended stay queued (a resume still gets them) but are said to be undeliverable
-      const gone = ended.value.has(f.sessionId)
-      const route = queueTrayNote.value.mixed && !gone ? sessionRouteNote(f.sessionId, props.sessions ?? []) : undefined
-      groups.set(f.sessionId, group = { session: shortName(f.sessionId), items: [], ...(route ? { route } : {}), ...(gone ? { status: ENDED_STATUS, ended: true } : {}) })
-    }
-    group.items.push(f.image ? `↪ 이미지 · ${f.text}` : f.text)
+// Queued on the server, not yet picked up: the tray, one group per session id
+const queue = computed<QueueGroup[]>(() => toQueueGroups(feedback.value, props.sessions ?? [], queueTrayNote.value.mixed, shortName))
+// An ended session's item can be dropped; the server's broadcast takes it off every view
+const { toast } = useToast()
+async function discard(sessionId: string, id: number) {
+  try {
+    const gone = new Set(await discardFeedback(sessionId, [id]))
+    confirmed.value = confirmed.value.filter(f => !gone.has(f.id))
   }
-  return [...groups.values()]
-})
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
 
 // Chat thumbnails open the one app viewer at every width
 const { open } = useImageViewer()
@@ -336,6 +338,10 @@ defineExpose({ reveal })
       v-else-if="allMuted" title="모든 세션을 음소거했어요" description="세션 목록에서 다시 표시할 수 있어요."
       action="세션 목록 열기" @action="emit('sessions')"
     />
+    <!-- Sessions known, nothing said yet: who is connected and what comes next -->
+    <StateView v-else-if="!timeline.length" :title="scoped ? '이 세션에는 아직 대화가 없어요.' : '아직 대화가 없어요.'">
+      <HarnessGuide v-if="guide" :guide="guide" place="chat" />
+    </StateView>
     <div v-else class="feed-box">
       <div ref="feed" class="feed" role="log" aria-label="세션 메시지" tabindex="-1" @scroll.passive="onScroll">
         <template v-for="item in timeline" :key="item.key">
@@ -415,7 +421,7 @@ defineExpose({ reveal })
       @mention-focus="mentionList?.focusFirst()" @mention-close="closeMention"
     >
       <template v-if="queue.length" #tray>
-        <QueueTray :groups="queue" :note="queueTrayNote.note" :actions="false" />
+        <QueueTray :groups="queue" :note="queueTrayNote.note" :actions="false" @discard="discard" />
       </template>
       <template v-if="mentionOpen" #popover>
         <MentionList ref="mentionList" :options="mentionOptions" @pick="pickMention" @close="closeMention(); composer?.focus()" />

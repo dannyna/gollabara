@@ -85,7 +85,7 @@ describe('migrations', () => {
     openStore()
     const db = open()
     // A row migration 1 would rewrite proves it does not run twice
-    db.run(`INSERT INTO triage_cache VALUES ('k', 'noise')`)
+    db.run(`INSERT INTO triage_cache (key, verdict) VALUES ('k', 'noise')`)
     db.close()
     openStore()
     const after = open()
