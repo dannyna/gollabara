@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One received artifact on the stream rail (OD stream guide 02): meta · image face ·
-// caption, with 답장 · 멈춤 · 확대 ↗ on hover or focus. The width comes from the
+// caption, with 답장 · 멈춤 · 확대 ↗ on hover or focus. Only the first cell of a run
+// names the session; later ones keep the row empty so every face stays the same height. The width comes from the
 // original ratio and the face height, so the image fills it uncropped (contain).
 //
 // The face height is the container height minus `--stream-chrome` (the fixed rows
@@ -8,7 +9,8 @@
 
 import type { Artifact } from '../../artifacts'
 import { computed, ref, watch } from 'vue'
-import { artifactCaption, clock, day } from '../../artifacts'
+import { middleTruncate } from '../../../../src/shared/stacks'
+import { artifactCaption, clock, day, sourceName, versionsHint } from '../../artifacts'
 import FloatingActions from '../overlay/FloatingActions.vue'
 
 const props = defineProps<{
@@ -27,7 +29,9 @@ const emit = defineEmits<{ select: [], open: [], reply: [] }>()
 
 const a = computed(() => props.artifact)
 const caption = computed(() => artifactCaption(a.value))
-const name = computed(() => `${a.value.session} ${clock(a.value.at)} ${caption.value}`)
+const file = computed(() => sourceName(a.value))
+const hint = computed(() => versionsHint(a.value))
+const name = computed(() => `${a.value.session} ${clock(a.value.at)} ${file.value ?? caption.value}`)
 
 // The size is stored with the image, so the cell holds its place before the pixels
 // arrive and the rail never shifts when they do
@@ -39,12 +43,18 @@ const state = computed(() => props.face ?? loaded.value)
 <template>
   <article
     class="cell"
-    :class="[{ 'session-start': a.sessionStart, 'selected': selected }, preview && `preview-${preview}`]"
+    :class="[{ 'run-start': a.runStart, 'selected': selected }, preview && `preview-${preview}`]"
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
-      <strong>{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
-      <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }} · {{ sizeLabel ?? `${a.width} × ${a.height}` }}</time>
+      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }">{{ a.session }}<span v-if="a.branch" class="muted"> · {{ a.branch }}</span></strong>
+      <p class="meta-line mono">
+        <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
+        <template v-if="file">
+          · <span class="file" :title="a.source">{{ middleTruncate(file) }}</span>
+        </template>
+        · {{ sizeLabel ?? `${a.width} × ${a.height}` }}
+      </p>
     </div>
     <button
       class="hit" type="button" :aria-pressed="!!selected" :aria-label="`${name} 선택. 다시 누르면 크게 보기`"
@@ -67,7 +77,7 @@ const state = computed(() => props.face ?? loaded.value)
       </slot>
     </button>
     <div class="caption">
-      <span>{{ caption }}</span>
+      <span>{{ caption }}<span v-if="hint" class="hint"> · {{ hint }}</span></span>
       <span class="mono">{{ String(a.seq).padStart(2, '0') }}</span>
     </div>
     <FloatingActions
@@ -93,11 +103,12 @@ const state = computed(() => props.face ?? loaded.value)
   /* Lets the action bar react to a narrow cell */
   container-type: inline-size;
 }
-/* A different session, or a new day, than the visible cell before it */
-.cell.session-start:not(:first-child) {
-  margin-left: 17px;
+/* A new run: another session, a new day, or a pause. The rail's gap is the tight in-run
+   one, so this adds back the normal gap plus the divider's 17px. */
+.cell.run-start:not(:first-child) {
+  margin-left: calc(var(--cell-gap, 22px) - var(--run-gap, 10px) + 17px);
 }
-.cell.session-start:not(:first-child)::before {
+.cell.run-start:not(:first-child)::before {
   content: '';
   position: absolute;
   left: -21px;
@@ -116,7 +127,7 @@ const state = computed(() => props.face ?? loaded.value)
   white-space: nowrap;
 }
 .meta strong,
-.meta time {
+.meta-line {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -124,8 +135,18 @@ const state = computed(() => props.face ?? loaded.value)
   font-size: 12px;
   font-weight: 500;
 }
-.meta time {
+/* Later cells of a run: the session is named once, at the start */
+.meta strong.continued {
+  visibility: hidden;
+}
+.meta-line {
   font-size: 10px;
+  color: var(--muted);
+}
+.meta-line time {
+  font-size: inherit;
+}
+.caption .hint {
   color: var(--muted);
 }
 .day {
@@ -240,7 +261,7 @@ const state = computed(() => props.face ?? loaded.value)
   .meta strong {
     font-size: 10px;
   }
-  .meta time {
+  .meta-line {
     font-size: 9px;
   }
   .caption {

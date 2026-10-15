@@ -23,12 +23,12 @@ export function atLatest(el: { scrollWidth: number, clientWidth: number, scrollL
   return el.scrollWidth - el.clientWidth - el.scrollLeft < FOLLOW_EDGE
 }
 
-export const lastSeq = (artifacts: Artifact[]) => artifacts.reduce((n, a) => Math.max(n, a.seq), 0)
+export const lastArrival = (artifacts: Artifact[]) => artifacts.reduce((n, a) => Math.max(n, a.arrival), 0)
 
 /**
- * Artifacts that actually arrived since `seenSeq`. Cells that only became visible
- * (a session unmuted, the scope widened) carry older sequence numbers, so they never
- * count, and neither do arrivals from muted or out-of-scope sessions, which are not
- * in the list at all.
+ * Cells that actually got a new capture since `seen`: a new screen, or a new capture of
+ * one already on the rail (its cell moved to the end). Cells that only became visible
+ * (a session unmuted, the scope widened) carry older arrivals, so they never count, and
+ * neither do arrivals from muted or out-of-scope sessions, which are not in the list at all.
  */
-export const arrivedSince = (seenSeq: number, artifacts: Artifact[]) => artifacts.filter(a => a.seq > seenSeq).length
+export const arrivedSince = (seen: number, artifacts: Artifact[]) => artifacts.filter(a => a.arrival > seen).length

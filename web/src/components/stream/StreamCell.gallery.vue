@@ -8,9 +8,9 @@ import StreamCell from './StreamCell.vue'
 const ratios = rail(['hero-b', 'settings', 'checkout-1', 'icons', 'checkout-full', 'banner'])
 const portrait = rail(['checkout-1', 'checkout-2'])
 const docs = [
-  { ...one('hero-b'), sessionStart: true },
-  { ...documentSample('html', 'od', 11, 14, '시안 HTML · 예시'), sessionStart: false },
-  { ...documentSample('doc', 'piuda', 12, 16, '문서 · 예시'), sessionStart: true },
+  { ...one('hero-b'), runStart: true },
+  { ...documentSample('html', 'od', 11, 14, '시안 HTML · 예시'), runStart: false },
+  { ...documentSample('doc', 'piuda', 12, 16, '문서 · 예시'), runStart: true },
 ]
 
 const { target, setTarget } = useFeedbackTarget()

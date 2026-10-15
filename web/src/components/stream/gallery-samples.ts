@@ -86,5 +86,5 @@ export function dayRail(): Artifact[] {
 
 /** Planned non-image artifacts (guide 07): 16:10 with no preview */
 export function documentSample(id: string, session: string, seq: number, minute: number, label: string): Artifact {
-  return { key: id, messageId: 100 + seq, url: '', width: 1600, height: 1000, sessionId: session, session, branch: BRANCH[session], at: min(minute), sessionStart: false, seq, turnIndex: 0, label }
+  return { key: id, messageId: 100 + seq, url: '', width: 1600, height: 1000, sessionId: session, session, branch: BRANCH[session], at: min(minute), runStart: false, seq, arrival: seq, turnIndex: 0, label }
 }

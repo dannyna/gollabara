@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { TriageEngine } from '../../src/shared/types'
-import { computed, onMounted, ref, watch } from 'vue'
-import { toArtifacts } from './artifacts'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import { cellKeys, toArtifacts } from './artifacts'
+import { useCaptures } from './captures'
 import { resolveNotices } from './components/banner/notices'
 import AppToast from './components/overlay/AppToast.vue'
 import ImageViewer from './components/overlay/ImageViewer.vue'
@@ -28,7 +29,10 @@ const scope = ref<string | null>(null)
 const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value))
 const scopeLabel = computed(() => sessions.value.find(s => s.id === scope.value)?.name ?? '전체 세션')
 const visible = computed(() => inScope(messages.value, scope.value, muted.value))
-const artifacts = computed(() => toArtifacts(messages.value, visible.value))
+// Earlier captures of the same screen hide behind the newest; 「따로 보기」 takes one out
+const { split, cellOf, cellKey } = useCaptures()
+const artifacts = computed(() => toArtifacts(messages.value, visible.value, split.value))
+watchEffect(() => cellOf.value = cellKeys(artifacts.value))
 
 const appBar = ref<InstanceType<typeof AppBar>>()
 const sessionsOpen = ref(false)
@@ -88,7 +92,7 @@ const notices = computed(() => resolveNotices({
 }))
 
 // The viewer opens from anywhere through useImageViewer (stream cells, chat thumbnails)
-const { openKey: viewerKey, open } = useImageViewer()
+const { openKey: viewerKey, open, openCell } = useImageViewer()
 
 // Selection links a cell, its chat thumbnail, and its message
 const selected = ref<string | null>(null)
@@ -107,8 +111,9 @@ function onThumb(key: string) {
     open(key)
     return
   }
-  selected.value = key
-  stream.value?.reveal(key)
+  // The thumbnail's capture may sit behind a newer one: pick the cell that shows it
+  selected.value = cellKey(key)
+  stream.value?.reveal(selected.value)
 }
 </script>
 
@@ -130,7 +135,7 @@ function onThumb(key: string) {
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :selected="selected" :scope="scope" :all-muted="allMuted"
-        @select="select" @open="open" @sessions="sessionsOpen = true"
+        @select="select" @open="openCell" @sessions="sessionsOpen = true"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"

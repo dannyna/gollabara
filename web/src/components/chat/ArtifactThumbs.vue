@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { basename, stackCaptures } from '../../../../src/shared/stacks'
+import { useCaptures } from '../../captures'
 import { outputLabel } from './chat'
 import ChatIcon from './ChatIcon.vue'
 
 // The thumbnail row inside a session message: fixed height, original aspect ratio,
-// then the tool and count in mono
+// then the tool and count in mono. Re-captures of one screen within the turn show as
+// their newest thumbnail only, the same rule the stream uses.
 export interface Thumb {
   key: string
   url: string
@@ -12,6 +15,9 @@ export interface Thumb {
   height: number
   /** Short mark on the thumbnail, e.g. A / B or a sequence number */
   label?: string
+  at?: number
+  source?: string
+  dhash?: string
 }
 
 const props = defineProps<{
@@ -22,11 +28,26 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ pick: [key: string], openImage: [thumb: Thumb] }>()
 
-const chip = computed(() => outputLabel(props.thumbs.length, props.toolName))
+const { split, cellKey } = useCaptures()
+const shown = computed(() => stackCaptures(
+  // One turn is one session; images without a time keep their order
+  props.thumbs.map((t, i) => ({ ...t, sessionId: '', at: t.at ?? i })),
+  split.value,
+).map(stack => ({ thumb: stack[stack.length - 1]!, count: stack.length })))
+
+const chip = computed(() => outputLabel(shown.value.length, props.toolName))
+
+// Paired with the stream cell that shows this capture, which may be a newer one
+const isActive = (t: Thumb) => props.active != null && (props.active === t.key || props.active === cellKey(t.key))
+
+function title(t: Thumb, count: number) {
+  const parts = [t.source && basename(t.source), count > 1 && `같은 화면 ${count}장`].filter(Boolean)
+  return parts.length ? parts.join(' · ') : undefined
+}
 
 // Like a stream cell: the first press pairs it with the stream, pressing the paired one opens it
 function press(t: Thumb) {
-  if (props.active === t.key)
+  if (isActive(t))
     emit('openImage', t)
   else
     emit('pick', t.key)
@@ -36,8 +57,9 @@ function press(t: Thumb) {
 <template>
   <div class="thumbs">
     <button
-      v-for="(t, i) in thumbs" :key="t.key" class="thumb" type="button"
-      :class="{ active: active === t.key }" :aria-label="`${t.label ?? `이미지 ${i + 1}`} 선택`"
+      v-for="({ thumb: t, count }, i) in shown" :key="t.key" class="thumb" type="button"
+      :class="{ active: isActive(t) }" :title="title(t, count)"
+      :aria-label="`${t.label ?? (t.source ? basename(t.source) : `이미지 ${i + 1}`)} 선택`"
       @click="press(t)"
     >
       <img :src="t.url" alt="" :style="{ aspectRatio: `${t.width} / ${t.height}` }">
