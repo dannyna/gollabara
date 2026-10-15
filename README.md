@@ -56,11 +56,12 @@ gollabara spells out the Korean 골라 봐라 as it sounds, and it reads two way
 Early stage. What works today:
 
 - **Claude Code**, including Open Design runs started from it: images, recaps, and questions flow into the stream.
+- **Codex CLI:** recaps, images it views, and the questions it asks in Plan mode flow in too. Your feedback reaches a Codex session at its next step or when it ends its turn; it can't wake an idle one yet.
 - **Stepping in:** reply to a session, about one image or in general. Your feedback reaches it at its next step, and an idle session wakes up for it. Mute a session, or narrow the view to one.
 - **Your phone over the tailnet:** open the stream from any device on your Tailscale tailnet.
 - **Notifications:** turn them on per device to hear when a session asks something or answers your feedback. The notification never shows what the session said.
 
-What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): remote access through Tailscale Serve with a home-screen app, notifications when a session asks something, then Codex. Antigravity and other harnesses follow after the MVP.
+What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): remote access through Tailscale Serve with a home-screen app, and notifications when a session asks something. Antigravity and other harnesses follow after the MVP.
 
 ## Try it
 
@@ -71,7 +72,7 @@ bunx gollabara setup     # once it is on npm
 bunx gollabara doctor    # what is and isn't working
 ```
 
-`setup` installs gollabara under `~/.gollabara`, starts the server as a login service on macOS (http://localhost:4747), and installs the plugin into Claude Code when `claude` is on your PATH. Run it again any time; `bunx gollabara update` refreshes everything and `bunx gollabara uninstall` removes it (`--keep-data` keeps your messages and images).
+`setup` installs gollabara under `~/.gollabara`, starts the server as a login service on macOS (http://localhost:4747), and installs the plugin into Claude Code and Codex CLI when `claude` or `codex` is on your PATH. Codex asks you once to review the plugin's hooks: open `codex` and approve them. Run it again any time; `bunx gollabara update` refreshes everything and `bunx gollabara uninstall` removes it (`--keep-data` keeps your messages and images).
 
 From a checkout, until the npm package is published:
 
@@ -80,7 +81,7 @@ bun install && bun run build
 bun src/cli.ts setup     # or: bun src/cli.ts serve, without the login service
 ```
 
-Your feedback reaches a session even while it sits idle: the plugin wakes it, with no launch flag.
+Your feedback reaches a Claude Code session even while it sits idle: the plugin wakes it, with no launch flag.
 
 For development and configuration, see [AGENTS.md](AGENTS.md).
 

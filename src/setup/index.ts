@@ -150,7 +150,7 @@ export async function setup(ctx: Context, { service = true } = {}): Promise<Repo
     }
   }
   if (!connected)
-    row('harness', 'none detected (Claude Code: claude on PATH); run golla setup again after installing one')
+    row('harness', 'none detected (Claude Code: claude on PATH; Codex CLI: codex on PATH); run golla setup again after installing one')
 
   pruneVersions(ctx, version)
   row('open', `http://localhost:${ctx.port}`)

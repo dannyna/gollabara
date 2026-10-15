@@ -36,7 +36,15 @@ export interface Session extends SessionInfo {
   lastSeenAt: number
   /** A wake-up Stop hook is waiting on the session's feedback, so it reaches the session at once, even when idle */
   channel?: boolean
+  /** How feedback can reach the session right now (`routesFor`); missing on records from older servers */
+  routes?: DeliveryRoute[]
 }
+
+/**
+ * A way feedback reaches a session, whatever the harness calls its hook points: next to the next tool
+ * result, alongside the next prompt, when the session tries to end its turn, or by waking an idle session
+ */
+export type DeliveryRoute = 'next-tool' | 'next-prompt' | 'turn-end' | 'idle-wake'
 
 export interface IncomingImage {
   /** base64 (no data URL prefix) */

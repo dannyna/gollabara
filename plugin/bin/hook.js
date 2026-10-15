@@ -3,7 +3,7 @@
 import process4 from "process";
 
 // src/hook/index.ts
-import { Buffer } from "buffer";
+import { Buffer as Buffer2 } from "buffer";
 import { closeSync, existsSync, fstatSync, openSync, readFileSync as readFileSync2, readSync, statSync as statSync2 } from "fs";
 import { dirname, join as join3, resolve } from "path";
 import process2 from "process";
@@ -25,7 +25,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.1.0",
+  version: "0.2.0",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -77,6 +77,7 @@ class HttpError extends Error {
 }
 
 // src/hook/map.ts
+import { Buffer } from "buffer";
 import { isAbsolute } from "path";
 
 // src/shared/feedback.ts
@@ -95,6 +96,7 @@ function clock(at) {
 }
 
 // src/hook/map.ts
+var QUESTION_TOOLS = new Set(["AskUserQuestion", "request_user_input"]);
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
 var SESSION_START_REASONS = ["startup", "resume", "clear", "compact"];
@@ -102,12 +104,12 @@ function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
 }
-function sessionInfo(input, env, git) {
-  const project = env.OD_PROJECT_ID;
+function sessionInfo(input, env, git, adapter = "claude-code") {
+  const project = adapter === "claude-code" ? env.OD_PROJECT_ID : undefined;
   if (project)
     return { id: input.session_id, name: project, harness: "open-design", project, cwd: input.cwd };
   const root = git.projectRoot(input.cwd);
-  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: "claude-code", cwd: input.cwd };
+  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd };
 }
 function turnOpener(tail) {
   const lines = tail.split(`
@@ -149,6 +151,26 @@ function turnStartedAt(tail) {
       continue;
     }
     if (entry?.isSidechain || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
+      continue;
+    const at = Date.parse(entry.timestamp);
+    return Number.isFinite(at) ? at : undefined;
+  }
+  return;
+}
+function codexTurnStartedAt(tail) {
+  const lines = tail.split(`
+`);
+  for (let i = lines.length - 1;i >= 0; i--) {
+    const line = lines[i];
+    if (!line.includes('"task_started"'))
+      continue;
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (entry?.type !== "event_msg" || entry.payload?.type !== "task_started")
       continue;
     const at = Date.parse(entry.timestamp);
     return Number.isFinite(at) ? at : undefined;
@@ -211,7 +233,7 @@ function mapHook(input, session, opener = "unknown", fileRole) {
       return { kind: "image", session, toolName: input.tool_name ?? "", images };
     }
     case "PreToolUse": {
-      if (input.tool_name !== "AskUserQuestion")
+      if (!QUESTION_TOOLS.has(input.tool_name ?? ""))
         return null;
       const questions = extractQuestions(input.tool_input);
       return questions.length ? { kind: "question", session, questions } : null;
@@ -224,6 +246,7 @@ function mapHook(input, session, opener = "unknown", fileRole) {
         return null;
       return input.stop_hook_active && opener !== "rewake" ? { kind: "recap", session, text, continuation: true } : { kind: "recap", session, text };
     }
+    case "SessionEnd":
     default:
       return null;
   }
@@ -233,13 +256,17 @@ var FEEDBACK_VIA = {
   Stop: "stop",
   UserPromptSubmit: "user-prompt-submit"
 };
-function feedbackVia(hookEventName) {
+function feedbackVia(hookEventName, input, adapter = "claude-code") {
+  if (adapter === "codex" && hookEventName === "Stop" && input?.stop_hook_active)
+    return null;
   return FEEDBACK_VIA[hookEventName] ?? null;
 }
-function feedbackOutput(hookEventName, items) {
+function feedbackOutput(hookEventName, items, adapter = "claude-code") {
   if (items.length === 0 || !feedbackVia(hookEventName))
     return null;
   const text = feedbackText(items);
+  if (adapter === "codex" && hookEventName === "Stop")
+    return { decision: "block", reason: text };
   return { hookSpecificOutput: { hookEventName, additionalContext: text } };
 }
 function recapOf(message) {
@@ -277,11 +304,38 @@ function extractImages(response) {
       out.push({ data: node.source.data, mime: node.source.media_type ?? "image/png" });
       return;
     }
+    if (node.type === "input_image" && typeof node.image_url === "string") {
+      const image = dataUrlImage(node.image_url);
+      if (image)
+        out.push(image);
+      return;
+    }
     for (const value of Object.values(node))
       visit(value, depth + 1);
   };
   visit(response, 0);
   return out;
+}
+function dataUrlImage(url) {
+  const match = /^data:([^;,]*)((?:;[^;,]*)*),/.exec(url);
+  if (!match || !match[2].split(";").includes("base64"))
+    return null;
+  const data = url.slice(match[0].length);
+  const mime = match[1].toLowerCase().startsWith("image/") ? match[1].toLowerCase() : sniffImageMime(data);
+  return mime ? { data, mime } : null;
+}
+function sniffImageMime(base64) {
+  const head = Buffer.from(base64.slice(0, 24), "base64");
+  const ascii = (from, to) => head.subarray(from, to).toString("latin1");
+  if (head[0] === 137 && ascii(1, 4) === "PNG")
+    return "image/png";
+  if (head[0] === 255 && head[1] === 216 && head[2] === 255)
+    return "image/jpeg";
+  if (ascii(0, 4) === "GIF8")
+    return "image/gif";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP")
+    return "image/webp";
+  return;
 }
 function imageSource(toolInput) {
   for (const key of ["file_path", "path", "filename"]) {
@@ -305,7 +359,7 @@ function extractQuestions(toolInput) {
 var POST_TIMEOUT_MS = 1500;
 var TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024];
 var TRANSCRIPT_HEAD_BYTES = 64 * 1024;
-async function runHook() {
+async function runHook(adapter = "claude-code") {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
   const started = performance.now();
@@ -313,13 +367,13 @@ async function runHook() {
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
-    const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
+    const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter);
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
-    const opener = input.hook_event_name === "Stop" ? stopTurnOpener(input.transcript_path) : "unknown";
-    const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path));
+    const opener = input.hook_event_name === "Stop" && adapter === "claude-code" ? stopTurnOpener(input.transcript_path) : "unknown";
+    const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter));
     if (event?.kind === "session")
       event.pid = process2.ppid;
-    const via = feedbackVia(input.hook_event_name);
+    const via = feedbackVia(input.hook_event_name, input, adapter);
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
     const post = (path, body) => fetch(`${serverUrl()}${path}`, {
       method: "POST",
@@ -343,7 +397,7 @@ async function runHook() {
     }
     const claimed = results[1];
     const items = claimed.status === "fulfilled" && Array.isArray(claimed.value) ? claimed.value : [];
-    const output = feedbackOutput(input.hook_event_name, items);
+    const output = feedbackOutput(input.hook_event_name, items, adapter);
     if (output)
       await Bun.write(Bun.stdout, JSON.stringify(output));
   } catch {
@@ -358,16 +412,16 @@ function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
     return opener === "unknown" ? undefined : opener;
   }, windows) ?? "unknown";
 }
-function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
-  const opened = fromTail(transcriptPath, turnStartedAt, windows);
+function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, adapter = "claude-code") {
+  const opened = fromTail(transcriptPath, adapter === "codex" ? codexTurnStartedAt : turnStartedAt, windows);
   if (opened !== undefined || !transcriptPath)
     return opened;
   const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES);
   return head === undefined ? undefined : sessionStartedAt(head);
 }
-function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
+function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, adapter = "claude-code") {
   try {
-    return imageRole(statSync2(path).mtimeMs, turnStart(transcriptPath, windows));
+    return imageRole(statSync2(path).mtimeMs, turnStart(transcriptPath, windows, adapter));
   } catch {
     return "artifact";
   }
@@ -389,7 +443,7 @@ function readHead(path, bytes) {
   try {
     const fd = openSync(path, "r");
     try {
-      const buffer = Buffer.alloc(Math.min(fstatSync(fd).size, bytes));
+      const buffer = Buffer2.alloc(Math.min(fstatSync(fd).size, bytes));
       readSync(fd, buffer, 0, buffer.length, 0);
       return buffer.toString("utf8");
     } finally {
@@ -405,7 +459,7 @@ function readTail(path, bytes) {
     try {
       const size = fstatSync(fd).size;
       const length = Math.min(size, bytes);
-      const buffer = Buffer.alloc(length);
+      const buffer = Buffer2.alloc(length);
       readSync(fd, buffer, 0, length, size - length);
       return { text: buffer.toString("utf8"), whole: length === size };
     } finally {
@@ -503,4 +557,8 @@ async function runWait() {
 }
 
 // src/hook/entry.ts
-process4.exit(process4.argv[2] === "wait" ? await runWait() : (await runHook(), 0));
+var HARD_DEADLINE_MS = 2500;
+var mode = process4.argv[2];
+if (mode !== "wait")
+  setTimeout(() => process4.exit(0), HARD_DEADLINE_MS).unref();
+process4.exit(mode === "wait" ? await runWait() : (await runHook(mode === "codex" ? "codex" : "claude-code"), 0));

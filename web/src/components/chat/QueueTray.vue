@@ -10,6 +10,8 @@ export interface QueueGroup {
   /** 작업 중 · 멈춤 · 끝남; left out when the state is unknown */
   status?: string
   items: string[]
+  /** How the session will get them, when the waiting sessions differ (the header then says so) */
+  route?: string
   /** Marks the first item 「다음」 */
   next?: boolean
 }
@@ -30,7 +32,7 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
     </div>
     <div v-for="g in groups" :key="g.session" class="qt-group">
       <div class="qt-who">
-        <SessionAvatar :name="g.session" small />{{ g.session }}<span v-if="g.status" class="st">{{ g.status }}</span>
+        <SessionAvatar :name="g.session" small />{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
       </div>
       <div v-for="(text, i) in g.items" :key="i" class="qi" :class="{ next: g.next && i === 0 }">
         <p>{{ text }}</p>

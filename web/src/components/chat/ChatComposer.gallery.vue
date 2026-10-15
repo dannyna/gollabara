@@ -30,6 +30,14 @@ const MENTION: MentionOption[] = [
       </template>
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="01b · 전달 경로">
+    <ChatFrame note="대상 세션에 피드백이 어떻게 닿는지 안내 줄에. 깨우기 hook이 살아 있으면 「바로」, Codex는 다음 작업이나 턴 끝.">
+      <template #footer>
+        <ChatComposer can-send target="od" route="바로 전달돼요" />
+        <ChatComposer can-send target="api" route="세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요" />
+      </template>
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="02 · 산출물 인용">
     <ChatFrame note="스트림에서 ‘답장’을 누르면 인용 줄이 붙는다. ×로 취소.">
       <template #footer>

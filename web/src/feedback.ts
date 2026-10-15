@@ -1,7 +1,7 @@
 // Feedback the user sends to sessions: who it goes to, how server records merge,
 // and what each bubble shows. The server and hook do the delivery (#22).
 
-import type { Feedback, FeedbackRequest, FeedbackVia, Session } from '../../src/shared/types'
+import type { DeliveryRoute, Feedback, FeedbackRequest, FeedbackVia, Session } from '../../src/shared/types'
 import type { DeliveryState } from './components/chat/MyMessage.vue'
 import { clock, splitSessionName } from './artifacts'
 
@@ -127,13 +127,42 @@ export const VIA_LABEL: Record<FeedbackVia, string> = {
   'rewake': '쉬던 세션을 깨워 전달됨',
 }
 
+/** Copy for a session's routes. Built from the routes alone, so it reads the same on every harness */
+export const ROUTE_NOTE = {
+  /** A live wake-up hook: at once, even when the session is idle */
+  now: '바로 전달돼요',
+  /** The next tool call, the next prompt or the turn's end (Codex, or Claude Code without a waiter) */
+  hooks: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요',
+  /** Routes unknown: a session the server never listed */
+  unknown: '세션이 다음 작업을 할 때 전달돼요',
+  /** Waiting sessions that differ; each tray group then says its own */
+  mixed: '세션마다 전달 시점이 달라요',
+} as const
+
+/** How feedback will reach a session with these routes */
+export function routeNote(routes?: readonly DeliveryRoute[]): string {
+  if (!routes?.length)
+    return ROUTE_NOTE.unknown
+  if (routes.includes('idle-wake'))
+    return ROUTE_NOTE.now
+  return routes.includes('turn-end') ? ROUTE_NOTE.hooks : ROUTE_NOTE.unknown
+}
+
+/** One session's route note. A server from before routes sends only `channel`, its live wake-up hook */
+export function sessionRouteNote(sessionId: string, sessions: Session[]): string {
+  const session = sessions.find(s => s.id === sessionId)
+  return routeNote(session?.routes ?? (session?.channel ? ['idle-wake'] : undefined))
+}
+
 /**
- * The queue tray's note: a session with a live wake-up hook gets feedback at once, even when
- * idle; the others pick it up on their next hook. Every waiting session must have one for 「바로」.
+ * The queue tray's note: what every waiting session has in common, so 「바로」 only when each one
+ * has a live wake-up hook. When they differ it says so, and each group carries its own (`mixed`).
  */
-export function queueNote(sessionIds: string[], sessions: Session[]): string {
-  const live = new Set(sessions.filter(s => s.channel).map(s => s.id))
-  return sessionIds.length && sessionIds.every(id => live.has(id)) ? '바로 전달돼요' : '세션이 다음 작업을 할 때 전달돼요'
+export function queueNote(sessionIds: string[], sessions: Session[]): { note: string, mixed: boolean } {
+  const notes = new Set(sessionIds.map(id => sessionRouteNote(id, sessions)))
+  if (notes.size > 1)
+    return { note: ROUTE_NOTE.mixed, mixed: true }
+  return { note: [...notes][0] ?? ROUTE_NOTE.unknown, mixed: false }
 }
 
 /** A failed POST: the status, or 0 when the server was not reached */

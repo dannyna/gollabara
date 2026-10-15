@@ -32,6 +32,8 @@ const props = withDefaults(defineProps<{
   note?: string
   /** Desktop-only muted hint at the start of the note line */
   hint?: string
+  /** How a message will reach the target session (e.g. 「바로 전달돼요」); takes the hint's place at every width */
+  route?: string
   /** Why sending is blocked right now (offline, no target, tray full): replaces the hint in fg */
   blocked?: { text: string, icon: BannerIconName }
   /** Turns off only the send button; the draft stays */
@@ -135,6 +137,9 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
     <div :id="noteId" class="composer-note">
       <InlineNote v-if="blocked" tone="blocked" :icon="blocked.icon">
         {{ blocked.text }}
+      </InlineNote>
+      <InlineNote v-else-if="route">
+        {{ route }}
       </InlineNote>
       <InlineNote v-else-if="hint" class="desktop-hint">
         {{ hint }}

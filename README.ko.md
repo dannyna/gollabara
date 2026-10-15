@@ -56,11 +56,12 @@ gollabara는 「골라 봐라」를 소리 나는 대로 적은 이름이고, �
 초기 단계입니다. 지금 되는 것은 다음과 같습니다.
 
 - **Claude Code**: 그 안에서 실행한 Open Design 작업까지, 이미지 · 리캡 · 질문이 흐름으로 들어옵니다.
+- **Codex CLI**: 리캡, 세션이 본 이미지, Plan 모드에서 묻는 질문도 들어옵니다. 피드백은 Codex 세션의 다음 단계나 턴이 끝날 때 닿고, 쉬고 있는 세션을 깨우지는 아직 못합니다.
 - **개입**: 세션에 답장할 수 있고, 이미지 하나를 짚어 보낼 수도 있습니다. 피드백은 세션의 다음 단계에 닿고, 쉬고 있는 세션은 깨워서 전달합니다. 세션을 음소거하거나 한 세션만 골라 볼 수도 있습니다.
 - **tailnet으로 폰에서**: Tailscale tailnet 안의 기기라면 어디서든 흐름을 열 수 있습니다.
 - **알림**: 기기마다 켜 두면 세션이 질문하거나 내 피드백에 답할 때 알려 줍니다. 알림에는 세션이 한 말이 나오지 않습니다.
 
-다음에 무엇을 어떤 순서로 하는지는 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다. Tailscale Serve를 통한 원격 접속과 홈 화면 앱, 세션이 질문할 때 오는 알림, 그다음 Codex입니다. Antigravity와 다른 도구는 MVP 이후에 이어집니다.
+다음에 무엇을 어떤 순서로 하는지는 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다. Tailscale Serve를 통한 원격 접속과 홈 화면 앱, 세션이 질문할 때 오는 알림입니다. Antigravity와 다른 도구는 MVP 이후에 이어집니다.
 
 ## 써 보기
 
@@ -71,7 +72,7 @@ bunx gollabara setup     # npm에 올라간 뒤
 bunx gollabara doctor    # 무엇이 되고 무엇이 안 되는지
 ```
 
-`setup`은 gollabara를 `~/.gollabara`에 설치하고, macOS에서는 서버를 로그인 서비스로 띄우며(http://localhost:4747), `claude`가 PATH에 있으면 Claude Code에 플러그인을 설치합니다. 몇 번을 다시 실행해도 괜찮습니다. `bunx gollabara update`로 모두 새로 고치고, `bunx gollabara uninstall`로 지웁니다(`--keep-data`를 주면 메시지와 이미지는 남깁니다).
+`setup`은 gollabara를 `~/.gollabara`에 설치하고, macOS에서는 서버를 로그인 서비스로 띄우며(http://localhost:4747), `claude`나 `codex`가 PATH에 있으면 Claude Code와 Codex CLI에 플러그인을 설치합니다. Codex는 플러그인의 hook을 한 번 검토하라고 하니, `codex`를 열어 승인하세요. 몇 번을 다시 실행해도 괜찮습니다. `bunx gollabara update`로 모두 새로 고치고, `bunx gollabara uninstall`로 지웁니다(`--keep-data`를 주면 메시지와 이미지는 남깁니다).
 
 npm 패키지가 나오기 전에는 저장소에서 실행합니다.
 
@@ -80,7 +81,7 @@ bun install && bun run build
 bun src/cli.ts setup     # 로그인 서비스 없이 띄우려면 bun src/cli.ts serve
 ```
 
-피드백은 쉬고 있는 세션에도 바로 닿습니다. 플러그인이 세션을 깨우므로 실행 플래그가 필요 없습니다.
+Claude Code 세션에는 피드백이 쉬고 있을 때도 바로 닿습니다. 플러그인이 세션을 깨우므로 실행 플래그가 필요 없습니다.
 
 개발과 설정은 [AGENTS.md](AGENTS.md)를 참고하세요.
 

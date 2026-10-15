@@ -36,7 +36,7 @@ switch (command) {
   case 'hook':
     if (rest[0] === 'wait')
       process.exit(await runWait())
-    await runHook()
+    await runHook(rest[0] === 'codex' ? 'codex' : 'claude-code')
     process.exit(0)
     break
   case 'doctor': {
@@ -58,14 +58,15 @@ switch (command) {
     break
   default:
     console.log(`Usage:
-  golla setup       install the app, the login service (macOS) and each detected harness's plugin
-                      --port <n>      serve on this port (default 4747)
-                      --no-service    skip the login service
-  golla doctor      check the server, the service, plugins, hook health, sleep and Tailscale
-  golla update      refresh to the latest (npm, or the checkout setup ran from), then set up again
-  golla uninstall   remove the service, the plugins, the app and the data
-                      --keep-data     keep the messages and images
-  golla serve       start the stream server
-  golla hook        send Claude Code hook input (stdin) to the server
-  golla hook wait   wait for the user's feedback after a Stop, and wake the idle session with it`)
+  golla setup        install the app, the login service (macOS) and each detected harness's plugin
+                       --port <n>      serve on this port (default 4747)
+                       --no-service    skip the login service
+  golla doctor       check the server, the service, plugins, hook health, sleep and Tailscale
+  golla update       refresh to the latest (npm, or the checkout setup ran from), then set up again
+  golla uninstall    remove the service, the plugins, the app and the data
+                       --keep-data     keep the messages and images
+  golla serve        start the stream server
+  golla hook         send Claude Code hook input (stdin) to the server
+  golla hook codex   send Codex CLI hook input (stdin) to the server
+  golla hook wait    wait for the user's feedback after a Stop, and wake the idle session with it`)
 }

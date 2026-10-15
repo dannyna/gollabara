@@ -349,7 +349,7 @@ describe('feedback delivery', () => {
   }
 
   test('only PostToolUse, Stop and UserPromptSubmit claim feedback', () => {
-    expect(['PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart', 'PreToolUse'].map(feedbackVia))
+    expect(['PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart', 'PreToolUse'].map(name => feedbackVia(name)))
       .toEqual(['post-tool-use', 'stop', 'user-prompt-submit', null, null])
   })
 
