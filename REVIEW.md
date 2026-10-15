@@ -20,7 +20,7 @@ gollabara is a local web app that streams the artifacts of coding and design ses
 
 ## Tests
 
-- Run `bun test` (`src/hook/map.test.ts`).
+- Run `bun test` (every `*.test.ts` under `src/` and `web/src/`).
 - `src/hook/map.ts` is pure, so any mapping change needs a fixture-based test.
 
 ## Skip / low priority
@@ -34,6 +34,6 @@ gollabara is a local web app that streams the artifacts of coding and design ses
 
 ## Conventions
 
-- Code comments and commit messages are in Korean; commits follow Conventional Commits.
+- Code, comments, commit messages, and PRs are in English (README.ko.md and the UI copy are Korean); commits follow Conventional Commits.
 - Agent-facing docs (AGENTS.md, DESIGN.md, REVIEW.md) are in English; README.md and README.ko.md stay in sync.
 - The service name is always the Latin `gollabara`.

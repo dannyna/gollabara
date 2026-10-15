@@ -8,7 +8,7 @@ A local web app that gathers only the **artifacts** your Open Design, Claude Cod
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
-  <img src="docs/architecture-light.svg" alt="gollabara architecture: sessions from Claude Code, Open Design, Codex, and Claude Design send their artifacts to a local server, which stores them on your machine and streams them to the desktop web view and your phone. Dashed lines mark planned capture and intervention (pause, reply, @mention)." width="100%">
+  <img src="docs/architecture-light.svg" alt="gollabara architecture: sessions from Claude Code, Open Design, Codex, and Claude Design send their artifacts to a local server, which stores them on your machine and streams them to the desktop web view and your phone. Dashed lines mark planned capture and the feedback you send back to sessions." width="100%">
 </picture>
 
 ## Why
@@ -53,12 +53,13 @@ gollabara spells out the Korean 골라 봐라 as it sounds, and it reads two way
 
 ## Where it stands
 
-Early stage. Observation works today (images, recaps, and questions flowing in) for Claude Code sessions, including Open Design work called from inside them.
+Early stage. What works today:
 
-- [ ] Launch at login and install to the phone home screen
-- [ ] Step in: reply, `@mention`, mute
-- [ ] Remote phone access and notifications
-- [ ] Capture directly from Codex, Open Design, and Claude Design sessions
+- **Claude Code**, including Open Design runs started from it: images, recaps, and questions flow into the stream.
+- **Stepping in:** reply to a session, about one image or in general. Your feedback reaches it at its next step, and an idle session wakes up for it. Mute a session, or narrow the view to one.
+- **Your phone over the tailnet:** open the stream from any device on your Tailscale tailnet.
+
+What comes next, and in what order, is in [docs/ROADMAP.md](docs/ROADMAP.md): remote access through Tailscale Serve with a home-screen app, notifications when a session asks something, then Codex. Antigravity and other harnesses follow after the MVP.
 
 ## Try it
 

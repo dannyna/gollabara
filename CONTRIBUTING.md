@@ -19,7 +19,7 @@ bun run build
 
 ## Development workflow
 
-1. Create a branch from `main` named `<type>/<short-topic>` (e.g. `feat/pause-session` or `fix/hook-timeout`).
+1. Create a branch from `main` named `<type>/<short-topic>` (e.g. `feat/session-menu` or `fix/hook-timeout`).
 2. Make focused changes. Keep each pull request to one logical change.
 3. Run the checks below and make sure they pass.
 4. Open a pull request and fill out the template.

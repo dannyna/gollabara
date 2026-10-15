@@ -8,7 +8,7 @@ Open Design · Claude Code · Codex · Claude Design 세션이 만들어 내는 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
-  <img src="docs/architecture-light.svg" alt="gollabara 구조도: Claude Code · Open Design · Codex · Claude Design 세션의 산출물이 로컬 서버로 모이고, 서버는 내 기기에 저장한 뒤 데스크톱 웹과 폰에 흘린다. 점선은 예정된 포착과 개입(멈춤 · 답장 · @멘션)." width="100%">
+  <img src="docs/architecture-light.svg" alt="gollabara 구조도: Claude Code · Open Design · Codex · Claude Design 세션의 산출물이 로컬 서버로 모이고, 서버는 내 기기에 저장한 뒤 데스크톱 웹과 폰에 흘린다. 점선은 예정된 포착과, 내가 세션에 돌려보내는 피드백." width="100%">
 </picture>
 
 ## 왜 만들었나
@@ -53,12 +53,13 @@ gollabara는 「골라 봐라」를 소리 나는 대로 적은 이름이고, �
 
 ## 지금 상태
 
-초기 단계입니다. 지금은 관찰(이미지 · 리캡 · 질문이 흘러오기)까지 동작하며, Claude Code 세션과 그 안에서 부르는 Open Design의 산출물을 받습니다.
+초기 단계입니다. 지금 되는 것은 다음과 같습니다.
 
-- [ ] 로그인 시 자동 실행과 폰 홈 화면 설치
-- [ ] 개입: 답장 · `@멘션` · 음소거
-- [ ] 폰 원격 접속과 알림
-- [ ] Codex · Open Design · Claude Design 세션에서 직접 받기
+- **Claude Code**: 그 안에서 실행한 Open Design 작업까지, 이미지 · 리캡 · 질문이 흐름으로 들어옵니다.
+- **개입**: 세션에 답장할 수 있고, 이미지 하나를 짚어 보낼 수도 있습니다. 피드백은 세션의 다음 단계에 닿고, 쉬고 있는 세션은 깨워서 전달합니다. 세션을 음소거하거나 한 세션만 골라 볼 수도 있습니다.
+- **tailnet으로 폰에서**: Tailscale tailnet 안의 기기라면 어디서든 흐름을 열 수 있습니다.
+
+다음에 무엇을 어떤 순서로 하는지는 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다. Tailscale Serve를 통한 원격 접속과 홈 화면 앱, 세션이 질문할 때 오는 알림, 그다음 Codex입니다. Antigravity와 다른 도구는 MVP 이후에 이어집니다.
 
 ## 써 보기
 
