@@ -1,0 +1,41 @@
+web/index.html
+  s_b7f30c572db9a8::t_9f5ed15cbcbc0d 9-15
+web/src/App.vue
+  s_b7f30c572db9a8::t_d0515a9bd1b23d 7,25,73-74,79-82,161
+web/src/main.ts
+  s_b7f30c572db9a8::t_9f5ed15cbcbc0d 21-24
+web/vite.config.ts
+  s_b7f30c572db9a8::t_c40f18b2e6834e 1,19-20,24
+  s_b7f30c572db9a8::t_b1b4759da602f0 2-4,10-18,21-23,25-47,50
+src/server/index.ts
+  s_b7f30c572db9a8::t_095517a513fdc1 243-253
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_b7210577d8ba5b 8-12,16-26,28,30-31,33,36,39-41,43,46,48-57,59,63-73
+  s_b7f30c572db9a8::t_6386da30de3177 86,89,93-98,100-102,106,109-110,143-144,146,148,152-169,174-178,182
+  s_b7f30c572db9a8::t_895ce5cf125eb1 74
+AGENTS.md
+  s_b7f30c572db9a8::t_1cbcd16d336edc 132
+web/src/useStream.test.ts
+  s_b7f30c572db9a8::t_ed6a86d02b5919 1,3,6,8-17,19-20,24-36,38-39,41,47-50,52,57-71
+web/public/manifest.webmanifest
+  s_b7f30c572db9a8::t_1fb7edd84c058b 1-16
+web/sw.js
+  s_b7f30c572db9a8::t_fcc56830e01d6f 1,3-6,8-32,34-53
+  s_b7f30c572db9a8::t_6209bc2ccdd56f 2,7,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30c9cc370b43e71e9e0db722eada20f90b440337",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
