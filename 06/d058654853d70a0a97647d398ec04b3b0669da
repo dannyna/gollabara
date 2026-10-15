@@ -1,0 +1,79 @@
+web/src/components/chat/HiddenRow.vue
+  s_b7f30c572db9a8::t_6c6692c69b50ec 3,10-11,13,16-19,23,25-26,33-34,36,39-43
+web/src/artifacts.test.ts
+  s_b7f30c572db9a8::t_f68a16bc847045 3,107-117,120-144
+  s_b7f30c572db9a8::t_e1607dbdc5181a 118-119
+  s_b7f30c572db9a8::t_6244b4ddeaa039 6
+  s_b7f30c572db9a8::t_bb3eaf6c991a4b 145-146
+src/hook/map.ts
+  s_b7f30c572db9a8::t_c97d41e1e095f6 3-4,95-157,177-181,193-197
+src/server/store.ts
+  s_b7f30c572db9a8::t_056ebde5bd6660 355-356,364,366,369
+web/src/artifacts.ts
+  s_b7f30c572db9a8::t_c890f7bdeecc1a 85-104
+  s_b7f30c572db9a8::t_e4ae492dc83d96 4,56-57,70-72,79-82,84,135,137,150-179
+  s_b7f30c572db9a8::t_178d52312326c5 112,132,180
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_f24146c2689dbb 100-101
+  s_b7f30c572db9a8::t_8621374118855e 35
+  s_b7f30c572db9a8::t_3b6c42d1ee4d2d 73-75,77
+  s_b7f30c572db9a8::t_d8a9582c48c3f4 278-293
+  s_b7f30c572db9a8::t_3289adce304e0e 59
+  s_b7f30c572db9a8::t_afe83b4dac96c1 10-12
+web/src/components/stream/ReferenceFold.vue
+  s_b7f30c572db9a8::t_4beaa0b5add2c3 1-131
+web/src/App.vue
+  s_b7f30c572db9a8::t_92f9e38143f7f4 37-39,100-101,167,181
+web/src/components/overlay/ImageViewer.vue
+  s_b7f30c572db9a8::t_b8a6f81d3c1655 234
+web/src/components/stream/StreamRail.vue
+  s_b7f30c572db9a8::t_8621374118855e 28
+  s_b7f30c572db9a8::t_e6b11902021551 150-152,154-163
+  s_b7f30c572db9a8::t_8195fc8de80add 12,14-15,19,21-22,29-43
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_0f3cc87e95d761 4,95-103,128-136
+  s_b7f30c572db9a8::t_983b72250ece36 137
+AGENTS.md
+  s_b7f30c572db9a8::t_73eff783c80815 70-73
+src/hook/index.test.ts
+  s_b7f30c572db9a8::t_217d570f7dd221 1,6,8,85-119,122,124,127,129-130,137,141,149,157-165
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_8621374118855e 130
+  s_b7f30c572db9a8::t_2b0ee98a3fa99a 10,18,127-129,131-134,143-146,148,329-334,356-357,359-365
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_b50180d516ddd9 21-23,79-122,135,146-149,246,255,277-298,300,302-320
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_49927000caa302 6,8,41-45,47-54,98-99,149-150,152,165-170
+  s_b7f30c572db9a8::t_852524cd9334a1 46
+  s_b7f30c572db9a8::t_a73fa8b9d5c3d0 171-172
+src/shared/types.ts
+  s_b7f30c572db9a8::t_5b46d3f1d1d142 43,46-52,94-95
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_3771a947a08f17 15
+  s_b7f30c572db9a8::t_9ae57731d02714 217-294
+src/hook/index.ts
+  s_b7f30c572db9a8::t_16ad297d683879 5,12,20-21,34,65-99,101,103-125
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_bebbed74a84290 6,21-22,35,207-208,210
+  s_b7f30c572db9a8::t_8621374118855e 11
+web/src/components/chat/ArtifactThumbs.vue
+  s_b7f30c572db9a8::t_852524cd9334a1 10-11,29,43,53-54,62,73,109-125
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_afb6a4e991b27f 188-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06d058654853d70a0a97647d398ec04b3b0669da",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
