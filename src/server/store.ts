@@ -102,17 +102,19 @@ export class Store {
     )`)
     this.db.run('CREATE INDEX IF NOT EXISTS feedback_pending ON feedback (session_id) WHERE delivered_at IS NULL')
     this.db.run('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-    // One verdict per recap line (idx) of a message; a question message uses idx 0
+    // One verdict per recap line (idx) of a message. Databases from before #37 also have
+    // advice and draft columns, which are no longer read or written.
     this.db.run(`CREATE TABLE IF NOT EXISTS triage (
       message_id INTEGER NOT NULL,
       idx INTEGER NOT NULL,
       verdict TEXT NOT NULL,
-      advice TEXT,
-      draft TEXT,
       PRIMARY KEY (message_id, idx)
     )`)
-    // Noise verdicts by normalized text, so repeated ticks skip the model
+    // Hide verdicts by normalized text, so repeated ticks skip the model
     this.db.run('CREATE TABLE IF NOT EXISTS triage_cache (key TEXT PRIMARY KEY, verdict TEXT NOT NULL)')
+    // Before #37 a verdict was signal, progress or noise: only signal stays shown
+    this.db.run(`UPDATE triage SET verdict = CASE verdict WHEN 'signal' THEN 'show' ELSE 'hide' END WHERE verdict IN ('signal', 'progress', 'noise')`)
+    this.db.run(`UPDATE triage_cache SET verdict = 'hide' WHERE verdict IN ('progress', 'noise')`)
   }
 
   settings(): ServerSettings {
@@ -127,24 +129,18 @@ export class Store {
   }
 
   saveTriage(t: Triage): void {
-    this.db.run(`INSERT INTO triage (message_id, idx, verdict, advice, draft) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(message_id, idx) DO UPDATE SET verdict = excluded.verdict, advice = excluded.advice, draft = excluded.draft`, [t.messageId, t.index, t.verdict, t.advice ?? null, t.draft ?? null])
+    this.db.run(`INSERT INTO triage (message_id, idx, verdict) VALUES (?, ?, ?)
+      ON CONFLICT(message_id, idx) DO UPDATE SET verdict = excluded.verdict`, [t.messageId, t.index, t.verdict])
   }
 
   /** Verdicts for the given messages (those `recent()` returns) */
   triageFor(messageIds: number[]): Triage[] {
     if (!messageIds.length)
       return []
-    const rows = this.db.query(`SELECT * FROM triage WHERE message_id >= ? AND message_id <= ? ORDER BY message_id, idx`)
-      .all(Math.min(...messageIds), Math.max(...messageIds)) as { message_id: number, idx: number, verdict: Verdict, advice: string | null, draft: string | null }[]
+    const rows = this.db.query(`SELECT message_id, idx, verdict FROM triage WHERE message_id >= ? AND message_id <= ? ORDER BY message_id, idx`)
+      .all(Math.min(...messageIds), Math.max(...messageIds)) as { message_id: number, idx: number, verdict: Verdict }[]
     const ids = new Set(messageIds)
-    return rows.filter(r => ids.has(r.message_id)).map(r => ({
-      messageId: r.message_id,
-      index: r.idx,
-      verdict: r.verdict,
-      ...(r.advice ? { advice: r.advice } : {}),
-      ...(r.draft ? { draft: r.draft } : {}),
-    }))
+    return rows.filter(r => ids.has(r.message_id)).map(r => ({ messageId: r.message_id, index: r.idx, verdict: r.verdict }))
   }
 
   cachedVerdict(key: string): Verdict | null {
@@ -251,6 +247,13 @@ export class Store {
     const rows = this.db.query(`UPDATE feedback SET delivered_at = ?, delivered_via = ?
       WHERE session_id = ? AND delivered_at IS NULL RETURNING *`).all(now, via, sessionId) as FeedbackRow[]
     return rows.sort((a, b) => a.id - b.id).map(r => this.toFeedback(r))
+  }
+
+  /** The feedback most recently delivered to the session, or null */
+  lastDelivered(sessionId: string): Feedback | null {
+    const row = this.db.query(`SELECT * FROM feedback WHERE session_id = ? AND delivered_at IS NOT NULL
+      ORDER BY delivered_at DESC, id DESC LIMIT 1`).get(sessionId) as FeedbackRow | null
+    return row ? this.toFeedback(row) : null
   }
 
   recentFeedback(limit = 300): Feedback[] {

@@ -10,15 +10,13 @@ import process from 'node:process'
 
 export const ENGINE_TIMEOUT_MS = 30_000
 
-/** One schema for both CLIs. Codex's strict mode needs every field required; "" means none. */
+/** One schema for both CLIs; codex's strict mode needs every field required */
 export const TRIAGE_SCHEMA = {
   type: 'object',
   properties: {
-    verdict: { type: 'string', enum: ['signal', 'progress', 'noise'] },
-    advice: { type: 'string' },
-    draft: { type: 'string' },
+    verdict: { type: 'string', enum: ['show', 'hide'] },
   },
-  required: ['verdict', 'advice', 'draft'],
+  required: ['verdict'],
   additionalProperties: false,
 } as const
 

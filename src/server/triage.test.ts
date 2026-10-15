@@ -3,10 +3,11 @@ import type { EngineCall } from './engine'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Database } from 'bun:sqlite'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { engineArgs, engineOutput } from './engine'
 import { Store } from './store'
-import { buildPrompt, cacheKey, JobQueue, toTriage, Triager } from './triage'
+import { buildPrompt, cacheKey, FEEDBACK_LINES, JobQueue, toTriage, Triager } from './triage'
 
 const a: SessionInfo = { id: 'a', name: 'piuda · main', harness: 'claude-code', cwd: '/a' }
 const b: SessionInfo = { id: 'b', name: 'checkout', harness: 'claude-code', cwd: '/b' }
@@ -22,38 +23,57 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('toTriage', () => {
-  test('keeps advice and draft on signal lines only', () => {
-    expect(toTriage({ verdict: 'signal', advice: '로그를 보세요', draft: '로그 보여 줘' }, at, 'recap'))
-      .toEqual({ ...at, verdict: 'signal', advice: '로그를 보세요', draft: '로그 보여 줘' })
-    expect(toTriage({ verdict: 'progress', advice: '기다리세요', draft: '계속해' }, at, 'recap')).toEqual({ ...at, verdict: 'progress' })
-    expect(toTriage({ verdict: 'noise', advice: '', draft: '' }, at, 'recap')).toEqual({ ...at, verdict: 'noise' })
+  test('keeps only show or hide; advice and drafts are dropped', () => {
+    expect(toTriage({ verdict: 'show', advice: '로그를 보세요', draft: '로그 보여 줘' }, at)).toEqual({ ...at, verdict: 'show' })
+    expect(toTriage({ verdict: 'hide' }, at)).toEqual({ ...at, verdict: 'hide' })
   })
 
-  test('a question is never noise', () => {
-    expect(toTriage({ verdict: 'noise', advice: 'A를 고르세요', draft: '' }, at, 'question')).toEqual({ ...at, verdict: 'signal', advice: 'A를 고르세요' })
+  test('rejects malformed answers and the old three-way verdicts', () => {
+    expect(toTriage(null, at)).toBeNull()
+    expect(toTriage('hide', at)).toBeNull()
+    for (const verdict of ['signal', 'progress', 'noise', 'maybe'])
+      expect(toTriage({ verdict }, at)).toBeNull()
   })
+})
 
-  test('rejects malformed answers and clamps long text', () => {
-    expect(toTriage(null, at, 'recap')).toBeNull()
-    expect(toTriage('noise', at, 'recap')).toBeNull()
-    expect(toTriage({ verdict: 'maybe' }, at, 'recap')).toBeNull()
-    const long = toTriage({ verdict: 'signal', advice: '가'.repeat(300), draft: ' \n ' }, at, 'recap')!
-    expect([...long.advice!].length).toBe(120)
-    expect(long.advice!.endsWith('…')).toBe(true)
-    expect(long.draft).toBeUndefined()
+describe('verdicts stored before #37', () => {
+  test('signal reads as shown, progress and noise as hidden, in the cache too', () => {
+    const old = mkdtempSync(join(tmpdir(), 'gollabara-legacy-'))
+    // The old schema also had advice and draft columns
+    const legacy = new Database(join(old, 'stream.db'))
+    legacy.run('CREATE TABLE triage (message_id INTEGER NOT NULL, idx INTEGER NOT NULL, verdict TEXT NOT NULL, advice TEXT, draft TEXT, PRIMARY KEY (message_id, idx))')
+    legacy.run('CREATE TABLE triage_cache (key TEXT PRIMARY KEY, verdict TEXT NOT NULL)')
+    legacy.run(`INSERT INTO triage VALUES (1, 0, 'signal', '로그를 보세요', '로그 보여 줘'), (2, 0, 'progress', NULL, NULL), (3, 0, 'noise', NULL, NULL)`)
+    legacy.run(`INSERT INTO triage_cache VALUES ('# 분 경과', 'noise')`)
+    legacy.close()
+    try {
+      const migrated = new Store(old)
+      expect(migrated.triageFor([1, 2, 3])).toEqual([
+        { messageId: 1, index: 0, verdict: 'show' },
+        { messageId: 2, index: 0, verdict: 'hide' },
+        { messageId: 3, index: 0, verdict: 'hide' },
+      ])
+      expect(migrated.cachedVerdict('# 분 경과')).toBe('hide')
+      // New verdicts still write to the old table
+      migrated.saveTriage({ messageId: 2, index: 0, verdict: 'show' })
+      expect(new Store(old).triageFor([2])).toEqual([{ messageId: 2, index: 0, verdict: 'show' }])
+    }
+    finally {
+      rmSync(old, { recursive: true, force: true })
+    }
   })
 })
 
 describe('engine output', () => {
   test('claude: structured_output, else the result text; errors give null', () => {
-    expect(engineOutput('claude', JSON.stringify({ structured_output: { verdict: 'noise' } }))).toEqual({ verdict: 'noise' })
-    expect(engineOutput('claude', JSON.stringify({ result: '{"verdict":"signal"}' }))).toEqual({ verdict: 'signal' })
-    expect(engineOutput('claude', JSON.stringify({ is_error: true, structured_output: { verdict: 'noise' } }))).toBeNull()
+    expect(engineOutput('claude', JSON.stringify({ structured_output: { verdict: 'hide' } }))).toEqual({ verdict: 'hide' })
+    expect(engineOutput('claude', JSON.stringify({ result: '{"verdict":"show"}' }))).toEqual({ verdict: 'show' })
+    expect(engineOutput('claude', JSON.stringify({ is_error: true, structured_output: { verdict: 'hide' } }))).toBeNull()
     expect(engineOutput('claude', 'not json')).toBeNull()
   })
 
   test('codex: the answer file is the JSON itself', () => {
-    expect(engineOutput('codex', '{"verdict":"progress","advice":"","draft":""}')).toEqual({ verdict: 'progress', advice: '', draft: '' })
+    expect(engineOutput('codex', '{"verdict":"hide"}')).toEqual({ verdict: 'hide' })
   })
 
   test('both CLIs run without tools, user settings or hooks', () => {
@@ -69,11 +89,17 @@ describe('engine output', () => {
 
 describe('prompt and cache', () => {
   test('the prompt carries the session, images, earlier lines, and the new line', () => {
-    const prompt = buildPrompt({ session: 'piuda · main', hasImages: true, context: ['recap: 빌드 시작'], line: { kind: 'recap', text: 'e2e 3건 통과' } })
+    const prompt = buildPrompt({ session: 'piuda · main', hasImages: true, context: ['recap: 빌드 시작'], line: 'e2e 3건 통과' })
     expect(prompt).toContain('Session: piuda · main')
     expect(prompt).toContain('Turn has images: yes')
     expect(prompt).toContain('- recap: 빌드 시작')
     expect(prompt).toContain('New line (recap):\ne2e 3건 통과')
+    expect(prompt).not.toContain('feedback')
+  })
+
+  test('feedback, when given, sits right before the new line', () => {
+    expect(buildPrompt({ session: 'piuda', hasImages: false, context: [], feedback: '로그 보여 줘', line: '로그 첨부' }))
+      .toContain('Developer\'s latest feedback to this session:\n로그 보여 줘\n\nNew line (recap):\n로그 첨부')
   })
 
   test('numbers, case and spacing do not change the key', () => {
@@ -134,7 +160,7 @@ describe('Triager', () => {
   }
 
   test('does nothing while the engine is off', async () => {
-    const { triager, inputs, ingest } = setup(() => ({ verdict: 'noise' }))
+    const { triager, inputs, ingest } = setup(() => ({ verdict: 'hide' }))
     ingest(recap(a, '1분 경과'))
     await triager.queue.idle()
     expect(inputs).toEqual([])
@@ -142,9 +168,7 @@ describe('Triager', () => {
 
   test('judges each line of interleaved sessions with that session\'s own context', async () => {
     store.saveSettings({ triage: 'claude' })
-    const { triager, published, inputs, ingest } = setup(input => input.split('New line').at(-1)!.includes('경과')
-      ? { verdict: 'noise', advice: 'x', draft: 'y' }
-      : { verdict: 'signal', advice: '확인하세요', draft: '로그 보여 줘' })
+    const { triager, published, inputs, ingest } = setup(input => ({ verdict: input.split('New line').at(-1)!.includes('경과') ? 'hide' : 'show' }))
     ingest(recap(a, '1분 경과, 피드백 없음'))
     await triager.queue.idle()
     ingest(recap(b, 'e2e 2건 실패'))
@@ -153,31 +177,103 @@ describe('Triager', () => {
     ingest(recap(b, '3분 경과, 피드백 없음'))
     await triager.queue.idle()
 
-    expect(published.map(t => [t.messageId, t.verdict])).toEqual([[1, 'noise'], [2, 'signal'], [3, 'signal'], [4, 'noise']])
-    expect(published[1]).toMatchObject({ advice: '확인하세요', draft: '로그 보여 줘' })
+    expect(published.map(t => [t.messageId, t.verdict])).toEqual([[1, 'hide'], [2, 'show'], [3, 'show'], [4, 'hide']])
     // a's second line sees a's earlier line, not b's
     expect(inputs[2]).toContain('- recap: 1분 경과, 피드백 없음')
     expect(inputs[2]).not.toContain('e2e 2건 실패')
-    // b's tick hit the noise cache from a's: no model call
+    // b's tick hit the hide cache from a's: no model call
     expect(inputs).toHaveLength(3)
-    expect(store.triageFor([1, 2, 3, 4]).map(t => t.verdict)).toEqual(['noise', 'signal', 'signal', 'noise'])
+    expect(store.triageFor([1, 2, 3, 4]).map(t => t.verdict)).toEqual(['hide', 'show', 'show', 'hide'])
   })
 
   test('a continuation judges only its new line; a failed call stores nothing', async () => {
     store.saveSettings({ triage: 'codex' })
-    const { triager, published, ingest } = setup(input => input.endsWith('끝') ? { verdict: 'progress' } : null)
+    const { triager, published, ingest } = setup(input => input.endsWith('끝') ? { verdict: 'hide' } : null)
     ingest(recap(a, '빌드 중'))
     ingest(recap(a, '끝', true))
     await triager.queue.idle()
-    expect(published).toEqual([{ messageId: 1, index: 1, verdict: 'progress' }])
+    expect(published).toEqual([{ messageId: 1, index: 1, verdict: 'hide' }])
   })
 
-  test('questions get advice and are never hidden', async () => {
+  test('questions are always shown, so they never go to the model', async () => {
     store.saveSettings({ triage: 'claude' })
-    const { triager, published, ingest } = setup(() => ({ verdict: 'noise', advice: 'B가 안전해요', draft: 'B로 가자' }))
+    const { triager, published, inputs, ingest } = setup(() => ({ verdict: 'hide' }))
     ingest({ kind: 'question', session: a, questions: [{ question: '어느 쪽?', options: [{ label: 'A' }, { label: 'B' }] }] })
     await triager.queue.idle()
-    expect(published).toEqual([{ messageId: 1, index: 0, verdict: 'signal', advice: 'B가 안전해요', draft: 'B로 가자' }])
+    expect(inputs).toEqual([])
+    expect(published).toEqual([])
+  })
+})
+
+describe('feedback context', () => {
+  function setup() {
+    store.saveSettings({ triage: 'claude' })
+    const inputs: string[] = []
+    const triager = new Triager(store, () => {}, {
+      dataDir: dir,
+      run: async (_engine, call) => {
+        inputs.push(call.input)
+        return { verdict: 'hide' }
+      },
+    })
+    const ingest = async (event: IncomingEvent) => {
+      triager.onIngest(event, store.ingest(event))
+      await triager.queue.idle()
+    }
+    const deliver = (session: SessionInfo, text: string) => {
+      store.queueFeedback(session.id, text)
+      store.claimFeedback(session.id, 'stop')
+    }
+    const carried = () => inputs.map(i => i.includes('latest feedback'))
+    return { triager, inputs, ingest, deliver, carried }
+  }
+
+  test('the first FEEDBACK_LINES lines after delivered feedback carry it', async () => {
+    const { inputs, ingest, deliver, carried } = setup()
+    await ingest(recap(a, '결제 e2e 2건 실패'))
+    deliver(a, '실패한 2건 로그 보여 줘')
+    // Feedback on Stop continues the turn: the answer joins a message older than the feedback
+    await ingest(recap(a, '로그 첨부했어요', true))
+    for (const text of ['원인 찾는 중', '수정 중', '다시 실행 중'])
+      await ingest(recap(a, text))
+    expect(FEEDBACK_LINES).toBe(3)
+    expect(carried()).toEqual([false, true, true, true, false])
+    expect(inputs[1]).toContain('Developer\'s latest feedback to this session:\n실패한 2건 로그 보여 줘\n\nNew line (recap):\n로그 첨부했어요')
+  })
+
+  test('newer feedback opens a new window; another session\'s feedback stays out', async () => {
+    const { inputs, ingest, deliver, carried } = setup()
+    await ingest(recap(a, '빌드 시작'))
+    await ingest(recap(b, '테스트 시작'))
+    deliver(a, '첫 번째 피드백')
+    for (const step of ['설치', '빌드', '테스트', '배포'])
+      await ingest(recap(a, `${step} 단계`))
+    deliver(a, '두 번째 피드백')
+    await ingest(recap(a, '두 번째에 답함'))
+    await ingest(recap(b, '테스트 끝'))
+    expect(carried()).toEqual([false, false, true, true, true, false, true, false])
+    expect(inputs[6]).toContain('두 번째 피드백')
+    expect(inputs[6]).not.toContain('첫 번째 피드백')
+  })
+
+  test('feedback delivered before the server started is not carried', async () => {
+    store.ingest(recap(a, '빌드 시작'))
+    store.queueFeedback(a.id, '예전 피드백')
+    store.claimFeedback(a.id, 'stop', Date.now() - 60_000)
+    const { inputs, ingest } = setup()
+    await ingest(recap(a, '빌드 끝'))
+    expect(inputs[0]).not.toContain('예전 피드백')
+  })
+
+  test('a line after feedback skips the hide cache, so an answer is still judged', async () => {
+    const { inputs, ingest, deliver } = setup()
+    await ingest(recap(a, '테스트 통과'))
+    await ingest(recap(b, '테스트 통과'))
+    expect(inputs).toHaveLength(1)
+    deliver(b, '통과했는지 알려 줘')
+    await ingest(recap(b, '테스트 통과'))
+    expect(inputs).toHaveLength(2)
+    expect(inputs[1]).toContain('통과했는지 알려 줘')
   })
 })
 
