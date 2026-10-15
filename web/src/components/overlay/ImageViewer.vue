@@ -9,7 +9,7 @@ import OverlayIcon from './OverlayIcon.vue'
 import { feedbackTargetOf, useFeedbackTarget } from './useFeedbackTarget'
 import { useImageViewer } from './useImageViewer'
 import { useOverlay } from './useOverlay'
-import { MAX_ZOOM, MIN_ZOOM, setZoom, ZOOM_STEP, zoomLabel } from './zoom'
+import { clampPan, MAX_ZOOM, MIN_ZOOM, setZoom, wheelZoom, ZOOM_STEP, zoomAt, zoomLabel } from './zoom'
 
 // Full-screen viewer. Images are shown as they arrived, ratio kept, never cropped.
 // A cell that hides earlier captures of the same screen pages through them here,
@@ -99,7 +99,22 @@ function go(step: number) {
 // Zoom and pan; a new image starts at 100%
 const view = ref<ZoomState>(setZoom({ zoom: 1, x: 0, y: 0 }, props.initialZoom ?? 1))
 watch(() => shown.value?.url, () => view.value = setZoom(view.value, MIN_ZOOM))
-const zoomBy = (delta: number) => view.value = setZoom(view.value, view.value.zoom + delta)
+const stage = ref<HTMLElement>()
+const image = ref<HTMLImageElement>()
+/** Applies a zoom/pan, keeping the image's edges from leaving the stage */
+function apply(next: ZoomState) {
+  const box = stage.value
+  const img = image.value
+  if (!box || !img) {
+    view.value = next
+    return
+  }
+  const style = getComputedStyle(box)
+  const boxW = box.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
+  const boxH = box.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom)
+  view.value = clampPan(next, img.offsetWidth, img.offsetHeight, boxW, boxH)
+}
+const zoomBy = (delta: number) => apply(setZoom(view.value, view.value.zoom + delta))
 const transform = computed(() => `translate(${view.value.x}px, ${view.value.y}px) scale(${view.value.zoom})`)
 
 // Pinch with two pointers, drag to pan when zoomed
@@ -112,8 +127,8 @@ function spread() {
 function onPointerdown(e: PointerEvent) {
   if ((e.target as Element).closest('button'))
     return
-  const stage = e.currentTarget as Element
-  stage.setPointerCapture(e.pointerId)
+  const el = e.currentTarget as Element
+  el.setPointerCapture(e.pointerId)
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   gesture = pointers.size === 2
     ? { distance: spread(), zoom: view.value.zoom }
@@ -125,22 +140,23 @@ function onPointermove(e: PointerEvent) {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   if ('distance' in gesture) {
     if (gesture.distance)
-      view.value = setZoom(view.value, gesture.zoom * spread() / gesture.distance)
+      apply(setZoom(view.value, gesture.zoom * spread() / gesture.distance))
   }
   else if (view.value.zoom > MIN_ZOOM) {
-    view.value = { ...view.value, x: gesture.panX + e.clientX - gesture.x, y: gesture.panY + e.clientY - gesture.y }
+    apply({ ...view.value, x: gesture.panX + e.clientX - gesture.x, y: gesture.panY + e.clientY - gesture.y })
   }
 }
 function onPointerup(e: PointerEvent) {
   pointers.delete(e.pointerId)
   gesture = null
 }
+// The wheel zooms around the pointer; trackpad pinches arrive as Ctrl + wheel with
+// small deltas, so they get a stronger rate
 function onWheel(e: WheelEvent) {
-  // Ctrl + wheel, which is also what trackpad pinches send
-  if (!e.ctrlKey)
-    return
   e.preventDefault()
-  view.value = setZoom(view.value, view.value.zoom - e.deltaY * 0.008)
+  const box = stage.value!.getBoundingClientRect()
+  const delta = (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) * (e.ctrlKey ? 4 : 1)
+  apply(zoomAt(view.value, wheelZoom(view.value.zoom, delta), e.clientX - box.left - box.width / 2, e.clientY - box.top - box.height / 2))
 }
 
 const { setTarget } = useFeedbackTarget()
@@ -195,11 +211,11 @@ function onKeydown(e: KeyboardEvent) {
     </div>
 
     <div
-      class="viewer-stage" :class="{ zoomed: view.zoom > MIN_ZOOM }"
+      ref="stage" class="viewer-stage" :class="{ zoomed: view.zoom > MIN_ZOOM }"
       @pointerdown="onPointerdown" @pointermove="onPointermove" @pointerup="onPointerup" @pointercancel="onPointerup"
       @wheel="onWheel"
     >
-      <img :src="shown!.url" :alt="file ?? item.label ?? `${item.session} 이미지`" :style="{ transform }" draggable="false">
+      <img ref="image" :src="shown!.url" :alt="file ?? item.label ?? `${item.session} 이미지`" :style="{ transform }" draggable="false">
       <!-- At either end the arrow turns off; it never wraps around -->
       <button class="icon-button viewer-nav viewer-prev" type="button" aria-label="이전 이미지" :disabled="index <= 0" @click="go(-1)">
         <OverlayIcon name="left" />
@@ -291,6 +307,9 @@ function onKeydown(e: KeyboardEvent) {
 }
 .viewer-stage.zoomed {
   cursor: grab;
+}
+.viewer-stage.zoomed:active {
+  cursor: grabbing;
 }
 .viewer-stage img {
   max-width: 100%;
