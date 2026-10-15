@@ -1,0 +1,27 @@
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_5053e3c51bdd94 135-148
+src/hook/map.ts
+  s_b7f30c572db9a8::t_5053e3c51bdd94 34-35,65,71,73-74,78,83-87,94-101,164
+src/hook/fixtures/transcript-monitor-feedback.jsonl
+  s_b7f30c572db9a8::t_48e1d7e20b5348 1-12
+AGENTS.md
+  s_b7f30c572db9a8::t_be470bbb5425f9 69
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_be470bbb5425f9 25,41-43,47,51-55,61-64,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfe745701a17866f8ed1526f90277da49e9cb307",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
