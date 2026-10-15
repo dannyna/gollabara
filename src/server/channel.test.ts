@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ChannelLiveness } from './channel'
+import { activityAfter, ChannelLiveness } from './channel'
 
 describe('channel liveness', () => {
   test('live while a poll is open and for the grace period after the last one ends', () => {
@@ -43,5 +43,48 @@ describe('channel liveness', () => {
     abort.abort()
     await waiting
     await live.wait('s1', 60_000, abort.signal)
+  })
+})
+
+describe('busy or idle (a channel claims only from an idle session)', () => {
+  test('prompts, tool calls and questions mean a turn is running', () => {
+    expect(activityAfter({ claim: 'user-prompt-submit', claimed: 0 })).toBe('busy')
+    expect(activityAfter({ claim: 'post-tool-use', claimed: 0 })).toBe('busy')
+    expect(activityAfter({ event: 'question' })).toBe('busy')
+    expect(activityAfter({ event: 'image' })).toBe('busy')
+  })
+
+  test('a Stop ends the turn unless the feedback it claimed continues it', () => {
+    expect(activityAfter({ claim: 'stop', claimed: 0 })).toBe('idle')
+    expect(activityAfter({ claim: 'stop', claimed: 2 })).toBe('busy')
+  })
+
+  test('a channel push starts a turn; an empty channel claim and a recap change nothing', () => {
+    expect(activityAfter({ claim: 'channel', claimed: 1 })).toBe('busy')
+    expect(activityAfter({ claim: 'channel', claimed: 0 })).toBeNull()
+    expect(activityAfter({ event: 'recap' })).toBeNull()
+  })
+
+  test('a new or unseen session is idle, and SessionStart makes it idle', () => {
+    const live = new ChannelLiveness()
+    expect(live.isIdle('s1')).toBe(true)
+    live.observe('s1', { claim: 'post-tool-use', claimed: 0 })
+    expect(live.isIdle('s1')).toBe(false)
+    live.observe('s1', { event: 'session' })
+    expect(live.isIdle('s1')).toBe(true)
+  })
+
+  test('a session turning idle wakes its waiting poll; staying busy does not', async () => {
+    const live = new ChannelLiveness()
+    live.observe('s1', { claim: 'user-prompt-submit', claimed: 0 })
+    let woke = false
+    const waiting = live.wait('s1', 60_000).then(() => (woke = true))
+    live.observe('s1', { claim: 'post-tool-use', claimed: 0 })
+    live.observe('s1', { claim: 'stop', claimed: 1 })
+    await Bun.sleep(5)
+    expect(woke).toBe(false)
+    live.observe('s1', { claim: 'stop', claimed: 0 })
+    await waiting
+    expect(live.isIdle('s1')).toBe(true)
   })
 })

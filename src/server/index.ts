@@ -45,6 +45,7 @@ export function startServer() {
         // The process moved to a new session (/clear, resume): its channel's open poll asks again for the new one
         if (relinked && relinked !== session.id)
           channels.wake(relinked)
+        channels.observe(session.id, { event: event.kind })
         srv.publish(TOPIC, JSON.stringify({ type: 'session', session: withChannel(session) } satisfies ServerFrame))
         if (message)
           srv.publish(TOPIC, JSON.stringify({ type: created ? 'message' : 'message-upsert', message } satisfies ServerFrame))
@@ -103,6 +104,7 @@ export function startServer() {
           if (!VIAS.includes(body.via as FeedbackVia))
             return new Response('via is invalid', { status: 400 })
           const items = store.claimFeedback(body.sessionId, body.via as FeedbackVia)
+          channels.observe(body.sessionId, { claim: body.via as FeedbackVia, claimed: items.length })
           for (const feedback of items) publishFeedback(srv, 'delivered', feedback)
           return Response.json(items)
         }
@@ -110,6 +112,8 @@ export function startServer() {
 
       // A channel server long-polls for its session's feedback. It knows only its parent pid, which the
       // session's SessionStart linked. Claims share the hook's atomic claim, so each item goes out once.
+      // It claims only while the session is idle: mid-turn, the hook hands feedback over at the next
+      // tool call or Stop, where a channel event would wait for the next turn.
       if (url.pathname === '/api/channel/wait' && req.method === 'GET') {
         if (!isTrustedSource(srv.requestIP(req)?.address))
           return new Response('forbidden', { status: 403 })
@@ -126,12 +130,22 @@ export function startServer() {
         if (!wasLive)
           publishSession(sessionId)
         try {
-          let items = store.claimFeedback(sessionId, 'channel')
-          if (!items.length) {
-            await channels.wait(sessionId, CHANNEL_WAIT_MS, req.signal)
+          const claim = () => {
+            if (!channels.isIdle(sessionId))
+              return []
+            const claimed = store.claimFeedback(sessionId, 'channel')
+            channels.observe(sessionId, { claim: 'channel', claimed: claimed.length })
+            return claimed
+          }
+          let items = claim()
+          // Woken by new feedback, by the session turning idle, or by a relink; keeps waiting while busy
+          for (let left = CHANNEL_WAIT_MS, start = Date.now(); !items.length && left > 0 && !req.signal.aborted; left = CHANNEL_WAIT_MS - (Date.now() - start)) {
+            await channels.wait(sessionId, left, req.signal)
             // A client that went away would drop what it claimed
             if (!req.signal.aborted)
-              items = store.claimFeedback(sessionId, 'channel')
+              items = claim()
+            if (store.sessionForPid(pid) !== sessionId)
+              break
           }
           for (const feedback of items) publishFeedback(srv, 'delivered', feedback)
           return Response.json(items)
