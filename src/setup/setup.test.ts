@@ -46,6 +46,7 @@ function context(s: ReturnType<typeof scratch>, exec: Exec, over: Partial<Contex
     port: 1,
     dataDir: join(s.dir, 'data'),
     claude: s.claude,
+    codex: join(s.dir, 'no-codex'),
     launchAgents: join(s.dir, 'LaunchAgents'),
     bun: '/opt/bun/bin/bun',
     source: s.source,

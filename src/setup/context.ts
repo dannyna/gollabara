@@ -57,6 +57,8 @@ export interface Context {
   dataDir: string
   /** GOLLABARA_CLAUDE: the Claude Code binary */
   claude: string
+  /** GOLLABARA_CODEX: the Codex CLI binary */
+  codex: string
   launchAgents: string
   /** Absolute bun path the service runs with */
   bun: string
@@ -97,6 +99,7 @@ export function resolveContext(flags: { port?: number } = {}, env = process.env)
     port: flags.port ?? (env.GOLLABARA_PORT ? Number(env.GOLLABARA_PORT) : record?.port ?? DEFAULT_PORT),
     dataDir: env.GOLLABARA_DATA ?? record?.dataDir ?? dataDir(),
     claude: env.GOLLABARA_CLAUDE ?? 'claude',
+    codex: env.GOLLABARA_CODEX ?? 'codex',
     launchAgents: join(homedir(), 'Library', 'LaunchAgents'),
     bun: process.execPath,
     source,

@@ -1,6 +1,7 @@
-// Turns Claude Code hook input (stdin JSON) into stream events.
+// Turns Claude Code and Codex CLI hook input (stdin JSON) into stream events.
 // Kept pure so it is easy to test. hook/index.ts handles I/O.
 import type { Feedback, FeedbackVia, ImageRole, IncomingEvent, IncomingImage, Question, SessionInfo, SessionStartReason } from '../shared/types'
+import { Buffer } from 'node:buffer'
 import { isAbsolute } from 'node:path'
 import { FEEDBACK_PREFIX, feedbackText } from '../shared/feedback'
 
@@ -14,9 +15,18 @@ export interface HookInput {
   last_assistant_message?: string
   stop_hook_active?: boolean
   transcript_path?: string
-  /** SessionStart only: startup, resume, clear or compact */
+  /** SessionStart only: startup, resume, clear or compact (Codex sends startup or resume) */
   source?: string
 }
+
+/**
+ * The harness whose hook ran, named by the hook command's argument (`hook.js codex`), never guessed from
+ * env: Codex hooks inherit whatever env codex was started with, `CLAUDECODE` included.
+ */
+export type Adapter = 'claude-code' | 'codex'
+
+/** Tools that put the session's own question on screen: Claude Code's, and Codex's (Plan mode only) */
+const QUESTION_TOOLS = new Set(['AskUserQuestion', 'request_user_input'])
 
 /**
  * Who opened the current turn: a person (typed, or sent through the SDK), gollabara's wake-up hook
@@ -52,13 +62,14 @@ export interface GitLookup {
  * Builds the session from hook input and env. Open Design runs set OD_PROJECT_ID;
  * those sessions are named after the project and skip the git lookup.
  * Others are named after the project root, not cwd, so a `cd` mid-session keeps the name.
+ * A Codex session is always `codex`: how Open Design launches Codex is unverified, so its env is not read.
  */
-export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): SessionInfo {
-  const project = env.OD_PROJECT_ID
+export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup, adapter: Adapter = 'claude-code'): SessionInfo {
+  const project = adapter === 'claude-code' ? env.OD_PROJECT_ID : undefined
   if (project)
     return { id: input.session_id, name: project, harness: 'open-design', project, cwd: input.cwd }
   const root = git.projectRoot(input.cwd)
-  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: 'claude-code', cwd: input.cwd }
+  return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd }
 }
 
 /**
@@ -115,6 +126,32 @@ export function turnStartedAt(tail: string): number | undefined {
       continue
     }
     if (entry?.isSidechain || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
+      continue
+    const at = Date.parse(entry.timestamp)
+    return Number.isFinite(at) ? at : undefined
+  }
+  return undefined
+}
+
+/**
+ * When the current turn started in a Codex rollout: the timestamp of the last `task_started` event.
+ * A Stop `block` continues the same turn, so it opens none. Undefined when the tail holds none.
+ */
+export function codexTurnStartedAt(tail: string): number | undefined {
+  const lines = tail.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!
+    // Cheap filter first: image reads put multi-MB base64 lines in the rollout too
+    if (!line.includes('"task_started"'))
+      continue
+    let entry: any
+    try {
+      entry = JSON.parse(line)
+    }
+    catch {
+      continue
+    }
+    if (entry?.type !== 'event_msg' || entry.payload?.type !== 'task_started')
       continue
     const at = Date.parse(entry.timestamp)
     return Number.isFinite(at) ? at : undefined
@@ -206,14 +243,15 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
     }
     case 'PreToolUse': {
       // Mirror only the session's own questions. Never invent new ones.
-      if (input.tool_name !== 'AskUserQuestion')
+      if (!QUESTION_TOOLS.has(input.tool_name ?? ''))
         return null
       const questions = extractQuestions(input.tool_input)
       return questions.length ? { kind: 'question', session, questions } : null
     }
     case 'Stop': {
       // A wake-up the user did not start (Monitor tick, task notification) is not worth a line.
-      // A continuation follows a stop hook such as gollabara feedback, so it keeps its recap
+      // A continuation follows a stop hook such as gollabara feedback, so it keeps its recap.
+      // Codex has no such wake-ups (its turns open with a prompt) and no `turnOrigin`: its opener stays unknown
       if (opener === 'system' && !input.stop_hook_active)
         return null
       const text = recapOf(input.last_assistant_message)
@@ -223,6 +261,8 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       // A wake-up's Stop also comes as `stop_hook_active`, but the turn is new: the session sat idle before it
       return input.stop_hook_active && opener !== 'rewake' ? { kind: 'recap', session, text, continuation: true } : { kind: 'recap', session, text }
     }
+    // Codex's SessionEnd: ended sessions are not tracked yet (#76), so it posts nothing
+    case 'SessionEnd':
     default:
       return null
   }
@@ -235,15 +275,26 @@ const FEEDBACK_VIA: Record<string, FeedbackVia> = {
   UserPromptSubmit: 'user-prompt-submit',
 }
 
-export function feedbackVia(hookEventName: string): FeedbackVia | null {
+/**
+ * Where the hook claims the session's feedback, or null when it must not claim: the claim marks items
+ * delivered. A Codex Stop that is already continuing (`stop_hook_active`) never blocks again, since Codex
+ * has no loop cap of its own, so claiming there would lose the items.
+ */
+export function feedbackVia(hookEventName: string, input?: Pick<HookInput, 'stop_hook_active'>, adapter: Adapter = 'claude-code'): FeedbackVia | null {
+  if (adapter === 'codex' && hookEventName === 'Stop' && input?.stop_hook_active)
+    return null
   return FEEDBACK_VIA[hookEventName] ?? null
 }
 
 /** Hook stdout JSON that hands claimed feedback to the session, or null when there is nothing to print */
-export function feedbackOutput(hookEventName: string, items: Feedback[]): object | null {
+export function feedbackOutput(hookEventName: string, items: Feedback[], adapter: Adapter = 'claude-code'): object | null {
   if (items.length === 0 || !feedbackVia(hookEventName))
     return null
   const text = feedbackText(items)
+  // Codex fails a Stop hook that returns additionalContext; `block` continues the same turn with the
+  // reason as the user's words, and the next Stop comes as `stop_hook_active`, which never claims
+  if (adapter === 'codex' && hookEventName === 'Stop')
+    return { decision: 'block', reason: text }
   // On Stop this keeps the turn going without the error notice `decision: block` shows;
   // the claim already emptied the queue, so the re-entered Stop lets it end
   return { hookSpecificOutput: { hookEventName, additionalContext: text } }
@@ -262,9 +313,10 @@ export function recapOf(message?: string): string | null {
 }
 
 /**
- * Finds images in a tool result. Two shapes are supported:
+ * Finds images in a tool result. The shapes supported:
  * - built-in Read: { type: 'image', file: { base64, type, dimensions } }
  * - MCP content array: [{ type: 'image', data, mimeType }]
+ * - Codex `view_image`: [{ type: 'input_image', image_url: 'data:<mime>;base64,…' }]
  */
 export function extractImages(response: unknown): IncomingImage[] {
   const out: IncomingImage[] = []
@@ -293,10 +345,44 @@ export function extractImages(response: unknown): IncomingImage[] {
       out.push({ data: node.source.data, mime: node.source.media_type ?? 'image/png' })
       return
     }
+    if (node.type === 'input_image' && typeof node.image_url === 'string') {
+      const image = dataUrlImage(node.image_url)
+      if (image)
+        out.push(image)
+      return
+    }
     for (const value of Object.values(node)) visit(value, depth + 1)
   }
   visit(response, 0)
   return out
+}
+
+/**
+ * A base64 data URL as an image. Codex labels some `application/octet-stream`, so a type that is not
+ * `image/*` is sniffed from the bytes; anything that is not a known image (or not a data URL) is skipped.
+ */
+export function dataUrlImage(url: string): IncomingImage | null {
+  const match = /^data:([^;,]*)((?:;[^;,]*)*),/.exec(url)
+  if (!match || !match[2]!.split(';').includes('base64'))
+    return null
+  const data = url.slice(match[0].length)
+  const mime = match[1]!.toLowerCase().startsWith('image/') ? match[1]!.toLowerCase() : sniffImageMime(data)
+  return mime ? { data, mime } : null
+}
+
+/** The image type from a base64 payload's first bytes: PNG, JPEG, GIF or WebP */
+export function sniffImageMime(base64: string): string | undefined {
+  const head = Buffer.from(base64.slice(0, 24), 'base64')
+  const ascii = (from: number, to: number) => head.subarray(from, to).toString('latin1')
+  if (head[0] === 0x89 && ascii(1, 4) === 'PNG')
+    return 'image/png'
+  if (head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF)
+    return 'image/jpeg'
+  if (ascii(0, 4) === 'GIF8')
+    return 'image/gif'
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP')
+    return 'image/webp'
+  return undefined
 }
 
 /**

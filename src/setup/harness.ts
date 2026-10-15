@@ -3,6 +3,7 @@
 
 import type { Context } from './context'
 import { join } from 'node:path'
+import { codex } from './codex'
 import { currentDir, found } from './context'
 
 export interface Check {
@@ -87,5 +88,5 @@ export const claudeCode: Harness = {
   },
 }
 
-/** Every harness setup knows. Codex (#72) joins here with its own detect/install/uninstall/status. */
-export const HARNESSES: Harness[] = [claudeCode]
+/** Every harness setup knows */
+export const HARNESSES: Harness[] = [claudeCode, codex]

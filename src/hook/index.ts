@@ -1,9 +1,9 @@
-// `golla hook` — Claude Code hook entry point.
+// `golla hook` — Claude Code and Codex CLI hook entry point.
 // Never blocks the session: short timeout, swallow every error, always exit 0.
 // Stdout carries only the feedback JSON for the session, and only when there is feedback.
 
 import type { Feedback, Harness, ImageRole } from '../shared/types'
-import type { HookInput, TurnOpener } from './map'
+import type { Adapter, HookInput, TurnOpener } from './map'
 import { Buffer } from 'node:buffer'
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -11,7 +11,7 @@ import process from 'node:process'
 import { dataDir, serverUrl } from '../shared/config'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { errorClass, HttpError, logHealth } from './health'
-import { feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo, sessionStartedAt, turnOpener, turnStartedAt } from './map'
+import { codexTurnStartedAt, feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo, sessionStartedAt, turnOpener, turnStartedAt } from './map'
 
 const POST_TIMEOUT_MS = 1500
 /**
@@ -22,7 +22,12 @@ const TRANSCRIPT_TAIL_WINDOWS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 8 * 1
 /** The transcript's first entries carry a timestamp well within this */
 const TRANSCRIPT_HEAD_BYTES = 64 * 1024
 
-export async function runHook(): Promise<void> {
+/**
+ * `adapter` comes from the hook command (`hook.js codex`), never from env. Codex differs in three ways:
+ * no turn opener to read (every Stop posts its recap), turn starts from its rollout, and feedback at
+ * Stop goes out as `decision: block`, never while the turn is already continuing.
+ */
+export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
   // Set by gollabara's own background model calls so they never stream themselves
   if (process.env.GOLLABARA_HOOK === 'off')
     return
@@ -32,16 +37,17 @@ export async function runHook(): Promise<void> {
     const raw = await Bun.stdin.text()
     const input = JSON.parse(raw) as HookInput
     // Pick only the keys we use: the rest of the env can hold tool tokens
-    const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch })
+    const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter)
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 }
-    // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
-    const opener = input.hook_event_name === 'Stop' ? stopTurnOpener(input.transcript_path) : 'unknown'
-    const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path))
-    // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), so every
-    // hook, the wake-up waiter included, sees the claude pid as its parent
+    // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn.
+    // Codex records no turn origin, and its turns open with a prompt, so the opener stays unknown
+    const opener = input.hook_event_name === 'Stop' && adapter === 'claude-code' ? stopTurnOpener(input.transcript_path) : 'unknown'
+    const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter))
+    // Claude Code and Codex run the hook command as their direct child (a one-command `sh -c` execs it), so every
+    // hook, the wake-up waiter included, sees the harness pid as its parent
     if (event?.kind === 'session')
       event.pid = process.ppid
-    const via = feedbackVia(input.hook_event_name)
+    const via = feedbackVia(input.hook_event_name, input, adapter)
     // Event and claim share one budget and run side by side; most tool calls only claim
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS)
     // The version headers let the server flag an outdated plugin (`golla doctor`)
@@ -69,7 +75,7 @@ export async function runHook(): Promise<void> {
     }
     const claimed = results[1]
     const items = claimed.status === 'fulfilled' && Array.isArray(claimed.value) ? claimed.value : []
-    const output = feedbackOutput(input.hook_event_name, items)
+    const output = feedbackOutput(input.hook_event_name, items, adapter)
     // Awaited so the bytes are out before entry.ts calls process.exit
     if (output)
       await Bun.write(Bun.stdout, JSON.stringify(output))
@@ -95,8 +101,8 @@ export function stopTurnOpener(transcriptPath?: string, windows = TRANSCRIPT_TAI
  * When the current turn started, from its opener in the transcript's tail, else when the session
  * started (the transcript's head); undefined when neither can be read
  */
-export function turnStart(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): number | undefined {
-  const opened = fromTail(transcriptPath, turnStartedAt, windows)
+export function turnStart(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS, adapter: Adapter = 'claude-code'): number | undefined {
+  const opened = fromTail(transcriptPath, adapter === 'codex' ? codexTurnStartedAt : turnStartedAt, windows)
   if (opened !== undefined || !transcriptPath)
     return opened
   const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES)
@@ -107,9 +113,9 @@ export function turnStart(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WIN
  * The role of images read from `path`: an artifact when the file changed after the turn started.
  * Only image reads get here, so other tool calls never stat. Any error makes it an artifact.
  */
-export function readFileRole(path: string, transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): ImageRole {
+export function readFileRole(path: string, transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS, adapter: Adapter = 'claude-code'): ImageRole {
   try {
-    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows))
+    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows, adapter))
   }
   catch {
     return 'artifact'
