@@ -1,0 +1,32 @@
+package.json
+  s_b7f30c572db9a8::t_e210c7c40a54d7 4
+src/hook/wait.ts
+  s_b7f30c572db9a8::t_2469cb2dad2153 57-65,69
+  s_b7f30c572db9a8::t_61bbfb0ec13f0b 3-4
+src/hook/wait.test.ts
+  s_b7f30c572db9a8::t_05e9f801925a19 65-108
+  s_b7f30c572db9a8::t_30b05222fe1719 3-4,8
+  s_b7f30c572db9a8::t_312d401f3d5a72 9
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_e210c7c40a54d7 3
+AGENTS.md
+  s_b7f30c572db9a8::t_b7d8a13d055155 145
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_e2b0509a0838e3 28,523-525,527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc1926970bc2645083979858e6f08d3af57dc1be",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
