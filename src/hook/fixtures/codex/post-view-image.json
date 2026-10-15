@@ -1,0 +1,21 @@
+{
+  "session_id": "01a14015-8137-7931-8ffe-5f9ede2318b0",
+  "turn_id": "01a14015-818c-71b2-bd5a-d476697b4c29",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-01-53-01a14015-8137-7931-8ffe-5f9ede2318b0.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "view_image",
+  "tool_input": {
+    "path": "/Users/me/IdeaProjects/demo/pic.png"
+  },
+  "tool_response": [
+    {
+      "type": "input_image",
+      "image_url": "data:application/octet-stream;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFWEXHbQSACj/P8Fu7N9hAAAAAElFTkSuQmCC",
+      "detail": "high"
+    }
+  ],
+  "tool_use_id": "call_NOgHSHzNy7KAWTfIOj7Xmssq"
+}

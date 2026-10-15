@@ -1,0 +1,31 @@
+{
+  "session_id": "01a14019-264f-7493-852e-c3476518fb82",
+  "turn_id": "01a14019-618b-7021-92d5-f68f6395712c",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-05-52-01a14019-264f-7493-852e-c3476518fb82.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "default",
+  "tool_name": "request_user_input",
+  "tool_input": {
+    "questions": [
+      {
+        "header": "Color",
+        "id": "preferred_color",
+        "question": "Which color do you prefer, red or blue?",
+        "options": [
+          {
+            "label": "Red",
+            "description": "Choose red as your preferred color."
+          },
+          {
+            "label": "Blue",
+            "description": "Choose blue as your preferred color."
+          }
+        ]
+      }
+    ]
+  },
+  "tool_response": "{\"answers\":{\"preferred_color\":{\"answers\":[\"Blue\"]}}}",
+  "tool_use_id": "call_pP4i9lTucZERxaPxpLPkGdry"
+}

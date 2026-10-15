@@ -1,0 +1,9 @@
+{
+  "session_id": "01a1401b-4965-7ec2-b1c7-c5f1ff2ba33a",
+  "transcript_path": "/Users/me/.codex/sessions/2026/10/16/rollout-2026-10-16T00-08-12-01a1401b-4965-7ec2-b1c7-c5f1ff2ba33a.jsonl",
+  "cwd": "/Users/me/IdeaProjects/demo",
+  "hook_event_name": "SessionStart",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "source": "resume"
+}
