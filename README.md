@@ -68,7 +68,7 @@ bun src/cli.ts serve                       # http://localhost:4747
 claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
 ```
 
-To have your feedback reach a session even while it sits idle, start it with `claude --dangerously-load-development-channels plugin:gollabara@gollabara` (a Claude Code channels research preview).
+Your feedback reaches a session even while it sits idle: the plugin wakes it, with no launch flag. Starting a session with `claude --dangerously-load-development-channels plugin:gollabara@gollabara` adds an optional second route through a Claude Code channel (research preview).
 
 For development and configuration, see [AGENTS.md](AGENTS.md).
 

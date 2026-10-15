@@ -1,6 +1,6 @@
 // @bun
 // src/hook/entry.ts
-import process3 from "process";
+import process4 from "process";
 
 // src/hook/index.ts
 import { Buffer } from "buffer";
@@ -69,6 +69,8 @@ function turnOpener(tail) {
       continue;
     if (isChannelFeedback(entry))
       return "human";
+    if (isRewakeFeedback(entry))
+      return "rewake";
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
   }
   return "unknown";
@@ -78,8 +80,12 @@ function isFeedbackDelivery(entry) {
   return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
 }
 function isChannelFeedback(entry) {
-  if (entry?.origin?.kind !== "channel")
-    return false;
+  return entry?.origin?.kind === "channel" && carriesFeedback(entry);
+}
+function isRewakeFeedback(entry) {
+  return entry?.origin?.kind === "task-notification" && carriesFeedback(entry);
+}
+function carriesFeedback(entry) {
   const content = entry.message?.content;
   const texts = typeof content === "string" ? [content] : Array.isArray(content) ? content.map((c) => c?.text) : [];
   return texts.some((t) => typeof t === "string" && t.includes(FEEDBACK_PREFIX));
@@ -109,7 +115,7 @@ function mapHook(input, session, opener = "unknown") {
       const text = recapOf(input.last_assistant_message);
       if (!text)
         return null;
-      return input.stop_hook_active ? { kind: "recap", session, text, continuation: true } : { kind: "recap", session, text };
+      return input.stop_hook_active && opener !== "rewake" ? { kind: "recap", session, text, continuation: true } : { kind: "recap", session, text };
     }
     default:
       return null;
@@ -198,7 +204,7 @@ async function runHook() {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
-    const opener = input.hook_event_name === "Stop" && !input.stop_hook_active ? stopTurnOpener(input.transcript_path) : "unknown";
+    const opener = input.hook_event_name === "Stop" ? stopTurnOpener(input.transcript_path) : "unknown";
     const event = mapHook(input, session, opener);
     if (event?.kind === "session")
       event.pid = process2.ppid;
@@ -274,6 +280,67 @@ function readBranch(root) {
   }
 }
 
+// src/hook/wait.ts
+import process3 from "process";
+var WAIT_BUDGET_MS = (86400 - 600) * 1000;
+var POLL_TIMEOUT_MS = 35000;
+var DOWN_RETRIES = 3;
+var DOWN_RETRY_MS = 1e4;
+async function waitForFeedback(poll, options) {
+  const { deadline, now = Date.now, sleep = Bun.sleep, alive = () => true } = options;
+  let down = 0;
+  while (alive() && now() + POLL_TIMEOUT_MS < deadline) {
+    const result = await poll();
+    if (result === "stop")
+      return null;
+    if (result === "down") {
+      if (++down > DOWN_RETRIES)
+        return null;
+      await sleep(DOWN_RETRY_MS);
+      continue;
+    }
+    down = 0;
+    if (result.items.length)
+      return result.items;
+  }
+  return null;
+}
+async function runWait() {
+  if (process3.env.GOLLABARA_HOOK === "off")
+    return 0;
+  try {
+    const input = JSON.parse(await Bun.stdin.text());
+    if (!input.session_id)
+      return 0;
+    const pid = process3.ppid;
+    const alive = () => process3.ppid === pid;
+    const waiter = performance.timeOrigin;
+    const url = `${serverUrl()}/api/channel/wait?${new URLSearchParams({ session: input.session_id, pid: String(pid), waiter: String(waiter) })}`;
+    const poll = async () => {
+      const abort = new AbortController;
+      const timer = setTimeout(() => abort.abort(), POLL_TIMEOUT_MS);
+      const watch = setInterval(() => alive() || abort.abort(), 1000);
+      try {
+        const res = await fetch(url, { signal: abort.signal });
+        if (res.ok)
+          return { items: await res.json() };
+        return res.status >= 500 ? "down" : "stop";
+      } catch {
+        return alive() ? "down" : "stop";
+      } finally {
+        clearTimeout(timer);
+        clearInterval(watch);
+      }
+    };
+    const items = await waitForFeedback(poll, { deadline: Date.now() + WAIT_BUDGET_MS, alive });
+    if (!items?.length)
+      return 0;
+    await Bun.write(Bun.stderr, feedbackText(items));
+    return 2;
+  } catch {
+    return 0;
+  }
+}
+
 // src/hook/entry.ts
-await runHook();
-process3.exit(0);
+process4.exit(process4.argv[2] === "wait" ? await runWait() : (await runHook(), 0));

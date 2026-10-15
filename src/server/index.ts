@@ -114,16 +114,28 @@ export function startServer() {
       // session's SessionStart linked. Claims share the hook's atomic claim, so each item goes out once.
       // It claims only while the session is idle: mid-turn, the hook hands feedback over at the next
       // tool call or Stop, where a channel event would wait for the next turn.
+      // A wake-up Stop hook (`session` and `waiter`) polls the same way, keyed by the session id it was given.
+      // It gets 410 once it should exit: a newer Stop's waiter took over, the user started a turn, or its
+      // process moved to another session (/clear), which it would otherwise wake with the old session's feedback.
       if (url.pathname === '/api/channel/wait' && req.method === 'GET') {
         if (!isTrustedSource(srv.requestIP(req)?.address))
           return new Response('forbidden', { status: 403 })
         const pid = Number(url.searchParams.get('pid'))
-        if (!Number.isInteger(pid) || pid <= 0)
+        const keyed = url.searchParams.get('session')
+        const waiter = Number(url.searchParams.get('waiter'))
+        if (keyed !== null && (!keyed || !(waiter > 0)))
+          return new Response('session and waiter are required', { status: 400 })
+        if (keyed === null && (!Number.isInteger(pid) || pid <= 0))
           return new Response('pid is required', { status: 400 })
-        const sessionId = store.sessionForPid(pid)
+        const sessionId = keyed ?? store.sessionForPid(pid)
         // SessionStart has not arrived yet: the channel server retries
         if (!sessionId)
           return new Response('unknown pid', { status: 404 })
+        const via: FeedbackVia = keyed ? 'rewake' : 'channel'
+        const moved = () => pid > 0 && (store.sessionForPid(pid) ?? sessionId) !== sessionId
+        const retired = () => keyed ? channels.retired(sessionId, waiter) ?? (moved() ? 'moved' : null) : null
+        if (keyed)
+          channels.enlist(sessionId, waiter)
         srv.timeout(req, 0)
         const wasLive = channels.isLive(sessionId)
         channels.begin(sessionId)
@@ -131,23 +143,26 @@ export function startServer() {
           publishSession(sessionId)
         try {
           const claim = () => {
-            if (!channels.isIdle(sessionId))
+            if (!channels.isIdle(sessionId) || retired())
               return []
-            const claimed = store.claimFeedback(sessionId, 'channel')
-            channels.observe(sessionId, { claim: 'channel', claimed: claimed.length })
+            const claimed = store.claimFeedback(sessionId, via)
+            channels.observe(sessionId, { claim: via, claimed: claimed.length })
             return claimed
           }
           let items = claim()
-          // Woken by new feedback, by the session turning idle, or by a relink; keeps waiting while busy
-          for (let left = CHANNEL_WAIT_MS, start = Date.now(); !items.length && left > 0 && !req.signal.aborted; left = CHANNEL_WAIT_MS - (Date.now() - start)) {
+          // Woken by new feedback, by the session turning idle or busy, or by a relink; keeps waiting while busy
+          for (let left = CHANNEL_WAIT_MS, start = Date.now(); !items.length && !retired() && left > 0 && !req.signal.aborted; left = CHANNEL_WAIT_MS - (Date.now() - start)) {
             await channels.wait(sessionId, left, req.signal)
             // A client that went away would drop what it claimed
             if (!req.signal.aborted)
               items = claim()
-            if (store.sessionForPid(pid) !== sessionId)
+            if (moved())
               break
           }
           for (const feedback of items) publishFeedback(srv, 'delivered', feedback)
+          const reason = items.length ? null : retired()
+          if (reason)
+            return new Response(reason, { status: 410 })
           return Response.json(items)
         }
         finally {

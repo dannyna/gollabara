@@ -27,8 +27,8 @@ export async function runHook(): Promise<void> {
     const input = JSON.parse(raw) as HookInput
     // Pick only the keys we use: the rest of the env can hold tool tokens
     const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch })
-    // Only a first Stop needs to know who started the turn
-    const opener = input.hook_event_name === 'Stop' && !input.stop_hook_active ? stopTurnOpener(input.transcript_path) : 'unknown'
+    // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
+    const opener = input.hook_event_name === 'Stop' ? stopTurnOpener(input.transcript_path) : 'unknown'
     const event = mapHook(input, session, opener)
     // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), and it
     // spawns the channel server the same way, so both see the claude pid as their parent

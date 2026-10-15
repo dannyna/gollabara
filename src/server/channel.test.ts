@@ -59,9 +59,11 @@ describe('busy or idle (a channel claims only from an idle session)', () => {
     expect(activityAfter({ claim: 'stop', claimed: 2 })).toBe('busy')
   })
 
-  test('a channel push starts a turn; an empty channel claim and a recap change nothing', () => {
+  test('a channel push or a wake-up starts a turn; an empty claim and a recap change nothing', () => {
     expect(activityAfter({ claim: 'channel', claimed: 1 })).toBe('busy')
     expect(activityAfter({ claim: 'channel', claimed: 0 })).toBeNull()
+    expect(activityAfter({ claim: 'rewake', claimed: 1 })).toBe('busy')
+    expect(activityAfter({ claim: 'rewake', claimed: 0 })).toBeNull()
     expect(activityAfter({ event: 'recap' })).toBeNull()
   })
 
@@ -86,5 +88,42 @@ describe('busy or idle (a channel claims only from an idle session)', () => {
     live.observe('s1', { claim: 'stop', claimed: 0 })
     await waiting
     expect(live.isIdle('s1')).toBe(true)
+  })
+})
+
+describe('wake-up waiters (one per session, stepping aside once the user takes over)', () => {
+  test('a newer waiter replaces the older one, whose open poll returns', async () => {
+    const live = new ChannelLiveness()
+    live.enlist('s1', 100)
+    let woke = false
+    const waiting = live.wait('s1', 60_000).then(() => (woke = true))
+    live.enlist('s1', 100)
+    await Bun.sleep(5)
+    expect(woke).toBe(false)
+    live.enlist('s1', 200)
+    await waiting
+    expect(live.retired('s1', 100)).toBe('replaced')
+    expect(live.retired('s1', 200)).toBeNull()
+    // The older waiter polling again does not take over
+    live.enlist('s1', 100)
+    expect(live.retired('s1', 200)).toBeNull()
+  })
+
+  test('a turn starting retires the waiter and wakes its poll', async () => {
+    const live = new ChannelLiveness()
+    live.enlist('s1', 1)
+    const waiting = live.wait('s1', 60_000)
+    live.observe('s1', { claim: 'user-prompt-submit', claimed: 0 })
+    await waiting
+    expect(live.retired('s1', 1)).toBe('busy')
+  })
+
+  test('a waiter that starts before its Stop reaches the server keeps waiting', () => {
+    const live = new ChannelLiveness()
+    live.observe('s1', { claim: 'post-tool-use', claimed: 0 })
+    live.enlist('s1', 1)
+    live.observe('s1', { claim: 'stop', claimed: 0 })
+    expect(live.isIdle('s1')).toBe(true)
+    expect(live.retired('s1', 1)).toBeNull()
   })
 })
