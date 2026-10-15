@@ -3,8 +3,9 @@
 import type { Question, Session, StreamMessage } from '../../../../src/shared/types'
 import type { MyEntry } from '../../feedback'
 import type { HiddenLine } from '../../triage'
+import type { Thumb } from './ArtifactThumbs.vue'
 import type { IconName } from './icons'
-import { splitSessionName } from '../../artifacts'
+import { artifactKey, roleOf, splitSessionName } from '../../artifacts'
 
 export interface ChoiceOption {
   label: string
@@ -35,6 +36,20 @@ export function answerLabel(options: ChoiceOption[], picks: number[]): string {
 export function outputLabel(count: number, toolName?: string): string {
   const tool = toolName?.split('__').at(-1)
   return tool ? `${tool} · ${count}장` : `${count}장`
+}
+
+/** A turn's images as chat thumbnails, artifacts and references apart; keys are the stream's capture keys */
+export function turnThumbs(m: StreamMessage): { artifacts: Thumb[], references: Thumb[] } {
+  const artifacts: Thumb[] = []
+  const references: Thumb[] = []
+  ;(m.images ?? []).forEach((image, i) => {
+    const thumb = { key: artifactKey(m.id, i), ...image, at: image.at ?? m.at }
+    if (roleOf(image) === 'reference')
+      references.push(thumb)
+    else
+      artifacts.push(thumb)
+  })
+  return { artifacts, references }
 }
 
 /** One letter for the session avatar */
@@ -80,6 +95,8 @@ export type FeedItem
   = | Exclude<TimelineItem, { type: 'start' }>
     // Consecutive fully hidden messages, across sessions, in one 「숨긴 메시지 n」 row
     | { type: 'hidden', key: string, lines: HiddenLine[] }
+    // Consecutive messages that hold nothing but references, in one 「참고 이미지 n」 row
+    | { type: 'refs', key: string, thumbs: Thumb[] }
     /** `lead`: the next item is a message from one of these sessions, so it sits closer (8px) */
     | { type: 'starts', key: string, rows: StartRow[], lead: boolean }
 
@@ -129,9 +146,10 @@ export const STARTS_SHOWN = 3
  * Folds hidden lines into rows and groups starts. Messages `hiddenOf` returns lines for are
  * folded; consecutive ones merge into one row, across sessions, until anything else is drawn
  * between them. Each row's key is its first line's, so a growing row keeps its open state.
- * Starts with nothing between them, within START_GROUP_MS, form one group.
+ * Messages `refsOf` returns thumbnails for (nothing to show but references) fold the same way
+ * into 「참고 이미지 n」 rows. Starts with nothing between them, within START_GROUP_MS, form one group.
  */
-export function toFeed(items: TimelineItem[], hiddenOf: (m: StreamMessage) => HiddenLine[] | null): FeedItem[] {
+export function toFeed(items: TimelineItem[], hiddenOf: (m: StreamMessage) => HiddenLine[] | null, refsOf: (m: StreamMessage) => Thumb[] | null = () => null): FeedItem[] {
   const out: FeedItem[] = []
   for (const item of items) {
     const last = out.at(-1)
@@ -142,6 +160,14 @@ export function toFeed(items: TimelineItem[], hiddenOf: (m: StreamMessage) => Hi
           last.lines.push(...lines)
         else
           out.push({ type: 'hidden', key: `h-${lines[0]!.key}`, lines: [...lines] })
+        continue
+      }
+      const thumbs = refsOf(item.message)
+      if (thumbs?.length) {
+        if (last?.type === 'refs')
+          last.thumbs.push(...thumbs)
+        else
+          out.push({ type: 'refs', key: `r-${thumbs[0]!.key}`, thumbs: [...thumbs] })
         continue
       }
     }

@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { afterAll, describe, expect, test } from 'bun:test'
+import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { projectRoot, readBranch, readTail, stopTurnOpener } from './index'
+import { projectRoot, readBranch, readFileRole, readTail, stopTurnOpener, turnStart } from './index'
 import { mapHook, sessionInfo } from './map'
 
 const base = realpathSync(mkdtempSync(join(tmpdir(), 'gollabara-hook-')))
@@ -81,25 +82,63 @@ describe('transcript tail on Stop', () => {
   })
 })
 
+describe('image role from the file\'s mtime', () => {
+  const fixture = (name: string) => join(import.meta.dir, 'fixtures', name)
+  // transcript-human.jsonl: the current turn opened at this time
+  const opened = Date.parse('2026-10-13T14:54:48.567Z')
+  function image(name: string, mtime: number) {
+    const path = join(dir('images'), name)
+    writeFileSync(path, 'png')
+    utimesSync(path, mtime / 1000, mtime / 1000)
+    return path
+  }
+
+  test('a file from before the turn is a reference, one written during it an artifact', () => {
+    expect(turnStart(fixture('transcript-human.jsonl'))).toBe(opened)
+    expect(readFileRole(image('mock.png', opened - 60_000), fixture('transcript-human.jsonl'))).toBe('reference')
+    expect(readFileRole(image('shot.png', opened + 5_000), fixture('transcript-human.jsonl'))).toBe('artifact')
+  })
+
+  test('without the opener in reach the session start decides', () => {
+    const path = join(dir('tail'), 'no-opener.jsonl')
+    writeFileSync(path, '{"type":"queue-operation","timestamp":"2026-10-13T10:00:00.000Z"}\n{"type":"assistant","timestamp":"2026-10-13T10:05:00.000Z"}\n')
+    const started = Date.parse('2026-10-13T10:00:00.000Z')
+    expect(turnStart(path)).toBe(started)
+    expect(readFileRole(image('older.png', started - 1), path)).toBe('reference')
+    expect(readFileRole(image('newer.png', started + 1), path)).toBe('artifact')
+  })
+
+  test('an unreadable transcript or file makes the image an artifact', () => {
+    const old = image('old.png', opened - 60_000)
+    expect(readFileRole(old, undefined)).toBe('artifact')
+    expect(readFileRole(old, join(base, 'missing.jsonl'))).toBe('artifact')
+    expect(readFileRole(old, dir('a-directory'))).toBe('artifact')
+    expect(readFileRole(join(base, 'missing.png'), fixture('transcript-human.jsonl'))).toBe('artifact')
+  })
+})
+
 describe('GOLLABARA_HOOK=off', () => {
   // A local stand-in server on a free port; never the real one on 4747
-  async function runEntry(env: Record<string, string>) {
+  async function runEntry(env: Record<string, string>, input: object = { ...stop, transcript_path: undefined }) {
     const hits: string[] = []
+    const events: any[] = []
     const server = Bun.serve({
       port: 0,
-      fetch(req) {
+      async fetch(req) {
         hits.push(new URL(req.url).pathname)
+        if (new URL(req.url).pathname === '/api/events')
+          events.push(await req.json())
         return Response.json([])
       },
     })
     try {
       const proc = Bun.spawn(['bun', join(import.meta.dir, 'entry.ts')], {
         env: { ...process.env, GOLLABARA_URL: `http://127.0.0.1:${server.port}`, ...env },
-        stdin: new TextEncoder().encode(JSON.stringify({ ...stop, transcript_path: undefined })),
+        stdin: new TextEncoder().encode(JSON.stringify(input)),
         stdout: 'pipe',
       })
       const [exitCode, stdout] = await Promise.all([proc.exited, new Response(proc.stdout).text()])
-      return { exitCode, stdout, hits }
+      return { exitCode, stdout, hits, events }
     }
     finally {
       server.stop(true)
@@ -107,12 +146,21 @@ describe('GOLLABARA_HOOK=off', () => {
   }
 
   test('the hook exits at once without posting or claiming', async () => {
-    expect(await runEntry({ GOLLABARA_HOOK: 'off' })).toEqual({ exitCode: 0, stdout: '', hits: [] })
+    expect(await runEntry({ GOLLABARA_HOOK: 'off' })).toEqual({ exitCode: 0, stdout: '', hits: [], events: [] })
   })
 
   test('without it the same Stop posts the recap and claims feedback', async () => {
     const { exitCode, hits } = await runEntry({ GOLLABARA_HOOK: '' })
     expect(exitCode).toBe(0)
     expect(hits.sort()).toEqual(['/api/events', '/api/feedback/claim'])
+  })
+
+  test('a Read of a file from before the turn posts its image as a reference', async () => {
+    const mock = join(dir('entry'), 'mock.png')
+    writeFileSync(mock, 'png')
+    utimesSync(mock, new Date('2026-10-13T14:00:00Z'), new Date('2026-10-13T14:00:00Z'))
+    const transcript = join(import.meta.dir, 'fixtures', 'transcript-human.jsonl')
+    const { events } = await runEntry({ GOLLABARA_HOOK: '' }, { ...postReadImage, tool_input: { file_path: mock }, transcript_path: transcript })
+    expect(events).toMatchObject([{ kind: 'image', images: [{ source: mock, role: 'reference' }] }])
   })
 })

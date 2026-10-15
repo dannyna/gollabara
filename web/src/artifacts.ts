@@ -1,7 +1,7 @@
 // Maps stream messages to what the shell draws. The only place that reads the
 // message shape for the stream surface, so changes to StreamMessage land here.
 
-import type { StreamMessage } from '../../src/shared/types'
+import type { ImageRole, StoredImage, StreamMessage } from '../../src/shared/types'
 import { basename, stackCaptures } from '../../src/shared/stacks'
 
 /** Consecutive cells from one session this close in time form one run: one title line, tighter gaps */
@@ -53,6 +53,8 @@ export interface Artifact {
   /** Position within its turn, 0-based */
   turnIndex?: number
   label?: string
+  /** Set on images the session only looked at (toArtifacts with 'reference') */
+  role?: 'reference'
 }
 
 export const artifactKey = (messageId: number, index: number) => `${messageId}-${index}`
@@ -65,27 +67,41 @@ export function splitSessionName(name: string): { session: string, branch?: stri
 
 const dayKey = (at: number) => new Date(at).toDateString()
 
+/** Rows stored before roles existed have none; they count as artifacts */
+export const roleOf = (image: Pick<StoredImage, 'role'>): ImageRole => image.role ?? 'artifact'
+
 /**
  * One cell per screen across turns, in arrival order of each screen's newest capture.
  * Earlier captures of the same screen (src/shared/stacks.ts) are hidden behind it as
  * `versions`, except those the reader split off. `seq` counts all of `messages`; the
  * result holds only cells from `shown` (the session scope minus muted sessions), and the
  * runs are worked out between those visible neighbours.
+ *
+ * Only images of `role` count: artifacts by default, so references never take a number, an
+ * arrival, or a place in an artifact's stack. `'reference'` lists the references the same way,
+ * stacked only among themselves.
  */
-export function toArtifacts(messages: StreamMessage[], shown: StreamMessage[] = messages, split: ReadonlySet<string> = new Set()): Artifact[] {
-  const captures = messages.flatMap(m => (m.images ?? []).map((image, i) => ({
-    key: artifactKey(m.id, i),
-    sessionId: m.sessionId,
-    url: image.url,
-    width: image.width,
-    height: image.height,
-    // Images stored before turns existed have no `at`; they fall back to the message time
-    at: image.at ?? m.at,
-    source: image.source,
-    dhash: image.dhash,
-    m,
-    i,
-  })))
+export function toArtifacts(messages: StreamMessage[], shown: StreamMessage[] = messages, split: ReadonlySet<string> = new Set(), role: ImageRole = 'artifact'): Artifact[] {
+  const captures = messages.flatMap((m) => {
+    // `i` stays the image's place in its turn, so keys match the chat's thumbnails;
+    // `place` counts only images of this role, for the 「n장째」 caption
+    let place = 0
+    return (m.images ?? []).flatMap((image, i) => roleOf(image) !== role
+      ? []
+      : [{
+          key: artifactKey(m.id, i),
+          sessionId: m.sessionId,
+          url: image.url,
+          width: image.width,
+          height: image.height,
+          // Images stored before turns existed have no `at`; they fall back to the message time
+          at: image.at ?? m.at,
+          source: image.source,
+          dhash: image.dhash,
+          m,
+          place: place++,
+        }])
+  })
   // Turns from different sessions interleave, so arrival is by each image's own time.
   // Array#sort is stable, so ties keep message order.
   const arrival = new Map([...captures].sort((a, b) => a.at - b.at).map((c, n) => [c.key, n + 1]))
@@ -93,7 +109,7 @@ export function toArtifacts(messages: StreamMessage[], shown: StreamMessage[] = 
   const out: Artifact[] = []
   stackCaptures(captures, split).forEach((stack, n) => {
     const newest = stack[stack.length - 1]!
-    const { m, i, at } = newest
+    const { m, place, at } = newest
     if (!visible.has(m.id))
       return
     const prev = out.at(-1)
@@ -113,11 +129,12 @@ export function toArtifacts(messages: StreamMessage[], shown: StreamMessage[] = 
       dayStart,
       seq: n + 1,
       arrival: arrival.get(newest.key)!,
-      turnIndex: i,
+      turnIndex: place,
       // MCP tool names read better without their server prefix
       label: m.toolName?.split('__').at(-1),
+      ...(role === 'reference' ? { role } : {}),
       ...(stack.length > 1
-        ? { versions: stack.map(c => ({ key: c.key, messageId: c.m.id, url: c.url, width: c.width, height: c.height, at: c.at, turnIndex: c.i, ...(c.source ? { source: c.source } : {}) })) }
+        ? { versions: stack.map(c => ({ key: c.key, messageId: c.m.id, url: c.url, width: c.width, height: c.height, at: c.at, turnIndex: c.place, ...(c.source ? { source: c.source } : {}) })) }
         : {}),
     })
   })
@@ -128,6 +145,37 @@ export function toArtifacts(messages: StreamMessage[], shown: StreamMessage[] = 
 export function atVersion(a: Artifact, v: ArtifactVersion): Artifact {
   const { source: _, ...rest } = a
   return { ...rest, messageId: v.messageId, url: v.url, width: v.width, height: v.height, at: v.at, turnIndex: v.turnIndex, ...(v.source ? { source: v.source } : {}) }
+}
+
+/** References that arrived between two artifact cells, folded into one 「참고 이미지 n」 */
+export interface ReferenceFold {
+  /** The first reference's key, so a fold that grows keeps its open state */
+  key: string
+  /** Key of the artifact cell it follows; null before the first */
+  after: string | null
+  items: Artifact[]
+}
+
+/**
+ * Folds references in between the artifact cells by time: each run of references with no
+ * artifact between them is one fold, placed after the cell that came before it. Both lists
+ * come from toArtifacts, ordered by each cell's newest capture.
+ */
+export function referenceFolds(artifacts: Artifact[], references: Artifact[]): ReferenceFold[] {
+  const folds: ReferenceFold[] = []
+  let a = 0
+  for (const ref of references) {
+    // An artifact that arrived at the same moment comes first
+    while (a < artifacts.length && artifacts[a]!.at <= ref.at)
+      a++
+    const after = a > 0 ? artifacts[a - 1]!.key : null
+    const last = folds.at(-1)
+    if (last && last.after === after)
+      last.items.push(ref)
+    else
+      folds.push({ key: ref.key, after, items: [ref] })
+  }
+  return folds
 }
 
 /** Maps every capture's key to the key of the cell showing it */

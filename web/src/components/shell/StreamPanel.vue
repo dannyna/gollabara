@@ -3,10 +3,12 @@
 // footer. It follows the latest artifact while the rail sits at the right end and holds
 // its place once the reader scrolls back, raising 「새 산출물 n →」 instead. A pinned cell
 // stops following altogether: arrivals only raise the pill, wherever the rail sits.
+// References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
 
 import type { Artifact } from '../../artifacts'
 import type { Follow } from '../stream/follow'
 import { computed, nextTick, ref, watch } from 'vue'
+import { referenceFolds } from '../../artifacts'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
@@ -16,6 +18,8 @@ import StreamRail from '../stream/StreamRail.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
+  /** Images the sessions only looked at (toArtifacts with 'reference'), folded between the cells */
+  references?: Artifact[]
   selected?: string | null
   /** The pinned cell's key; it holds nothing while its cell is not in `artifacts` */
   pinned?: string | null
@@ -28,6 +32,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [] }>()
 
+const folds = computed(() => referenceFolds(props.artifacts, props.references ?? []))
 const rail = ref<InstanceType<typeof StreamRail>>()
 const track = computed(() => rail.value?.el)
 
@@ -199,9 +204,10 @@ const { setTarget } = useFeedbackTarget()
       v-if="!artifacts.length && allMuted" icon="mute" title="모든 세션을 음소거했어요"
       description="세션 목록에서 다시 표시할 수 있어요." action="세션 목록 열기" @action="emit('sessions')"
     />
-    <StateView v-else-if="!artifacts.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
+    <!-- With only references in view the rail still shows, so their folds can open -->
+    <StateView v-else-if="!artifacts.length && !folds.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
     <StreamRail
-      v-else ref="rail" :artifacts="artifacts" :selected="selected" :pinned="pin"
+      v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin"
       @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="markUserIntent" @pointerdown="markUserIntent"
       @touchstart.passive="markUserIntent" @keydown="markUserIntent"

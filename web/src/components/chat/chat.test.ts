@@ -1,7 +1,7 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, dayLabel, outputLabel, START_GROUP_MS, toChoice, toFeed, toTimeline } from './chat'
+import { answerLabel, choiceLayout, dayLabel, outputLabel, START_GROUP_MS, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
@@ -92,6 +92,15 @@ describe('toFeed', () => {
     expect(keys(feed).slice(1)).toEqual(['h-1:0[1:0]', 'f-1', 'h-2:0[2:0]'])
   })
 
+  it('folds messages holding only references into 「참고 이미지」 rows, merged until anything else comes between', () => {
+    const messages = [msg(1, 'a', min(0)), msg(2, 'b', min(1)), msg(3, 'a', min(2)), msg(4, 'a', min(3))]
+    const thumb = (m: StreamMessage) => ({ key: `${m.id}-0`, url: `u${m.id}`, width: 10, height: 10 })
+    const refsOnly = new Set([1, 2, 4])
+    const feed = toFeed(toTimeline(messages, [], [], min(10)), () => null, m => refsOnly.has(m.id) ? [thumb(m)] : null)
+    expect(feed.slice(1).map(i => i.type === 'refs' ? `${i.key}[${i.thumbs.map(t => t.key).join(',')}]` : i.key))
+      .toEqual(['r-1-0[1-0,2-0]', 'm-3', 'r-4-0[4-0]'])
+  })
+
   // Starts older than the oldest loaded message get no row, so each case opens with one
   const earlier = msg(0, 'x', min(-1))
 
@@ -114,5 +123,15 @@ describe('toFeed', () => {
     const feed = toFeed(toTimeline([earlier, msg(1, 'a', min(1))], [session('a', min(0))], [], min(10)), m => m.id ? [hiddenLine(m)] : null)
     expect(feed.slice(2).map(i => i.type)).toEqual(['starts', 'hidden'])
     expect(feed[2]).toMatchObject({ lead: false })
+  })
+})
+
+describe('turnThumbs', () => {
+  it('splits a turn\'s images by role, keeping each image\'s capture key; no role is an artifact', () => {
+    const image = (url: string, role?: 'artifact' | 'reference') => ({ url, width: 10, height: 10, ...(role ? { role } : {}) })
+    const m: StreamMessage = { ...msg(7, 'a', 0), images: [image('ref', 'reference'), image('legacy'), image('made', 'artifact')] }
+    const { artifacts, references } = turnThumbs(m)
+    expect(artifacts.map(t => t.key)).toEqual(['7-1', '7-2'])
+    expect(references.map(t => [t.key, t.url])).toEqual([['7-0', 'ref']])
   })
 })

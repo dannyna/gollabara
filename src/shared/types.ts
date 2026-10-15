@@ -40,7 +40,15 @@ export interface IncomingImage {
   height?: number
   /** Where the image came from when the tool names it, e.g. the file path a session read. Full path; the UI shows the basename. */
   source?: string
+  role?: ImageRole
 }
+
+/**
+ * What an image is to the session: something it made (`artifact`), or something it only looked
+ * at to decide what to do (`reference`: a mock, an existing asset, an older screenshot). The
+ * harness decides deterministically; images without a role count as artifacts.
+ */
+export type ImageRole = 'artifact' | 'reference'
 
 export interface Question {
   question: string
@@ -83,6 +91,8 @@ export interface StoredImage {
    * Used only to group near-identical re-captures; never shown and never used to judge.
    */
   dhash?: string
+  /** Missing on rows stored before roles existed; those count as artifacts */
+  role?: ImageRole
 }
 
 /**

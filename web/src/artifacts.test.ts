@@ -1,9 +1,9 @@
 import type { StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { artifactCaption, atVersion, cellKeys, RUN_GAP_MS, sourceName, splitSessionName, toArtifacts, versionsHint } from './artifacts'
+import { artifactCaption, atVersion, cellKeys, referenceFolds, RUN_GAP_MS, sourceName, splitSessionName, toArtifacts, versionsHint } from './artifacts'
 
 const img = (url: string, at?: number) => ({ url, width: 100, height: 50, at })
-function turn(id: number, sessionId: string, at: number, images: ReturnType<typeof img>[]): StreamMessage {
+function turn(id: number, sessionId: string, at: number, images: NonNullable<StreamMessage['images']>): StreamMessage {
   return { id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn', images }
 }
 
@@ -101,6 +101,46 @@ describe('hidden duplicates', () => {
     const joined = toArtifacts(messages)
     expect(cellKeys(joined).get('3-0')).toBe('1-0')
     expect(atVersion(joined[2]!, joined[2]!.versions![0]!)).toMatchObject({ key: '1-0', url: 'login1', at: 10, messageId: 1 })
+  })
+})
+
+describe('references', () => {
+  const ref = (url: string, at: number, source?: string) => ({ url, width: 100, height: 50, at, role: 'reference' as const, ...(source ? { source, dhash: 'ffffffff00000000' } : {}) })
+  const messages: StreamMessage[] = [
+    turn(1, 'a', 10, [ref('mock', 10, '/d/mock.png'), img('shot1', 20), ref('asset', 30)]),
+    turn(2, 'a', 40, [ref('mock-again', 40, '/d/mock.png'), img('shot2', 50)]),
+  ]
+
+  it('never take a number or an arrival, and stored images without a role stay artifacts', () => {
+    const out = toArtifacts(messages)
+    expect(out.map(a => [a.url, a.key, a.seq, a.arrival])).toEqual([['shot1', '1-1', 1, 1], ['shot2', '2-1', 2, 2]])
+    expect(out.every(a => a.role === undefined)).toBe(true)
+    // shot1 follows a reference in its turn, yet is the turn's first artifact
+    expect(artifactCaption(out[0]!)).toBe('1장째')
+  })
+
+  it('are listed on their own, stacked only among themselves', () => {
+    const refs = toArtifacts(messages, messages, new Set(), 'reference')
+    expect(refs.map(r => [r.url, r.role])).toEqual([['asset', 'reference'], ['mock-again', 'reference']])
+    expect(refs[1]!.versions!.map(v => v.key)).toEqual(['1-0', '2-0'])
+  })
+
+  it('a reference re-read of an artifact file never joins or moves the artifact\'s cell', () => {
+    const shot = { url: 'same', width: 100, height: 50, source: '/tmp/s.png', dhash: 'ffffffff00000000' }
+    const list = [turn(1, 'a', 10, [{ ...shot, at: 10 }, img('next', 20)]), turn(2, 'a', 30, [{ ...shot, at: 30, role: 'reference' as const }])]
+    expect(toArtifacts(list).map(a => [a.url, a.versions])).toEqual([['same', undefined], ['next', undefined]])
+    expect(toArtifacts(list, list, new Set(), 'reference').map(r => r.key)).toEqual(['2-0'])
+  })
+
+  it('fold between the artifact cells they arrived between, keyed by their first reference', () => {
+    const artifacts = toArtifacts(messages)
+    const refs = toArtifacts(messages, messages, new Set(), 'reference')
+    const lead = toArtifacts([turn(3, 'b', 5, [ref('first', 5)])], undefined, undefined, 'reference')
+    expect(referenceFolds(artifacts, [...lead, ...refs]).map(f => [f.key, f.after, f.items.map(i => i.url)])).toEqual([
+      ['3-0', null, ['first']],
+      ['1-2', '1-1', ['asset', 'mock-again']],
+    ])
+    expect(referenceFolds(artifacts, [])).toEqual([])
   })
 })
 

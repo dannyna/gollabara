@@ -352,8 +352,8 @@ export class Store {
     return message
   }
 
-  // Images live in the message body JSON, so `source` and `dhash` need no column; older bodies simply lack them
-  private saveImage({ data, mime, width, height, source }: IncomingImage): StoredImage {
+  // Images live in the message body JSON, so `source`, `dhash` and `role` need no column; older bodies simply lack them
+  private saveImage({ data, mime, width, height, source, role }: IncomingImage): StoredImage {
     const bytes = Buffer.from(data, 'base64')
     const hash = new Bun.CryptoHasher('sha256').update(bytes).digest('hex').slice(0, 32)
     const name = `${hash}.${EXT[mime] ?? 'png'}`
@@ -361,11 +361,12 @@ export class Store {
     if (!existsSync(path))
       writeFileSync(path, bytes)
     const size = width && height ? { width, height } : imageSize(bytes) ?? { width: 16, height: 10 }
+    const kept = role ? { role } : {}
     if (!source)
-      return { url: `/img/${name}`, ...size }
+      return { url: `/img/${name}`, ...size, ...kept }
     // Only a named file can be re-captured, so only those need the dHash; huge images skip it
     const dhash = size.width * size.height <= DHASH_MAX_PIXELS ? dHash(bytes, mime) : null
-    return { url: `/img/${name}`, ...size, source, ...(dhash ? { dhash } : {}) }
+    return { url: `/img/${name}`, ...size, source, ...(dhash ? { dhash } : {}), ...kept }
   }
 }
 

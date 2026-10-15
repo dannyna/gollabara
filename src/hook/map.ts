@@ -1,6 +1,7 @@
 // Turns Claude Code hook input (stdin JSON) into stream events.
 // Kept pure so it is easy to test. hook/index.ts handles I/O.
-import type { Feedback, FeedbackVia, IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
+import type { Feedback, FeedbackVia, ImageRole, IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
+import { isAbsolute } from 'node:path'
 import { FEEDBACK_PREFIX, feedbackText } from '../shared/feedback'
 
 export interface HookInput {
@@ -91,6 +92,69 @@ export function turnOpener(tail: string): TurnOpener {
   return 'unknown'
 }
 
+/**
+ * When the current turn started: the timestamp of the last main-thread entry that opened a turn.
+ * Unlike turnOpener, feedback delivered after the opener does not stop the scan: it changes who
+ * the turn is for, not when it began. Undefined when the tail holds no opener.
+ */
+export function turnStartedAt(tail: string): number | undefined {
+  const lines = tail.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!
+    if (!line.includes('"turnOrigin"'))
+      continue
+    let entry: any
+    try {
+      entry = JSON.parse(line)
+    }
+    catch {
+      continue
+    }
+    if (entry?.isSidechain || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
+      continue
+    const at = Date.parse(entry.timestamp)
+    return Number.isFinite(at) ? at : undefined
+  }
+  return undefined
+}
+
+/** When the session started, for a turn whose opener is out of reach: the first timestamp at the head of its transcript */
+export function sessionStartedAt(head: string): number | undefined {
+  for (const line of head.split('\n')) {
+    let entry: any
+    try {
+      entry = JSON.parse(line)
+    }
+    catch {
+      continue
+    }
+    const at = typeof entry?.timestamp === 'string' ? Date.parse(entry.timestamp) : Number.NaN
+    if (Number.isFinite(at))
+      return at
+  }
+  return undefined
+}
+
+/**
+ * A file the session read is an artifact when it changed after the turn started (the session
+ * made it), and a reference otherwise (a mock, an existing asset, an older screenshot). When
+ * either time is unknown the image counts as an artifact, as every image did before roles.
+ */
+export function imageRole(mtimeMs: number | undefined, startedAt: number | undefined): ImageRole {
+  if (mtimeMs === undefined || startedAt === undefined)
+    return 'artifact'
+  return mtimeMs > startedAt ? 'artifact' : 'reference'
+}
+
+/**
+ * The file a tool read its images from, when it names one by absolute path. A relative name
+ * (a screenshot tool's `filename`) resolves against a cwd the hook can't know, so it names none.
+ */
+export function readFilePath(toolInput: any): string | undefined {
+  const path = imageSource(toolInput)
+  return path && isAbsolute(path) ? path : undefined
+}
+
 /** Hook context that handed gollabara feedback to the session (PostToolUse, Stop or UserPromptSubmit) */
 function isFeedbackDelivery(entry: any): boolean {
   const attachment = entry?.type === 'attachment' ? entry.attachment : undefined
@@ -110,7 +174,11 @@ function carriesFeedback(entry: any): boolean {
   return texts.some(t => typeof t === 'string' && t.includes(FEEDBACK_PREFIX))
 }
 
-export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown'): IncomingEvent | null {
+/**
+ * `fileRole` decides the role of images read from a file (hook/index.ts stats it). Images a tool
+ * produced directly, a screenshot or an MCP result with no file behind it, are artifacts.
+ */
+export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown', fileRole?: (path: string) => ImageRole): IncomingEvent | null {
   switch (input.hook_event_name) {
     case 'SessionStart':
       return { kind: 'session', session }
@@ -122,6 +190,11 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       const source = images.length === 1 ? imageSource(input.tool_input) : undefined
       if (source)
         images[0]!.source = source
+      // Every page of a multi-page read comes from the same file, so they share its role
+      const path = readFilePath(input.tool_input)
+      const role = path && fileRole ? fileRole(path) : 'artifact'
+      for (const image of images)
+        image.role = role
       return { kind: 'image', session, toolName: input.tool_name ?? '', images }
     }
     case 'PreToolUse': {

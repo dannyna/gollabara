@@ -7,7 +7,8 @@ import ChatIcon from './ChatIcon.vue'
 
 // The thumbnail row inside a session message: fixed height, original aspect ratio,
 // then the tool and count in mono. Re-captures of one screen within the turn show as
-// their newest thumbnail only, the same rule the stream uses.
+// their newest thumbnail only, the same rule the stream uses. `reference` draws the images
+// an open 「참고 이미지 n」 row holds: muted, no count, and a press opens the viewer.
 export interface Thumb {
   key: string
   url: string
@@ -25,6 +26,7 @@ const props = defineProps<{
   toolName?: string
   /** Key of the thumbnail paired with the stream selection */
   active?: string | null
+  reference?: boolean
 }>()
 const emit = defineEmits<{ pick: [key: string], openImage: [thumb: Thumb] }>()
 
@@ -38,7 +40,7 @@ const shown = computed(() => stackCaptures(
 const chip = computed(() => outputLabel(shown.value.length, props.toolName))
 
 // Paired with the stream cell that shows this capture, which may be a newer one
-const isActive = (t: Thumb) => props.active != null && (props.active === t.key || props.active === cellKey(t.key))
+const isActive = (t: Thumb) => !props.reference && props.active != null && (props.active === t.key || props.active === cellKey(t.key))
 
 function title(t: Thumb, count: number) {
   const parts = [t.source && basename(t.source), count > 1 && `같은 화면 ${count}장`].filter(Boolean)
@@ -48,7 +50,8 @@ function title(t: Thumb, count: number) {
 // The first press pairs it with the stream, pressing the paired one opens it. Stream cells
 // pin instead, so this is the viewer's way in besides a cell's 확대 ↗.
 function press(t: Thumb) {
-  if (isActive(t))
+  // References have no stream cell to pair with
+  if (props.reference || isActive(t))
     emit('openImage', t)
   else
     emit('pick', t.key)
@@ -56,7 +59,7 @@ function press(t: Thumb) {
 </script>
 
 <template>
-  <div class="thumbs">
+  <div class="thumbs" :class="{ reference }">
     <button
       v-for="({ thumb: t, count }, i) in shown" :key="t.key" class="thumb" type="button"
       :class="{ active: isActive(t) }" :title="title(t, count)"
@@ -67,7 +70,7 @@ function press(t: Thumb) {
       <span v-if="t.label" class="thumb-label">{{ t.label }}</span>
     </button>
   </div>
-  <div class="out-chip">
+  <div v-if="!reference" class="out-chip">
     <ChatIcon name="image" />{{ chip }}
   </div>
 </template>
@@ -102,6 +105,23 @@ function press(t: Thumb) {
   display: block;
   height: 100%;
   width: auto;
+}
+/* References sit back: smaller and faded until pointed at, so they never read as output */
+.reference {
+  margin: 4px 0 6px;
+}
+.reference .thumb {
+  height: 54px;
+}
+.reference .thumb img {
+  opacity: 0.55;
+  filter: saturate(0.4);
+  transition: opacity 0.15s;
+}
+.reference .thumb:hover img,
+.reference .thumb:focus-visible img {
+  opacity: 1;
+  filter: none;
 }
 /* Always light, like a sticker on the image, so it reads on any screenshot */
 .thumb-label {

@@ -12,7 +12,7 @@ import odStop from './fixtures/od-stop.json'
 import postMcpText from './fixtures/post-mcp-text.json'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
-import { extractImages, feedbackOutput, feedbackVia, mapHook, recapOf, sessionInfo, sessionName, turnOpener } from './map'
+import { extractImages, feedbackOutput, feedbackVia, imageRole, mapHook, readFilePath, recapOf, sessionInfo, sessionName, sessionStartedAt, turnOpener, turnStartedAt } from './map'
 
 const session: SessionInfo = { id: 's1', name: 'piuda', harness: 'claude-code', cwd: '/Users/me/IdeaProjects/piuda' }
 
@@ -211,6 +211,84 @@ describe('turn opener (real transcript tails, redacted)', () => {
 
   test('an origin not seen before counts as unknown, so the recap still posts', () => {
     expect(turnOpener('{"type":"user","turnOrigin":"some_new_origin"}')).toBe('unknown')
+  })
+})
+
+describe('image role', () => {
+  const tail = (name: string) => readFileSync(join(import.meta.dir, 'fixtures', name), 'utf8')
+  const openerAt = (text: string) => Date.parse(JSON.parse(text.split('\n').findLast(l => l.includes('"turnOrigin"'))!).timestamp)
+  const shot = [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }]
+  const post = (tool_name: string, tool_input: object, tool_response: unknown = shot): HookInput =>
+    ({ session_id: 's1', cwd: '/x', hook_event_name: 'PostToolUse', tool_name, tool_input, tool_response })
+  const roles = (event: ReturnType<typeof mapHook>) => event?.kind === 'image' ? event.images.map(i => i.role) : null
+
+  test('an image read from a file takes the role decided for that file', () => {
+    const asked: string[] = []
+    const event = mapHook(postReadImage as HookInput, session, 'unknown', (path) => {
+      asked.push(path)
+      return 'reference'
+    })
+    expect(asked).toEqual([postReadImage.tool_input.file_path])
+    expect(roles(event)).toEqual(['reference'])
+  })
+
+  test('an image a tool produced directly is an artifact, without looking at any file', () => {
+    const never = (): never => {
+      throw new Error('no file to look at')
+    }
+    expect(roles(mapHook(post('mcp__od__render', {}), session, 'unknown', never))).toEqual(['artifact'])
+    // A relative screenshot name resolves against a cwd the hook can't know
+    expect(roles(mapHook(post('mcp__playwright__browser_take_screenshot', { filename: 'login.png' }), session, 'unknown', never))).toEqual(['artifact'])
+  })
+
+  test('every page of a multi-page read shares the file\'s role', () => {
+    const event = mapHook(post('Read', { file_path: '/tmp/deck.pdf' }, [...shot, ...shot]), session, 'unknown', () => 'reference')
+    expect(roles(event)).toEqual(['reference', 'reference'])
+  })
+
+  test('without a role lookup every image is an artifact', () => {
+    expect(roles(mapHook(postReadImage as HookInput, session))).toEqual(['artifact'])
+  })
+
+  test('only an absolute path names the file', () => {
+    expect(readFilePath({ file_path: '/a/mock.png' })).toBe('/a/mock.png')
+    expect(readFilePath({ path: '/a/mock.png' })).toBe('/a/mock.png')
+    expect(readFilePath({ filename: 'shot.png' })).toBeUndefined()
+    expect(readFilePath({})).toBeUndefined()
+  })
+
+  test('a file changed after the turn started is an artifact; one from before is a reference', () => {
+    expect(imageRole(2000, 1000)).toBe('artifact')
+    expect(imageRole(1000, 1000)).toBe('reference')
+    expect(imageRole(500, 1000)).toBe('reference')
+  })
+
+  test('without either time the image is an artifact', () => {
+    expect(imageRole(undefined, 1000)).toBe('artifact')
+    expect(imageRole(500, undefined)).toBe('artifact')
+  })
+
+  test('the turn starts at its opener\'s timestamp', () => {
+    expect(turnStartedAt(tail('transcript-human.jsonl'))).toBe(Date.parse('2026-10-13T14:54:48.567Z'))
+    expect(turnStartedAt(tail('transcript-task-notification.jsonl'))).toBe(openerAt(tail('transcript-task-notification.jsonl')))
+  })
+
+  test('feedback delivered after the opener does not move the turn start', () => {
+    const text = tail('transcript-monitor-feedback.jsonl')
+    expect(turnOpener(text)).toBe('human')
+    expect(turnStartedAt(text)).toBe(openerAt(text))
+  })
+
+  test('no opener in the tail, or a sidechain opener only, gives no turn start', () => {
+    const lines = tail('transcript-monitor.jsonl').split('\n')
+    expect(turnStartedAt(lines.slice(lines.findLastIndex(l => l.includes('"turnOrigin"')) + 1).join('\n'))).toBeUndefined()
+    expect(turnStartedAt('{"type":"user","isSidechain":true,"turnOrigin":"human","timestamp":"2026-10-13T14:54:48.567Z"}')).toBeUndefined()
+  })
+
+  test('the session starts at the first timestamp in the transcript', () => {
+    const head = '{"type":"summary"}\n{"type":"user","timestamp":"2026-10-13T10:00:00.000Z"}\n{"timestamp":"2026-10-13T11:00:00.000Z"}'
+    expect(sessionStartedAt(head)).toBe(Date.parse('2026-10-13T10:00:00.000Z'))
+    expect(sessionStartedAt('{"type":"summary"}\n{"cut off')).toBeUndefined()
   })
 })
 

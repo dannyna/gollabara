@@ -34,7 +34,9 @@ const visible = computed(() => inScope(messages.value, scope.value, muted.value)
 // Earlier captures of the same screen hide behind the newest; 「따로 보기」 takes one out
 const { split, cellOf, cellKey } = useCaptures()
 const artifacts = computed(() => toArtifacts(messages.value, visible.value, split.value))
-watchEffect(() => cellOf.value = cellKeys(artifacts.value))
+// Images the sessions only looked at: folded away, numbered and counted nowhere
+const references = computed(() => toArtifacts(messages.value, visible.value, split.value, 'reference'))
+watchEffect(() => cellOf.value = cellKeys([...artifacts.value, ...references.value]))
 
 const appBar = ref<InstanceType<typeof AppBar>>()
 const sessionsOpen = ref(false)
@@ -95,6 +97,8 @@ const notices = computed(() => resolveNotices({
 
 // The viewer opens from anywhere through useImageViewer (stream cells, chat thumbnails)
 const { openKey: viewerKey, open, openCell } = useImageViewer()
+// A reference opens among the references, so artifacts keep their own numbering there
+const viewerItems = computed(() => references.value.some(r => r.key === viewerKey.value) ? references.value : artifacts.value)
 
 // Selection links a cell, its chat thumbnail, and its message
 const selected = ref<string | null>(null)
@@ -160,7 +164,7 @@ function onThumb(key: string) {
     <EmptyState v-if="showEmpty" :connected="connected" />
     <main v-else-if="messages.length" class="workspace">
       <StreamPanel
-        ref="stream" :artifacts="artifacts" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
+        ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
         @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
       />
       <ChatPanel
@@ -174,7 +178,7 @@ function onThumb(key: string) {
       v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"
       @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine"
     />
-    <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="artifacts" />
+    <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="viewerItems" />
     <AppToast />
   </div>
 </template>

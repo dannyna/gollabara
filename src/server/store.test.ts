@@ -185,4 +185,16 @@ describe('image source', () => {
       expect.objectContaining({ source: '/tmp/a.png', at: 2000 }),
     ])
   })
+
+  test('stores each image\'s role as the hook sent it, and none when it sent none', () => {
+    store.ingest({ kind: 'image', session: od, toolName: 'Read', images: [
+      { data: FULL_PNG, mime: 'image/png', source: '/tmp/mock.png', role: 'reference' },
+      { data: PNG, mime: 'image/png', width: 800, height: 500, role: 'artifact' },
+    ] }, 1000)
+    store.ingest(image(), 2000)
+    const [reference, artifact, legacy] = new Store(dir).recent()[0]!.images!
+    expect(reference).toMatchObject({ source: '/tmp/mock.png', role: 'reference' })
+    expect(artifact).toMatchObject({ role: 'artifact' })
+    expect(legacy).not.toHaveProperty('role')
+  })
 })
