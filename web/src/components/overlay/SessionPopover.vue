@@ -46,7 +46,7 @@ useOverlay({
         </button>
       </div>
       <p class="hint">
-        세션을 고르거나, 잠시 멈추고 음소거할 수 있어요.
+        세션을 고르거나 음소거할 수 있어요.
       </p>
 
       <button
@@ -68,10 +68,6 @@ useOverlay({
           <span v-if="s.muted" class="session-state">음소거</span>
         </button>
         <div class="session-ops">
-          <!-- Pausing a session is a later track: drawn, never sent -->
-          <button type="button" disabled>
-            멈춤
-          </button>
           <button type="button" :aria-pressed="s.muted" @click="emit('mute', s.id)">
             {{ s.muted ? '음소거 해제' : '음소거' }}
           </button>

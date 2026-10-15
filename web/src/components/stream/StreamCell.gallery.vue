@@ -59,7 +59,7 @@ const tryCell = one('hero-b')
       <StreamCell :artifact="one('hero-b')" preview="focus-reply" />
     </div>
   </GalleryCase>
-  <GalleryCase title="좁은 세로 셀 · 액션 층을 캡션 줄로 내림 · 멈춤은 아직 꺼짐">
+  <GalleryCase title="좁은 세로 셀 · 액션 층을 캡션 줄로 내림">
     <div class="solo" style="--h: 440px">
       <StreamCell :artifact="portrait[0]!" />
       <StreamCell :artifact="portrait[1]!" preview="hover" />

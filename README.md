@@ -54,7 +54,7 @@ gollabara spells out the Korean 골라 봐라 as it sounds, and it reads two way
 Early stage. Observation works today (images, recaps, and questions flowing in) for Claude Code sessions, including Open Design work called from inside them.
 
 - [ ] Launch at login and install to the phone home screen
-- [ ] Step in: pause, reply, `@mention`, mute
+- [ ] Step in: reply, `@mention`, mute
 - [ ] Remote phone access and notifications
 - [ ] Capture directly from Codex, Open Design, and Claude Design sessions
 

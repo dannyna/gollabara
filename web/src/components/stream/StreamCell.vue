@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One received artifact on the stream rail (OD stream guide 02): meta · image face ·
-// caption, with 답장 · 멈춤 · 확대 ↗ on hover or focus. A click on the face selects the
+// caption, with 답장 · 확대 ↗ on hover or focus. A click on the face selects the
 // cell and pins or unpins it (the panel decides); only 확대 ↗ opens the viewer (OD
 // message-state guide 04). Only the first cell of a run names the session; later ones keep the row empty so every face stays the same height. The width comes from the
 // original ratio and the face height, so the image fills it uncropped (contain).
@@ -97,7 +97,7 @@ const state = computed(() => props.face ?? loaded.value)
       </span>
     </div>
     <FloatingActions
-      reply :reply-label="`${name}에 답장`" :pause-label="`${a.session} 세션 멈춤`"
+      reply :reply-label="`${name}에 답장`"
       :view-label="`${name} ${viewText ? '열기' : '크게 보기'}`" :view-text="viewText"
       :shown="preview === 'hover' || preview === 'focus' || preview === 'focus-reply'"
       @view="emit('open')" @reply="emit('reply')"

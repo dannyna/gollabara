@@ -18,7 +18,7 @@ const parts = computed(() => splitSessionName(props.name))
 
 <template>
   <article class="message" :class="{ highlighted }" data-floating-host>
-    <!-- 답장 · 멈춤 on hover or focus; drawn disabled until intervention exists -->
+    <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
     <FloatingActions variant="message" />
     <div class="message-head">
       <SessionAvatar :name="name" />
