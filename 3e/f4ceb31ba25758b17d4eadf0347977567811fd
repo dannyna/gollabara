@@ -1,0 +1,27 @@
+src/hook/map.ts
+  s_b7f30c572db9a8::t_8351ccecc5976b 110-113,227-237
+  s_b7f30c572db9a8::t_5af5f741342c33 238-239
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_5aea2d4d3479d2 100-129
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_ffdc5565a5103d 73-75,162-168
+  s_b7f30c572db9a8::t_1ffd74103df297 169
+src/shared/types.ts
+  s_b7f30c572db9a8::t_1e555de13ab19e 38-39,76-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ef4ceb31ba25758b17d4eadf0347977567811fd",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
