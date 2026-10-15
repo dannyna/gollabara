@@ -1,0 +1,38 @@
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 49
+web/src/components/overlay/FloatingActions.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 4,14
+DESIGN.md
+  s_b7f30c572db9a8::t_de23025fa46d6d 289,296,399
+  s_b7f30c572db9a8::t_7cf1e6dc84e553 176
+web/src/components/overlay/FloatingActions.gallery.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 14,21,25
+README.md
+  s_b7f30c572db9a8::t_7cf1e6dc84e553 57
+README.ko.md
+  s_b7f30c572db9a8::t_7cf1e6dc84e553 57
+web/src/components/stream/StreamCell.gallery.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 62
+web/src/components/chat/SessionMessage.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 21
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 3,100
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_d000ffe983052f 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1462c8ab4600b68ecb634346ad33790397b50118",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
