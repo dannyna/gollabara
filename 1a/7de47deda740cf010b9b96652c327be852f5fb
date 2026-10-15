@@ -1,0 +1,41 @@
+src/shared/stacks.test.ts
+  s_b7f30c572db9a8::t_ef2778e8f1b885 1-90,94-95
+  s_b7f30c572db9a8::t_a57003bc22d820 91-93
+src/shared/stacks.ts
+  s_b7f30c572db9a8::t_c20f352462c7dc 27
+  s_b7f30c572db9a8::t_65eab394b560a6 54
+  s_b7f30c572db9a8::t_128c86e906c03b 1-26,28-53,55-106
+package.json
+  s_b7f30c572db9a8::t_241cc0420e39a7 25-27,33
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_166676d44dc72c 148-150,152-169
+  s_b7f30c572db9a8::t_82c3250e362561 10-11,151
+src/server/dhash.test.ts
+  s_b7f30c572db9a8::t_425a3a78542827 2-38
+  s_b7f30c572db9a8::t_db1f85aba85ca3 1
+src/server/dhash.ts
+  s_b7f30c572db9a8::t_11a4bf883e8565 4
+  s_b7f30c572db9a8::t_63f63a0394571d 20
+  s_b7f30c572db9a8::t_8cb32c2ee7ab04 1-3,5-19,21-63
+src/server/store.ts
+  s_b7f30c572db9a8::t_63f63a0394571d 3,8,13-15,102-104,107,121,254-256,263-265
+  s_b7f30c572db9a8::t_28e789946adfc6 266-267
+bun.lock
+  s_b7f30c572db9a8::t_1b2fe9e5532322 11-12,18,251-252,579-580,797-798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a7de47deda740cf010b9b96652c327be852f5fb",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
