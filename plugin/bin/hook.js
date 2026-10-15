@@ -3,7 +3,8 @@
 import process3 from "process";
 
 // src/hook/index.ts
-import { existsSync, readFileSync, statSync } from "fs";
+import { Buffer } from "buffer";
+import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync } from "fs";
 import { dirname, join, resolve } from "path";
 import process2 from "process";
 
@@ -18,6 +19,7 @@ function serverUrl() {
 }
 
 // src/hook/map.ts
+var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var RECAP_MAX = 160;
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
@@ -30,7 +32,23 @@ function sessionInfo(input, env, git) {
   const root = git.projectRoot(input.cwd);
   return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: "claude-code", cwd: input.cwd };
 }
-function mapHook(input, session) {
+function turnOpener(tail) {
+  const lines = tail.split(`
+`);
+  for (let i = lines.length - 1;i >= 0; i--) {
+    let entry;
+    try {
+      entry = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (entry?.type !== "user" || entry.isSidechain || typeof entry.turnOrigin !== "string")
+      continue;
+    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : "system";
+  }
+  return "unknown";
+}
+function mapHook(input, session, opener = "unknown") {
   switch (input.hook_event_name) {
     case "SessionStart":
       return { kind: "session", session };
@@ -47,6 +65,8 @@ function mapHook(input, session) {
       return questions.length ? { kind: "question", session, questions } : null;
     }
     case "Stop": {
+      if (opener === "system" && !input.stop_hook_active)
+        return null;
       const text = recapOf(input.last_assistant_message);
       if (!text)
         return null;
@@ -134,12 +154,16 @@ function extractQuestions(toolInput) {
 
 // src/hook/index.ts
 var POST_TIMEOUT_MS = 1500;
+var TRANSCRIPT_TAIL_BYTES = 256 * 1024;
 async function runHook() {
+  if (process2.env.GOLLABARA_HOOK === "off")
+    return;
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
-    const event = mapHook(input, session);
+    const opener = input.hook_event_name === "Stop" && !input.stop_hook_active ? stopTurnOpener(input.transcript_path) : "unknown";
+    const event = mapHook(input, session, opener);
     const via = feedbackVia(input.hook_event_name);
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
     const post = (path, body) => fetch(`${serverUrl()}${path}`, {
@@ -157,6 +181,26 @@ async function runHook() {
     if (output)
       await Bun.write(Bun.stdout, JSON.stringify(output));
   } catch {}
+}
+function stopTurnOpener(transcriptPath) {
+  const tail = transcriptPath ? readTail(transcriptPath, TRANSCRIPT_TAIL_BYTES) : undefined;
+  return tail === undefined ? "unknown" : turnOpener(tail);
+}
+function readTail(path, bytes) {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const size = fstatSync(fd).size;
+      const length = Math.min(size, bytes);
+      const buffer = Buffer.alloc(length);
+      readSync(fd, buffer, 0, length, size - length);
+      return buffer.toString("utf8");
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return;
+  }
 }
 function projectRoot(cwd) {
   for (let dir = resolve(cwd);; dir = dirname(dir)) {
