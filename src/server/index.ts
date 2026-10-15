@@ -261,5 +261,15 @@ function serveWeb(pathname: string): Response {
     return new Response('web/dist is missing. Use `bun run build:web` or `bun run dev:web`.', { status: 503 })
   const safe = pathname.replace(/\.{2,}/g, '')
   const file = Bun.file(join(WEB_DIST, safe === '/' ? 'index.html' : safe))
-  return new Response(file.size > 0 ? file : Bun.file(join(WEB_DIST, 'index.html')))
+  const found = file.size > 0
+  // The page, the manifest and the service worker are checked on every load, so a new build
+  // reaches the installed app; hashed assets keep the browser's usual caching
+  const headers: Record<string, string> = {}
+  if (!found || /^\/(?:index\.html|sw\.js|manifest\.webmanifest)?$/.test(safe))
+    headers['cache-control'] = 'no-cache'
+  if (safe === '/sw.js')
+    headers['content-type'] = 'text/javascript; charset=utf-8'
+  if (safe === '/manifest.webmanifest')
+    headers['content-type'] = 'application/manifest+json'
+  return new Response(found ? file : Bun.file(join(WEB_DIST, 'index.html')), { headers })
 }

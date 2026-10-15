@@ -5,37 +5,71 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { feedbackBySession, mergeFeedback, sortFeedback } from './feedback'
 import { newLines, toTriageMap, triageKey } from './triage'
 
-const RETRY_MS = 2000
+// First retry, doubled per failed attempt up to the cap, so a restarted server is back on screen within 5 s
+const RETRY_MIN_MS = 500
+const RETRY_MAX_MS = 4000
+// A drop shorter than this (a server restart) shows nothing
+const OFFLINE_GRACE_MS = 2000
 // How long 「다시 연결됐어요」 stays in the app bar (OD banner guide 02-03)
 const RESTORED_MS = 3000
 
-/** True for a moment after a connection that had dropped opens again */
-export function restoredFlag(ms = RESTORED_MS) {
+/** Wait before reconnect attempt `attempt` (0 for the first retry after a drop) */
+export function retryDelay(attempt: number): number {
+  return Math.min(RETRY_MIN_MS * 2 ** Math.max(0, attempt), RETRY_MAX_MS)
+}
+
+/**
+ * `offline` once the connection has been down for `graceMs`, the first load included, so a quick restart
+ * never flashes it; `restored` for a moment after a connection that was shown offline opens again.
+ */
+export function connectionFlags(graceMs = OFFLINE_GRACE_MS, restoredMs = RESTORED_MS) {
+  const offline = ref(false)
   const restored = ref(false)
-  let dropped = false
+  let grace: ReturnType<typeof setTimeout> | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
-  function stop() {
+  function dispose() {
+    clearTimeout(grace)
     clearTimeout(timer)
-    restored.value = false
+    grace = undefined
   }
   return {
+    offline,
     restored,
     opened() {
-      if (!dropped)
+      clearTimeout(grace)
+      grace = undefined
+      if (!offline.value)
         return
-      dropped = false
+      offline.value = false
       clearTimeout(timer)
       restored.value = true
-      timer = setTimeout(() => restored.value = false, ms)
+      timer = setTimeout(() => restored.value = false, restoredMs)
     },
-    /** `wasOpen` is false for retries that never connected; they keep the earlier drop */
-    closed(wasOpen: boolean) {
-      if (wasOpen)
-        dropped = true
-      stop()
+    /** The connection is down: on load, and after each close or failed retry */
+    closed() {
+      clearTimeout(timer)
+      restored.value = false
+      if (offline.value || grace)
+        return
+      grace = setTimeout(() => {
+        grace = undefined
+        offline.value = true
+      }, graceMs)
     },
-    dispose: stop,
+    dispose,
   }
+}
+
+/** Turn messages change in place as images and recaps arrive, so replace by id */
+export function upsert(list: StreamMessage[], message: StreamMessage): StreamMessage[] {
+  const i = list.findIndex(m => m.id === message.id)
+  return i === -1 ? [...list, message] : list.map((m, j) => j === i ? message : m)
+}
+
+/** A hello replaces the list after a reconnect; one id appears once, the latest copy winning */
+export function dedupe(list: StreamMessage[]): StreamMessage[] {
+  const byId = new Map(list.map(m => [m.id, m]))
+  return byId.size === list.length ? list : [...byId.values()]
 }
 
 export function useStream() {
@@ -49,22 +83,31 @@ export function useStream() {
   /** When recap lines arrived live while triage was on, so new ones can wait for a verdict */
   const arrivals = shallowRef<Map<string, number>>(new Map())
   const connected = ref(false)
-  const flag = restoredFlag()
+  const flag = connectionFlags()
   let ws: WebSocket | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
+  let attempt = 0
   let closed = false
 
   function connect() {
+    clearTimeout(timer)
+    // A socket being replaced must not report its own close or frames
+    if (ws) {
+      ws.onopen = ws.onmessage = ws.onclose = null
+      ws.close()
+    }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    ws = new WebSocket(`${proto}://${location.host}/ws`)
-    ws.onopen = () => {
+    const socket = ws = new WebSocket(`${proto}://${location.host}/ws`)
+    socket.onopen = () => {
+      attempt = 0
       connected.value = true
       flag.opened()
     }
-    ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
       const frame = JSON.parse(e.data) as ServerFrame
       if (frame.type === 'hello') {
-        messages.value = frame.messages
+        // The server's snapshot replaces what we had, so a reconnect never doubles a message
+        messages.value = dedupe(frame.messages)
         sessions.value = frame.sessions
         // Older servers send no feedback
         feedback.value = sortFeedback(frame.feedback ?? [])
@@ -97,27 +140,44 @@ export function useStream() {
           : [...sessions.value, frame.session]
       }
     }
-    ws.onclose = () => {
-      flag.closed(connected.value)
+    socket.onclose = () => {
+      ws = null
       connected.value = false
+      flag.closed()
       if (!closed)
-        timer = setTimeout(connect, RETRY_MS)
+        timer = setTimeout(connect, retryDelay(attempt++))
     }
   }
 
-  onMounted(connect)
+  // Back to the page, the network, or a page restored from the back-forward cache: retry now instead of
+  // waiting out the backoff (a phone app returning from the background lands here)
+  function wake() {
+    if (closed || document.visibilityState === 'hidden')
+      return
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING))
+      return
+    attempt = 0
+    connect()
+  }
+
+  onMounted(() => {
+    flag.closed()
+    connect()
+    document.addEventListener('visibilitychange', wake)
+    window.addEventListener('online', wake)
+    window.addEventListener('pageshow', wake)
+  })
   onBeforeUnmount(() => {
     closed = true
     clearTimeout(timer)
     flag.dispose()
+    document.removeEventListener('visibilitychange', wake)
+    window.removeEventListener('online', wake)
+    window.removeEventListener('pageshow', wake)
+    if (ws)
+      ws.onclose = null
     ws?.close()
   })
 
-  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, restored: flag.restored }
-}
-
-/** Turn messages change in place as images and recaps arrive, so replace by id */
-function upsert(list: StreamMessage[], message: StreamMessage): StreamMessage[] {
-  const i = list.findIndex(m => m.id === message.id)
-  return i === -1 ? [...list, message] : list.map((m, j) => j === i ? message : m)
+  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, offline: flag.offline, restored: flag.restored }
 }

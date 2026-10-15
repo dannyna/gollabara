@@ -18,4 +18,8 @@ if (new URLSearchParams(location.search).has('gallery')) {
 else {
   applyTheme(useTheme().preference.value)
   createApp(App).mount('#app')
+  // The installed app keeps its shell offline (web/sw.js). Only `golla serve` serves a build;
+  // the dev server has no sw.js
+  if (import.meta.env.PROD && 'serviceWorker' in navigator)
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
 }

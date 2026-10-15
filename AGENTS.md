@@ -140,6 +140,7 @@ With 「대화 정리」 set to Claude or Codex (`PUT /api/settings`, loopback/t
 ## Conventions
 
 - **UI:** Follow [DESIGN.md](DESIGN.md). Define tokens in `web/src/style.css` for dark (the default) and light. The design source is the Open Design project `gollabara-app` ("Night Dock"): its `app-night-dock.html` is authoritative for screens and interactions. Component structure is provisional; an atomic component system comes later.
+- **Service worker:** `web/sw.js` is a template; the production build fills in the app shell and emits `/sw.js`, which only `golla serve` serves (`no-cache`) and only production builds register. It keeps the shell (page, entry chunks, icons) and caches other `/assets/*` on first use. It never caches `/api/*`, `/ws` or `/img/*`: stream data reaches the page only over the server.
 - **Service name:** Always the Latin `gollabara`, never a Korean spelling.
 - **Docs:** [README.md](README.md) (English) and [README.ko.md](README.ko.md) (Korean) must stay in sync. AGENTS.md, DESIGN.md, and [REVIEW.md](REVIEW.md) are in English. The README carries the design philosophy, not technical detail.
 - **Language:** Code, comments, commit messages, PR titles and bodies, issues, and docs are in English. The exceptions are [README.ko.md](README.ko.md) and the product UI copy, which are Korean. Write in English even when the conversation with the user is in Korean.

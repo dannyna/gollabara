@@ -6,6 +6,13 @@
     <meta name="theme-color" content="#181B1F" />
     <title>gollabara</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Home-screen app (#63). The app bar has no top safe-area padding, so the status bar stays opaque -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="gollabara" />
     <script>
       // Apply the stored theme before paint (see web/src/theme.ts). Dark is the default.
       try {
