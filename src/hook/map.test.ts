@@ -214,9 +214,9 @@ describe('question mirroring', () => {
 })
 
 describe('helpers', () => {
-  test('recap strips Markdown markers and truncates at 160 chars', () => {
+  test('recap strips Markdown markers and keeps the whole first line', () => {
     expect(recapOf('## 끝났습니다\n\n자세한 내용')).toBe('끝났습니다')
-    expect(recapOf('가'.repeat(200))!.length).toBe(160)
+    expect(recapOf('가'.repeat(400))).toBe('가'.repeat(400))
     expect(recapOf('')).toBeNull()
   })
 
