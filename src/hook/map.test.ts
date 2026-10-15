@@ -198,7 +198,8 @@ describe('turn opener (real transcript tails, redacted)', () => {
   })
 
   test('a wake-up turn that then got feedback at its Stop continues as usual', () => {
-    const feedback = tail('transcript-monitor-feedback.jsonl').split('\n').find(l => l.includes('hook_additional_context'))!
+    // Claude Code records Stop's additionalContext the same way as PostToolUse's, under the Stop hook's name
+    const feedback = tail('transcript-monitor-feedback.jsonl').split('\n').find(l => l.includes('hook_additional_context'))!.replace('"hookName":"PostToolUse:Bash"', '"hookName":"Stop"').replace('"hookEvent":"PostToolUse"', '"hookEvent":"Stop"')
     const opener = turnOpener(`${tail('transcript-rewake.jsonl')}\n${feedback}`)
     expect(opener).toBe('human')
     expect(mapHook({ ...stop, stop_hook_active: true } as HookInput, session, opener)).toMatchObject({ kind: 'recap', continuation: true })

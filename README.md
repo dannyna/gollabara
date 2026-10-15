@@ -68,7 +68,7 @@ bun src/cli.ts serve                       # http://localhost:4747
 claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
 ```
 
-Your feedback reaches a session even while it sits idle: the plugin wakes it, with no launch flag. Headless runs (`claude -p`, including Open Design) pick it up at their next tool call instead. Starting a session with `claude --dangerously-load-development-channels plugin:gollabara@gollabara` adds an optional second route through a Claude Code channel (research preview).
+Your feedback reaches a session even while it sits idle: the plugin wakes it, with no launch flag. Starting a session with `claude --dangerously-load-development-channels plugin:gollabara@gollabara` adds an optional second route through a Claude Code channel (research preview).
 
 For development and configuration, see [AGENTS.md](AGENTS.md).
 
