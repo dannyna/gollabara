@@ -1,15 +1,16 @@
 // Triage for session chat (#32, #37). When the user opts in, a CLI on this machine reads each
-// new recap line in the background and decides only whether it is shown. Only chat text is
-// read, never images. Results are shown to the user only; nothing is ever sent to a session.
+// new recap line in the background and decides whether it is shown and, if so, with which
+// state (tone). Only chat text is read, never images. Results are shown to the user only; nothing is ever sent to a session.
 // Questions are always shown, so they are never judged; they appear only as context.
 
-import type { IncomingEvent, Question, StreamMessage, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { IncomingEvent, Question, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import type { EngineCall } from './engine'
 import type { Ingested, Store } from './store'
 import { join } from 'node:path'
 import { runEngine } from './engine'
 
 const VERDICTS: Verdict[] = ['show', 'hide']
+const TONES: Tone[] = ['default', 'success', 'warning', 'danger']
 /** Earlier recap and question lines of the session that go into the prompt */
 export const CONTEXT_LINES = 5
 /** How many of the session's lines after the user's latest feedback are judged with it */
@@ -23,6 +24,8 @@ show: a result (success or failure, with or without counts), an error, a blocker
 hide: a step update with nothing to act on (started X, moved on to Y), waiting, polling, elapsed-time ticks, "still running", "nothing new", "no feedback yet", heartbeats.
 When the developer's latest feedback to the session is given, show a line that answers or acts on it.
 Judge the new line itself; earlier lines are context only. When unsure, show.
+
+tone, for a shown line: success for a finished or passing result; warning when the developer should check something but nothing is blocked; danger for a failure, an error or a blocker; default otherwise. A hidden line is default.
 Answer with the JSON object only.`
 
 export interface PromptInput {
@@ -59,12 +62,19 @@ function clamp(text: string, max: number): string {
   return [...t].length > max ? `${[...t].slice(0, max - 1).join('')}…` : t
 }
 
-/** Checks a model answer against the schema; null for anything malformed */
+/**
+ * Checks a model answer against the schema; null for anything malformed. Only a shown line keeps
+ * a tone, and a missing or unknown one reads as default rather than costing the verdict.
+ */
 export function toTriage(raw: unknown, at: { messageId: number, index: number }): Triage | null {
   if (!raw || typeof raw !== 'object')
     return null
-  const verdict = (raw as Record<string, unknown>).verdict as Verdict
-  return VERDICTS.includes(verdict) ? { ...at, verdict } : null
+  const { verdict, tone } = raw as Record<string, unknown>
+  if (!VERDICTS.includes(verdict as Verdict))
+    return null
+  if (verdict === 'hide')
+    return { ...at, verdict }
+  return { ...at, verdict: 'show', tone: TONES.includes(tone as Tone) ? tone as Tone : 'default' }
 }
 
 /**

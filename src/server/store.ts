@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -108,10 +108,15 @@ export class Store {
       message_id INTEGER NOT NULL,
       idx INTEGER NOT NULL,
       verdict TEXT NOT NULL,
+      tone TEXT,
       PRIMARY KEY (message_id, idx)
     )`)
     // Hide verdicts by normalized text, so repeated ticks skip the model
     this.db.run('CREATE TABLE IF NOT EXISTS triage_cache (key TEXT PRIMARY KEY, verdict TEXT NOT NULL)')
+    // Tones came after the table did; older rows keep a NULL tone, which reads as default
+    const triageColumns = this.db.query('PRAGMA table_info(triage)').all() as { name: string }[]
+    if (!triageColumns.some(c => c.name === 'tone'))
+      this.db.run('ALTER TABLE triage ADD COLUMN tone TEXT')
     // Before #37 a verdict was signal, progress or noise: only signal stays shown
     this.db.run(`UPDATE triage SET verdict = CASE verdict WHEN 'signal' THEN 'show' ELSE 'hide' END WHERE verdict IN ('signal', 'progress', 'noise')`)
     this.db.run(`UPDATE triage_cache SET verdict = 'hide' WHERE verdict IN ('progress', 'noise')`)
@@ -129,18 +134,18 @@ export class Store {
   }
 
   saveTriage(t: Triage): void {
-    this.db.run(`INSERT INTO triage (message_id, idx, verdict) VALUES (?, ?, ?)
-      ON CONFLICT(message_id, idx) DO UPDATE SET verdict = excluded.verdict`, [t.messageId, t.index, t.verdict])
+    this.db.run(`INSERT INTO triage (message_id, idx, verdict, tone) VALUES (?, ?, ?, ?)
+      ON CONFLICT(message_id, idx) DO UPDATE SET verdict = excluded.verdict, tone = excluded.tone`, [t.messageId, t.index, t.verdict, t.tone ?? null])
   }
 
   /** Verdicts for the given messages (those `recent()` returns) */
   triageFor(messageIds: number[]): Triage[] {
     if (!messageIds.length)
       return []
-    const rows = this.db.query(`SELECT message_id, idx, verdict FROM triage WHERE message_id >= ? AND message_id <= ? ORDER BY message_id, idx`)
-      .all(Math.min(...messageIds), Math.max(...messageIds)) as { message_id: number, idx: number, verdict: Verdict }[]
+    const rows = this.db.query(`SELECT message_id, idx, verdict, tone FROM triage WHERE message_id >= ? AND message_id <= ? ORDER BY message_id, idx`)
+      .all(Math.min(...messageIds), Math.max(...messageIds)) as { message_id: number, idx: number, verdict: Verdict, tone: Tone | null }[]
     const ids = new Set(messageIds)
-    return rows.filter(r => ids.has(r.message_id)).map(r => ({ messageId: r.message_id, index: r.idx, verdict: r.verdict }))
+    return rows.filter(r => ids.has(r.message_id)).map(r => ({ messageId: r.message_id, index: r.idx, verdict: r.verdict, ...(r.tone ? { tone: r.tone } : {}) }))
   }
 
   cachedVerdict(key: string): Verdict | null {
