@@ -301,7 +301,7 @@ A 23px `--bg` avatar with the session's lowercase initial in Space Grotesk, the 
 
 ### Triage, advice, and drafts
 
-Only when 「대화 정리 · 조언」 is on (off by default). Lines judged noise drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new line with no images may wait up to 3 s for its verdict before it shows, and a late noise verdict removes it quietly. Under a signal line or a question card, the advice is one muted 11px line with a muted bulb icon. A draft reply is a chip below it: `--surface` fill, `--border` line, 8px radius, a muted 「초안」 label, and the draft truncated to one line. Tapping the chip fills the composer and targets that session; it never sends. No yellow anywhere in triage.
+Only when 「대화 정리 · 조언」 is on (off by default). Lines judged noise drop out of 「세션 대화」; a `--border` text button 「숨긴 메시지 n」 (mono count) appears at the right of the chat heading and, pressed (`--fg` line), shows them inline at 50% opacity. Turns with images and question cards are never hidden. A new recap-only line (no images, not a question) waits up to 10 s for its verdict before it shows, so a model-judged noise line never flashes in; a verdict later than that removes it quietly. Under a signal line or a question card, the advice is one muted 11px line with a muted bulb icon. A draft reply is a chip below it: `--surface` fill, `--border` line, 8px radius, a muted 「초안」 label, and the draft truncated to one line. Tapping the chip fills the composer and targets that session; it never sends. No yellow anywhere in triage.
 
 ### Question card
 

@@ -93,7 +93,7 @@ const pending = ref<PendingSend[]>([])
 const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
 const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
 
-// Triage: noise drops out unless revealed; a new recap-only line waits up to 3 s for its verdict
+// Triage: noise drops out unless revealed; a new recap-only line waits up to HOLD_MS (10 s) for its verdict
 const showHidden = ref(false)
 const now = ref(Date.now())
 const view = computed(() => triageView(props.messages, {

@@ -34,7 +34,7 @@ const view = computed(() => triageView(feed, { engine: 'claude', triage: toTriag
 // The draft chip fills the composer and focuses it; nothing is sent
 const composer = ref<InstanceType<typeof ChatComposer>>()
 
-// Pending hold, live: a recap-only line waits up to 3 s for its verdict
+// Pending hold, live: a recap-only line waits up to HOLD_MS (10 s) for its verdict
 const arrivedAt = ref<number | null>(null)
 const late = ref<Triage | null>(null)
 const now = ref(Date.now())
@@ -95,14 +95,17 @@ onBeforeUnmount(() => timers.forEach(clearTimeout))
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
-  <GalleryCase title="04 · 판정 대기 (새 리캡만, 최대 3초)">
-    <ChatFrame note="이미지 없는 새 리캡은 판정을 3초까지 기다린다. 판정이 없으면 그대로 보이고, 늦게 잡담 판정이 오면 조용히 빠진다. 엔진이 꺼져 있으면 기다리지 않는다.">
+  <GalleryCase title="04 · 판정 대기 (새 리캡만, 최대 10초)">
+    <ChatFrame note="이미지 없는 새 리캡은 판정을 10초까지 기다린다. 그 안에 잡담 판정이 오면 한 번도 그리지 않고, 판정이 없으면 10초 뒤 그대로 보인다. 더 늦게 잡담 판정이 오면 조용히 빠진다. 질문과 이미지 있는 턴, 엔진이 꺼진 상태는 기다리지 않는다.">
       <div class="controls">
         <button type="button" class="text-button" @click="arrive(null)">
           새 리캡 · 판정 없음
         </button>
-        <button type="button" class="text-button" @click="arrive(5000)">
-          새 리캡 · 5초 뒤 잡담 판정
+        <button type="button" class="text-button" @click="arrive(4000)">
+          새 리캡 · 4초 뒤 잡담 판정
+        </button>
+        <button type="button" class="text-button" @click="arrive(12_000)">
+          새 리캡 · 12초 뒤 잡담 판정
         </button>
       </div>
       <p v-if="!holdView" class="muted state">

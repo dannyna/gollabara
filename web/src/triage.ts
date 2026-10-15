@@ -3,8 +3,11 @@
 
 import type { StreamMessage, Triage, TriageEngine } from '../../src/shared/types'
 
-/** How long a new recap-only line may wait for its verdict before it shows anyway */
-export const HOLD_MS = 3000
+/**
+ * How long a new recap-only line may wait for its verdict before it shows anyway. A model
+ * verdict takes about 3–9 s, so a shorter hold would let noise flash in and then vanish.
+ */
+export const HOLD_MS = 10_000
 
 export const triageKey = (messageId: number, index: number) => `${messageId}:${index}`
 

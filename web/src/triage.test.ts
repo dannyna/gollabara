@@ -62,6 +62,14 @@ describe('triageView', () => {
     // Lines from the first hello have no arrival time and never wait
     expect(ids(triageView([turn(9, ['테스트 중'])], { engine: 'claude', triage: new Map(), now: 10_500 }))).toEqual([9])
   })
+
+  test('the hold covers a slow model verdict (10 s) and never applies to images or questions', () => {
+    expect(HOLD_MS).toBe(10_000)
+    const arrivals = new Map([[triageKey(9, 0), 0], [triageKey(10, 0), 0], [triageKey(11, 0), 0]])
+    const question: StreamMessage = { id: 11, at: 11, sessionId: 'a', sessionName: 'a', kind: 'question', questions: [{ question: '어느 쪽?', options: [] }] }
+    const v = triageView([turn(9, ['테스트 중']), turn(10, ['캡처'], { images: [img] }), question], { engine: 'claude', triage: new Map(), arrivals, now: 9_000 })
+    expect(ids(v)).toEqual([10, 11])
+  })
 })
 
 describe('newLines', () => {
