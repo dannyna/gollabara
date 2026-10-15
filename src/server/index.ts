@@ -196,6 +196,16 @@ export function startServer() {
           }
         }
 
+        // The user drops items still queued, e.g. for a session that ended; delivered ones are never taken back
+        if (url.pathname === '/api/feedback/discard') {
+          const ids = (body as { ids?: unknown }).ids
+          if (ids !== undefined && !(Array.isArray(ids) && ids.every(Number.isInteger)))
+            return new Response('ids must be integers', { status: 400 })
+          const purged = store.discardFeedback(body.sessionId, ids as number[] | undefined)
+          publishPurged(purged)
+          return Response.json({ ok: true, feedbackIds: purged.feedbackIds })
+        }
+
         if (url.pathname === '/api/feedback/claim') {
           if (!VIAS.includes(body.via as FeedbackVia))
             return new Response('via is invalid', { status: 400 })

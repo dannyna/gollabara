@@ -1,6 +1,6 @@
 import type { Session, StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { endedSessions, inScope, toSessionRows } from './sessions'
+import { endedSessions, goneMutes, inScope, muteChanges, toSessionRows } from './sessions'
 
 const msg = (id: number, sessionId: string, at: number): StreamMessage => ({ id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn' })
 const session = (id: string, lastSeenAt: number): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt })
@@ -29,5 +29,16 @@ describe('toSessionRows', () => {
 
   it('collects the ended sessions', () => {
     expect([...endedSessions([session('a', 1), { ...session('b', 1), endedAt: 2 }])]).toEqual(['b'])
+  })
+})
+
+describe('muted list cleanup', () => {
+  it('finds muted ids whose session is gone from the server', () => {
+    expect(goneMutes(new Set(['a', 'old', 'gone']), [session('a', 1)], [msg(1, 'old', 1)])).toEqual(['gone'])
+  })
+
+  it('reports a forgotten id as neither muted nor unmuted, so no 「음소거 해제」 line', () => {
+    const prev = new Set(['a', 'gone'])
+    expect(muteChanges(new Set(['b']), prev, new Set(['gone']))).toEqual({ muted: ['b'], unmuted: ['a'] })
   })
 })

@@ -136,13 +136,15 @@ export class Store {
     return rows.filter(r => ids.has(r.message_id)).map(r => ({ messageId: r.message_id, index: r.idx, verdict: r.verdict, ...(r.tone ? { tone: r.tone } : {}) }))
   }
 
-  cachedVerdict(key: string): Verdict | null {
-    const row = this.db.query('SELECT verdict FROM triage_cache WHERE key = ?').get(key) as { verdict: Verdict } | null
+  /** A hit counts as use, so a line that keeps recurring stays cached past the retention window */
+  cachedVerdict(key: string, now = Date.now()): Verdict | null {
+    const row = this.db.query('UPDATE triage_cache SET seen_at = ? WHERE key = ? RETURNING verdict').get(now, key) as { verdict: Verdict } | null
     return row?.verdict ?? null
   }
 
-  cacheVerdict(key: string, verdict: Verdict): void {
-    this.db.run('INSERT INTO triage_cache (key, verdict) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET verdict = excluded.verdict', [key, verdict])
+  cacheVerdict(key: string, verdict: Verdict, now = Date.now()): void {
+    this.db.run(`INSERT INTO triage_cache (key, verdict, seen_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET verdict = excluded.verdict, seen_at = excluded.seen_at`, [key, verdict, now])
   }
 
   /** Records the hook a harness last ran: `version` is null when the hook sent none */
@@ -173,16 +175,25 @@ export class Store {
   }
 
   /**
-   * Retention: deletes messages and feedback from before `before`, their triage, and sessions not seen
-   * since, then the image files nothing left references.
+   * Retention: deletes messages and feedback from before `before`, their triage, sessions not seen
+   * since, and cached hide verdicts not written or used since, then the image files nothing left references.
    */
   prune(before: number): Purged {
-    return this.purge({ messages: 'at < $key', feedback: 'created_at < $key', sessions: 'last_seen_at < $key' }, before)
+    return this.purge({ messages: 'at < $key', feedback: 'created_at < $key', sessions: 'last_seen_at < $key', cache: 'seen_at < $key' }, { $key: before })
   }
 
   /** 「이 세션 데이터 삭제」: the session, its messages, feedback and triage, and images no other row references */
   deleteSession(id: string): Purged {
-    return this.purge({ messages: `json_extract(body, '$.sessionId') = $key`, feedback: 'session_id = $key', sessions: 'id = $key' }, id)
+    return this.purge({ messages: `json_extract(body, '$.sessionId') = $key`, feedback: 'session_id = $key', sessions: 'id = $key' }, { $key: id })
+  }
+
+  /**
+   * Removes feedback still queued for a session: the given ids, or all of it. Delivered items stay, so an
+   * item a hook claimed in the meantime is never taken back. Images only these items named go too.
+   */
+  discardFeedback(sessionId: string, ids?: number[]): Purged {
+    const only = ids ? ' AND id IN (SELECT value FROM json_each($ids))' : ''
+    return this.purge({ messages: '0', feedback: `session_id = $key AND delivered_at IS NULL${only}`, sessions: '0' }, { $key: sessionId, ...(ids ? { $ids: JSON.stringify(ids) } : {}) })
   }
 
   /**
@@ -190,12 +201,13 @@ export class Store {
    * Synchronous throughout: ingest writes a file and then inserts its message without yielding, so no
    * prune can fall between the two and take a file a new message is about to use.
    */
-  private purge(where: Record<'messages' | 'feedback' | 'sessions', string>, key: string | number): Purged {
-    const params = { $key: key }
+  private purge(where: Record<'messages' | 'feedback' | 'sessions', string> & { cache?: string }, params: Record<string, string | number>): Purged {
     const { purged, orphans } = this.db.transaction(() => {
       const messages = this.db.query(`DELETE FROM messages WHERE ${where.messages} RETURNING id, body`).all(params) as { id: number, body: string }[]
       const feedback = this.db.query(`DELETE FROM feedback WHERE ${where.feedback} RETURNING id, image`).all(params) as { id: number, image: string | null }[]
       const sessions = this.db.query(`DELETE FROM sessions WHERE ${where.sessions} RETURNING id`).all(params) as { id: string }[]
+      if (where.cache)
+        this.db.query(`DELETE FROM triage_cache WHERE ${where.cache}`).run(params)
       if (messages.length)
         this.db.run('DELETE FROM triage WHERE message_id NOT IN (SELECT id FROM messages)')
       const candidates = new Set([...messages.flatMap(m => imageNames(m.body)), ...feedback.flatMap(f => f.image ? [f.image] : [])])

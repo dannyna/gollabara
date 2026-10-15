@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+// The first-run page: nothing has arrived and no session is known yet (#75). The steps advance with
+// what the server knows: whether it answers, which harnesses posted, and whether a hook is outdated.
+import type { Guide } from '../../firstrun'
+import { computed } from 'vue'
+import { stepCopy } from '../../firstrun'
+import CopyCommand from './CopyCommand.vue'
+import HarnessGuide from './HarnessGuide.vue'
 
-defineProps<{ connected?: boolean }>()
+const props = defineProps<{
+  connected?: boolean
+  /** null until `GET /api/health` answered */
+  guide?: Guide | null
+  /** Gallery: a fixed "now" for the seen times */
+  now?: number
+}>()
 
-// Same commands as README "Try it"; run from the repository folder
-const SERVE = 'bun src/cli.ts serve'
-const INSTALL = 'claude plugin marketplace add ./ && claude plugin install gollabara@gollabara'
+// One install command sets up the server, its login service and every detected harness
+const SETUP = stepCopy('setup', 'page')
+const UPDATE = stepCopy('update', 'page')
+const START = stepCopy('start', 'page')
 
-const copied = ref<string | null>(null)
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = text
-    setTimeout(() => copied.value = null, 1500)
-  }
-  catch {}
-}
+const step = computed(() => props.guide?.step)
+/** The first step not done yet; later ones wait in muted text */
+const current = computed(() => !props.connected ? 1 : step.value === 'setup' || step.value === 'update' ? 2 : step.value ? 3 : 0)
 </script>
 
 <template>
@@ -27,52 +34,44 @@ async function copy(text: string) {
         켜 두고 구경하세요. 말을 걸고 싶을 때만 한마디.
       </p>
       <ol class="setup">
-        <!-- Steps advance with the server: while it does not answer, only step 1 is
-             current and the rest wait in muted text (OD banner guide 07-02) -->
-        <li v-if="connected">
+        <li :class="{ current: current === 1 }">
           <span class="step">1</span>
           <div class="content">
-            <h3>서버 실행 중 ✓</h3>
+            <h3 v-if="connected">
+              서버 실행 중 ✓
+            </h3>
+            <template v-else>
+              <h3>서버를 켜 주세요</h3>
+              <CopyCommand :command="SETUP.command!" />
+              <p>서버를 로그인 서비스로 설치하고, 플러그인도 함께 연결해요. 켜지면 이 줄에 ✓가 붙어요.</p>
+            </template>
           </div>
         </li>
-        <li v-else class="current">
-          <span class="step">1</span>
-          <div class="content">
-            <h3>서버를 실행해 주세요</h3>
-            <div class="code-copy">
-              <code>{{ SERVE }}</code>
-              <button class="icon-button" type="button" :aria-label="copied === SERVE ? '복사했어요' : '서버 실행 명령 복사'" @click="copy(SERVE)">
-                <svg v-if="copied === SERVE" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
-                <svg v-else viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V3H3v13h5" /></svg>
-              </button>
-            </div>
-            <p>README의 써 보기 명령 · 실행되면 이 줄에 ✓가 붙어요.</p>
-          </div>
-        </li>
-        <li :class="{ todo: !connected }">
+        <li :class="{ current: current === 2, todo: current < 2 }">
           <span class="step">2</span>
           <div class="content">
-            <h3>Claude Code에 플러그인 설치</h3>
-            <template v-if="connected">
-              <div class="code-copy">
-                <code>{{ INSTALL }}</code>
-                <button class="icon-button" type="button" :aria-label="copied === INSTALL ? '복사했어요' : '설치 명령 복사'" @click="copy(INSTALL)">
-                  <svg v-if="copied === INSTALL" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
-                  <svg v-else viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V3H3v13h5" /></svg>
-                </button>
-              </div>
-              <p>gollabara 저장소 폴더에서 실행하세요.</p>
-            </template>
-            <p v-else>
+            <h3>{{ guide?.harnesses.length && step !== 'update' ? 'Claude Code나 Codex 연결됨 ✓' : 'Claude Code나 Codex 연결' }}</h3>
+            <p v-if="!connected">
               서버가 켜지면 이어서 할 수 있어요.
             </p>
+            <template v-else-if="guide">
+              <HarnessGuide v-if="guide.harnesses.length" :guide="guide" place="page" list-only :now="now" />
+              <template v-if="step === 'setup'">
+                <CopyCommand :command="SETUP.command!" />
+                <p>{{ SETUP.description }}</p>
+              </template>
+              <template v-else-if="step === 'update'">
+                <p>{{ UPDATE.title }}. {{ UPDATE.description }}</p>
+                <CopyCommand :command="UPDATE.command!" />
+              </template>
+            </template>
           </div>
         </li>
-        <li v-if="connected">
+        <li :class="{ current: current === 3, todo: current < 3 }">
           <span class="step">3</span>
           <div class="content">
-            <h3>폰에서도 구경하기</h3>
-            <p>준비 중이에요. 폰 접속은 다음 단계에서 붙어요.</p>
+            <h3>{{ START.title }}</h3>
+            <p>{{ START.description }}</p>
           </div>
         </li>
       </ol>
@@ -156,39 +155,8 @@ h3 {
   font-size: 11px;
   color: var(--muted);
 }
-.code-copy {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 4px 5px 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-}
-.code-copy code {
-  flex: 1;
-  font: 11px var(--mono);
-  overflow-wrap: anywhere;
-  word-break: break-all;
-}
-.icon-button {
-  width: 44px;
-  height: 44px;
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-}
-.icon-button svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.content .code-copy + p {
+  margin-top: 8px;
 }
 
 @media (max-width: 767px) {

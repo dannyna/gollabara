@@ -5,16 +5,25 @@ import SessionAvatar from './SessionAvatar.vue'
 
 // Messages waiting for a session to pick them up, above the composer. Waiting is
 // not a warning, so no accent colour.
+export interface QueueItem {
+  /** The server's feedback id; only items with one can be discarded */
+  id?: number
+  text: string
+}
+
 export interface QueueGroup {
+  /** Session id: two sessions can share a short name */
+  id: string
+  /** Short name shown */
   session: string
   /** 작업 중 · 멈춤 · 끝남; left out when the state is unknown */
   status?: string
-  items: string[]
+  items: QueueItem[]
   /** How the session will get them, when the waiting sessions differ (the header then says so) */
   route?: string
   /** Marks the first item 「다음」 */
   next?: boolean
-  /** The session ended: its items stay but fade, since nothing will pick them up unless it resumes */
+  /** The session ended: its items stay but fade, since nothing will pick them up unless it resumes; each can be discarded */
   ended?: boolean
 }
 
@@ -24,6 +33,7 @@ const props = withDefaults(defineProps<{
   /** 편집 · 삭제; off where nothing backs them yet */
   actions?: boolean
 }>(), { actions: true })
+defineEmits<{ discard: [sessionId: string, id: number] }>()
 const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0))
 </script>
 
@@ -32,13 +42,19 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
     <div class="qt-h">
       <ChatIcon name="clock" /><span><b>대기 {{ total }}건</b> · {{ note }}</span>
     </div>
-    <div v-for="g in groups" :key="g.session" class="qt-group" :class="{ ended: g.ended }">
+    <div v-for="g in groups" :key="g.id" class="qt-group" :class="{ ended: g.ended }">
       <div class="qt-who">
         <SessionAvatar :name="g.session" small :ended="g.ended" />{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
       </div>
-      <div v-for="(text, i) in g.items" :key="i" class="qi" :class="{ next: g.next && i === 0 }">
-        <p>{{ text }}</p>
-        <div v-if="actions" class="qi-a">
+      <div v-for="(item, i) in g.items" :key="item.id ?? i" class="qi" :class="{ next: g.next && i === 0 }">
+        <p>{{ item.text }}</p>
+        <!-- Nothing will pick an ended session's item up, so it can go -->
+        <div v-if="g.ended && item.id != null" class="qi-a">
+          <button type="button" :aria-label="`대기 메시지 지우기: ${item.text}`" @click="$emit('discard', g.id, item.id)">
+            지우기
+          </button>
+        </div>
+        <div v-else-if="actions" class="qi-a">
           <button type="button">
             편집
           </button>

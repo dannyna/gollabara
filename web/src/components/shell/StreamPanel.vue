@@ -6,6 +6,7 @@
 // References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
 
 import type { Artifact } from '../../artifacts'
+import type { Guide } from '../../firstrun'
 import type { Follow } from '../stream/follow'
 import { computed, nextTick, ref, watch } from 'vue'
 import { referenceFolds } from '../../artifacts'
@@ -15,6 +16,7 @@ import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarge
 import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, togglePin } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
+import HarnessGuide from './HarnessGuide.vue'
 
 const props = defineProps<{
   artifacts: Artifact[]
@@ -31,6 +33,8 @@ const props = defineProps<{
   ended?: ReadonlySet<string>
   /** Gallery: open scrolled back to the start with this many arrivals waiting */
   preview?: { unseen: number }
+  /** Connected harnesses and the next step, for the empty view; null until the server's health answered */
+  guide?: Guide | null
 }>()
 const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [] }>()
 
@@ -209,7 +213,9 @@ const { setTarget } = useFeedbackTarget()
       description="세션 목록에서 다시 표시할 수 있어요." action="세션 목록 열기" @action="emit('sessions')"
     />
     <!-- With only references in view the rail still shows, so their folds can open -->
-    <StateView v-else-if="!artifacts.length && !folds.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'" />
+    <StateView v-else-if="!artifacts.length && !folds.length" :title="scope != null ? '이 세션에는 아직 산출물이 없어요.' : '아직 산출물이 없어요.'">
+      <HarnessGuide v-if="guide" :guide="guide" place="stream" />
+    </StateView>
     <StreamRail
       v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin" :ended="ended"
       @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"

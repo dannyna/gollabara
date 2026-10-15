@@ -234,6 +234,32 @@ describe('deleting', () => {
     expect(store.sessions().map(s => s.id)).toEqual(['cc-1'])
   })
 
+  test('a prune drops cached hide verdicts not written or used since the cutoff', () => {
+    store.cacheVerdict('old', 'hide', 1000)
+    store.cacheVerdict('reused', 'hide', 1000)
+    store.cachedVerdict('reused', 4000)
+    store.cacheVerdict('new', 'hide', 5000)
+    store.prune(3000)
+    expect(['old', 'reused', 'new'].map(k => store.cachedVerdict(k))).toEqual([null, 'hide', 'hide'])
+  })
+
+  test('discarding removes only queued feedback, and images nothing else uses', () => {
+    const shot = capture(od, PNG, 1000)
+    store.ingest({ kind: 'session', session: cc }, 2000)
+    const delivered = store.queueFeedback('cc-1', 'sent', undefined, 2000)
+    store.claimFeedback('cc-1', 'stop', 2100)
+    const quoting = store.queueFeedback('cc-1', 'about this', shot.images![0]!.url, 2200)
+    const queued = store.queueFeedback('cc-1', 'later', undefined, 2300)
+    // The capture's own message goes; the queued item still quotes the file
+    store.deleteSession('od-1')
+    expect(existsSync(file(shot.images![0]!.url))).toBe(true)
+
+    expect(store.discardFeedback('cc-1', [quoting.id, delivered.id])).toEqual({ messageIds: [], feedbackIds: [quoting.id], sessionIds: [], files: [shot.images![0]!.url.slice('/img/'.length)] })
+    expect(existsSync(file(shot.images![0]!.url))).toBe(false)
+    expect(store.discardFeedback('cc-1').feedbackIds).toEqual([queued.id])
+    expect(store.recentFeedback().map(f => f.id)).toEqual([delivered.id])
+  })
+
   test('a file that remaining feedback quotes stays', () => {
     const old = capture(od, PNG, 1000)
     store.ingest({ kind: 'session', session: cc }, 5000)

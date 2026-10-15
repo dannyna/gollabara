@@ -72,17 +72,47 @@ function readStored(): Set<string> {
 }
 
 const muted = ref<ReadonlySet<string>>(readStored())
+/** Ids dropped because their session's data is gone; a mute change for them is not an unmute */
+const forgotten = new Set<string>()
+
+/** Muted ids whose session no longer exists (its data was deleted or pruned), once the server's snapshot is in */
+export function goneMutes(muted: ReadonlySet<string>, sessions: Session[], messages: StreamMessage[]): string[] {
+  const known = new Set([...sessions.map(s => s.id), ...messages.map(m => m.sessionId)])
+  return [...muted].filter(id => !known.has(id))
+}
+
+/** What the user muted and unmuted between two mute sets; forgotten ids are neither */
+export function muteChanges(next: ReadonlySet<string>, prev: ReadonlySet<string>, gone: ReadonlySet<string> = forgotten) {
+  return {
+    muted: [...next].filter(id => !prev.has(id)),
+    unmuted: [...prev].filter(id => !next.has(id) && !gone.has(id)),
+  }
+}
 
 export function useMutedSessions() {
-  function toggleMute(id: string) {
-    const next = new Set(muted.value)
-    if (!next.delete(id))
-      next.add(id)
+  function save(next: Set<string>) {
     muted.value = next
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]))
     }
     catch {}
   }
-  return { muted, toggleMute }
+  function toggleMute(id: string) {
+    const next = new Set(muted.value)
+    if (!next.delete(id))
+      next.add(id)
+    forgotten.delete(id)
+    save(next)
+  }
+  /** Drops deleted sessions from the list without an unmute: nothing is shown again, so no 「음소거 해제」 line */
+  function forget(ids: string[]) {
+    const next = new Set(muted.value)
+    for (const id of ids) {
+      if (next.delete(id))
+        forgotten.add(id)
+    }
+    if (next.size !== muted.value.size)
+      save(next)
+  }
+  return { muted, toggleMute, forget, forgotten: forgotten as ReadonlySet<string> }
 }

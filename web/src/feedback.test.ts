@@ -2,7 +2,7 @@ import type { Feedback, Harness, Session } from '../../src/shared/types'
 import type { PendingSend } from './feedback'
 import { describe, expect, it } from 'bun:test'
 import { routesFor } from '../../src/shared/routes'
-import { failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, routeNote, sessionRouteNote, toMyEntries } from './feedback'
+import { discardFeedback, failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, routeNote, sessionRouteNote, toMyEntries, toQueueGroups, withoutRemoved } from './feedback'
 
 function fb(id: number, sessionId: string, createdAt: number, deliveredAt?: number): Feedback {
   return {
@@ -100,6 +100,44 @@ describe('postFeedback', () => {
       throw new TypeError('offline')
     }) as unknown as typeof fetch
     expect(failureReason(await postFeedback({ sessionId: 'a', text: 'hi' }, fetcher).catch(e => e))).toBeUndefined()
+  })
+})
+
+describe('toQueueGroups', () => {
+  const s = (id: string, name: string, endedAt?: number): Session => ({ id, name, harness: 'codex', cwd: '/', startedAt: 0, lastSeenAt: 0, ...(endedAt ? { endedAt } : {}) })
+  const short = (id: string) => id === 'x' ? 'web' : id === 'y' ? 'web' : id
+
+  it('keeps two sessions with the same short name apart, and marks an ended one', () => {
+    const groups = toQueueGroups([fb(1, 'x', 1), fb(2, 'y', 2), fb(3, 'x', 3), fb(4, 'x', 0, 4)], [s('x', 'web · a'), s('y', 'web · b', 9)], false, short)
+    expect(groups).toEqual([
+      { id: 'x', session: 'web', items: [{ id: 1, text: 't1' }, { id: 3, text: 't3' }] },
+      { id: 'y', session: 'web', items: [{ id: 2, text: 't2' }], status: '끝나서 전달할 수 없어요', ended: true },
+    ])
+  })
+})
+
+describe('withoutRemoved', () => {
+  it('drops kept POST responses for items the stream removed, and nothing else', () => {
+    const confirmed = [fb(1, 'a', 1), fb(2, 'a', 2)]
+    expect(withoutRemoved(confirmed, [fb(1, 'a', 1), fb(3, 'a', 3)], [fb(3, 'a', 3)])).toEqual([fb(2, 'a', 2)])
+    expect(withoutRemoved(confirmed, [fb(1, 'a', 1)], [fb(1, 'a', 1), fb(2, 'a', 2)])).toBe(confirmed)
+  })
+})
+
+describe('discardFeedback', () => {
+  it('sends the ids and returns what the server removed', async () => {
+    let body: unknown
+    const fetcher = (async (_: string, init: RequestInit) => {
+      body = JSON.parse(init.body as string)
+      return Response.json({ ok: true, feedbackIds: [4] })
+    }) as unknown as typeof fetch
+    expect(await discardFeedback('a', [4], fetcher)).toEqual([4])
+    expect(body).toEqual({ sessionId: 'a', ids: [4] })
+  })
+
+  it('says why a 403 failed', async () => {
+    const fetcher = (async () => new Response('forbidden', { status: 403 })) as unknown as typeof fetch
+    expect((await discardFeedback('a', [4], fetcher).catch(e => e)).message).toBe('이 Mac이나 tailnet에서만 지울 수 있어요')
   })
 })
 

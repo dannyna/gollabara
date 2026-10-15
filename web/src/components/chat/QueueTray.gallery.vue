@@ -18,7 +18,7 @@ import SystemLine from './SystemLine.vue'
       <template #footer>
         <ChatComposer can-send target="od">
           <template #tray>
-            <QueueTray note="턴이 끝나면 보낼게요" :groups="[{ session: 'od', status: '작업 중', items: ['모바일 360px도 한 장 찍어 줘'], next: true }]" />
+            <QueueTray note="턴이 끝나면 보낼게요" :groups="[{ id: 'od', session: 'od', status: '작업 중', items: [{ text: '모바일 360px도 한 장 찍어 줘' }], next: true }]" />
           </template>
         </ChatComposer>
       </template>
@@ -34,8 +34,8 @@ import SystemLine from './SystemLine.vue'
           <template #tray>
             <QueueTray
               note="세션마다 턴이 끝나면 하나씩 보낼게요" :groups="[
-                { session: 'od', status: '작업 중', items: ['모바일 360px도 한 장 찍어 줘', 'CTA 문구는 그대로 둬'], next: true },
-                { session: 'piuda', status: '작업 중', items: ['e2e 결과 나오면 실패한 것만 정리해 줘'], next: true },
+                { id: 'od', session: 'od', status: '작업 중', items: [{ text: '모바일 360px도 한 장 찍어 줘' }, { text: 'CTA 문구는 그대로 둬' }], next: true },
+                { id: 'piuda', session: 'piuda', status: '작업 중', items: [{ text: 'e2e 결과 나오면 실패한 것만 정리해 줘' }], next: true },
               ]"
             />
           </template>
@@ -50,8 +50,8 @@ import SystemLine from './SystemLine.vue'
           <template #tray>
             <QueueTray
               note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
-                { session: 'od', items: ['모바일 360px도 한 장 찍어 줘'], route: '바로 전달돼요' },
-                { session: 'api', items: ['테스트 실패만 정리해 줘'], route: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요' },
+                { id: 'od', session: 'od', items: [{ text: '모바일 360px도 한 장 찍어 줘' }], route: '바로 전달돼요' },
+                { id: 'api', session: 'api', items: [{ text: '테스트 실패만 정리해 줘' }], route: '세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요' },
               ]"
             />
           </template>
@@ -60,7 +60,7 @@ import SystemLine from './SystemLine.vue'
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="02c · 끝난 세션에 남은 건">
-    <ChatFrame note="기다리던 중 세션이 끝나면 그 묶음은 흐려지고 ‘끝나서 전달할 수 없어요’. 지우지는 않는다: 세션이 이어지면(resume) 그대로 전달된다.">
+    <ChatFrame note="기다리던 중 세션이 끝나면 그 묶음은 흐려지고 ‘끝나서 전달할 수 없어요’. 저절로 지우지는 않는다: 세션이 이어지면(resume) 그대로 전달된다. 건마다 ‘지우기’로 직접 버릴 수 있다.">
       <SessionMessage :name="S.api" :at="time(14, 20)" ended>
         쿼터 리필 배치 정리하고 종료.
       </SessionMessage>
@@ -69,8 +69,24 @@ import SystemLine from './SystemLine.vue'
           <template #tray>
             <QueueTray
               note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
-                { session: 'od', items: ['모바일 360px도 한 장 찍어 줘'], route: '바로 전달돼요' },
-                { session: 'api', items: ['테스트 실패만 정리해 줘'], status: '끝나서 전달할 수 없어요', ended: true },
+                { id: 'od', session: 'od', items: [{ text: '모바일 360px도 한 장 찍어 줘' }], route: '바로 전달돼요' },
+                { id: 'api', session: 'api', items: [{ id: 1, text: '테스트 실패만 정리해 줘' }, { id: 2, text: '↪ 이미지 · 이 화면 기준으로' }], status: '끝나서 전달할 수 없어요', ended: true },
+              ]"
+            />
+          </template>
+        </ChatComposer>
+      </template>
+    </ChatFrame>
+  </GalleryCase>
+  <GalleryCase title="02d · 이름이 같은 두 세션">
+    <ChatFrame note="디렉터리 이름이 같은 두 세션도 세션 id로 묶어서 따로 보인다.">
+      <template #footer>
+        <ChatComposer can-send target="web" route="바로 전달돼요">
+          <template #tray>
+            <QueueTray
+              note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
+                { id: 'a1', session: 'web', items: [{ id: 3, text: '헤더 높이 맞춰 줘' }], route: '바로 전달돼요' },
+                { id: 'b2', session: 'web', items: [{ id: 4, text: '빌드 로그만 정리해 줘' }], status: '끝나서 전달할 수 없어요', ended: true },
               ]"
             />
           </template>
@@ -86,7 +102,7 @@ import SystemLine from './SystemLine.vue'
       <template #footer>
         <ChatComposer can-send target="od" text="다크 테마도 확인해 줘" :blocked="{ icon: 'alert', text: 'od 대기가 가득 찼어요 — 하나를 지우면 더 보낼 수 있어요' }">
           <template #tray>
-            <QueueTray note="od는 3건까지 기다릴 수 있어요" :groups="[{ session: 'od', status: '작업 중', items: ['모바일 360px도 한 장 찍어 줘', 'CTA 문구는 그대로 둬', '히어로 B 기준으로 태블릿도'], next: true }]" />
+            <QueueTray note="od는 3건까지 기다릴 수 있어요" :groups="[{ id: 'od', session: 'od', status: '작업 중', items: [{ text: '모바일 360px도 한 장 찍어 줘' }, { text: 'CTA 문구는 그대로 둬' }, { text: '히어로 B 기준으로 태블릿도' }], next: true }]" />
           </template>
         </ChatComposer>
       </template>
@@ -101,7 +117,7 @@ import SystemLine from './SystemLine.vue'
       <template #footer>
         <ChatComposer can-send target="od">
           <template #tray>
-            <QueueTray note="앞 메시지 답이 끝나면 이어서 보낼게요" :groups="[{ session: 'od', status: '작업 중', items: ['CTA 문구는 그대로 둬'], next: true }]" />
+            <QueueTray note="앞 메시지 답이 끝나면 이어서 보낼게요" :groups="[{ id: 'od', session: 'od', status: '작업 중', items: [{ text: 'CTA 문구는 그대로 둬' }], next: true }]" />
           </template>
         </ChatComposer>
       </template>
@@ -113,7 +129,7 @@ import SystemLine from './SystemLine.vue'
       <template #footer>
         <ChatComposer can-send target="client-e2e">
           <template #tray>
-            <QueueTray note="client-e2e를 재개하면 보낼게요" :groups="[{ session: 'client-e2e', status: '멈춤', items: ['결제 버튼 잘림 다시 확인해 줘'] }]" />
+            <QueueTray note="client-e2e를 재개하면 보낼게요" :groups="[{ id: 'client-e2e', session: 'client-e2e', status: '멈춤', items: [{ text: '결제 버튼 잘림 다시 확인해 줘' }] }]" />
           </template>
         </ChatComposer>
       </template>
@@ -125,7 +141,7 @@ import SystemLine from './SystemLine.vue'
       <template #footer>
         <ChatComposer can-send target="piuda" :blocked="{ icon: 'alert', text: 'piuda는 끝난 세션이에요 — @로 다른 세션을 골라 주세요' }">
           <template #tray>
-            <QueueTray note="보낼 수 없어요 — 편집해 다른 세션으로 보내거나 지워 주세요" :groups="[{ session: 'piuda', status: '끝남', items: ['e2e 결과 나오면 실패한 것만 정리해 줘'] }]" />
+            <QueueTray note="보낼 수 없어요 — 편집해 다른 세션으로 보내거나 지워 주세요" :groups="[{ id: 'piuda', session: 'piuda', status: '끝남', items: [{ text: 'e2e 결과 나오면 실패한 것만 정리해 줘' }] }]" />
           </template>
         </ChatComposer>
       </template>

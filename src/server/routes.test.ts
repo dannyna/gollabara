@@ -109,3 +109,23 @@ describe('ended sessions', () => {
     expect((await post('/api/feedback', { sessionId: 'gone', text: 'hello' })).status).toBe(200)
   })
 })
+
+describe('discarding queued feedback', () => {
+  test('removes the items still queued for an ended session and tells every view', async () => {
+    const post = (path: string, body: unknown) => fetch(`${url}${path}`, { method: 'POST', headers: json, body: JSON.stringify(body) })
+    await start('left', 'codex')
+    const queued = await (await post('/api/feedback', { sessionId: 'left', text: 'one more thing' })).json() as { id: number }
+    await post('/api/events', { kind: 'session-end', session: { id: 'left', name: 'left', harness: 'codex', cwd: '/a' } })
+    const ws = new WebSocket(`${url.replace('http', 'ws')}/ws`)
+    const frames: { type: string }[] = []
+    ws.onmessage = e => frames.push(JSON.parse(e.data as string))
+    await new Promise(resolve => ws.onopen = resolve)
+
+    expect((await post('/api/feedback/discard', { sessionId: 'left', ids: ['x'] })).status).toBe(400)
+    expect(await (await post('/api/feedback/discard', { sessionId: 'left', ids: [queued.id] })).json()).toEqual({ ok: true, feedbackIds: [queued.id] })
+    for (let i = 0; i < 50 && !frames.some(f => f.type === 'deleted'); i++)
+      await Bun.sleep(10)
+    expect(frames.find(f => f.type === 'deleted')).toMatchObject({ messageIds: [], feedbackIds: [queued.id], sessionIds: [] })
+    ws.close()
+  })
+})

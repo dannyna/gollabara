@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import { ALL, rail } from '../stream/gallery-samples'
+import { GUIDES } from './gallery-samples'
 import StreamPanel from './StreamPanel.vue'
 
 const artifacts = rail(ALL)
@@ -38,14 +39,19 @@ onMounted(() => centered.value?.reveal(heroC, 'instant'))
       <StreamPanel ref="centered" :artifacts="artifacts" :selected="heroC" />
     </div>
   </GalleryCase>
-  <GalleryCase title="빈 스트림 · 전체 세션">
-    <div class="frame short">
-      <StreamPanel :artifacts="[]" />
+  <GalleryCase title="빈 스트림 · 전체 세션 · 세션 작업 중">
+    <div class="frame">
+      <StreamPanel :artifacts="[]" :guide="GUIDES.running" />
+    </div>
+  </GalleryCase>
+  <GalleryCase title="빈 스트림 · 전체 세션 · 플러그인이 오래됨">
+    <div class="frame">
+      <StreamPanel :artifacts="[]" :guide="GUIDES.outdated" />
     </div>
   </GalleryCase>
   <GalleryCase title="빈 스트림 · 한 세션만 보는 중">
-    <div class="frame short">
-      <StreamPanel :artifacts="[]" scope="od" />
+    <div class="frame">
+      <StreamPanel :artifacts="[]" scope="od" :guide="GUIDES.running" />
     </div>
   </GalleryCase>
   <GalleryCase title="모든 세션 음소거 · 세션 목록으로">
