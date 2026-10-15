@@ -5,7 +5,7 @@ import type { StreamMessage, Triage, TriageEngine } from '../../src/shared/types
 
 /**
  * How long a new recap-only line may wait for its verdict before it shows anyway. A model
- * verdict takes about 3–9 s, so a shorter hold would let noise flash in and then vanish.
+ * verdict takes about 3–9 s, so a shorter hold would let a hidden line flash in and then vanish.
  */
 export const HOLD_MS = 10_000
 
@@ -18,20 +18,15 @@ export function toTriageMap(list: Triage[]): Map<string, Triage> {
 export interface LineView {
   index: number
   text: string
-  /** Judged noise and shown only because hidden messages are revealed */
+  /** Judged hidden and shown only because hidden messages are revealed */
   dim: boolean
-  advice?: string
-  draft?: string
 }
 
 export interface MessageView {
   message: StreamMessage
   lines: LineView[]
-  /** Every line shown is dim noise */
+  /** Every line shown is a dim hidden line */
   dim: boolean
-  /** Advice on a question message */
-  advice?: string
-  draft?: string
 }
 
 export interface TriageViewInput {
@@ -40,14 +35,14 @@ export interface TriageViewInput {
   /** When each recap line arrived live, by triageKey; lines from the first hello are absent */
   arrivals?: ReadonlyMap<string, number>
   now: number
-  /** The header toggle: noise shows inline, dimmed */
+  /** The header toggle: hidden lines show inline, dimmed */
   showHidden?: boolean
   holdMs?: number
 }
 
 export interface TriageView {
   items: MessageView[]
-  /** Noise lines kept out of the timeline (also while revealed, for the toggle label) */
+  /** Hidden lines kept out of the timeline (also while revealed, for the toggle label) */
   hidden: number
   /** When the earliest held line stops waiting, so the caller can look again */
   nextCheck: number | null
@@ -57,7 +52,7 @@ const recapsOf = (m: StreamMessage) => m.recaps ?? (m.text ? [m.text] : [])
 
 /**
  * Applies verdicts to the chat. Images and questions are never hidden or held: only lines of
- * recap-only messages judged noise drop out, and a message goes when all its lines do. A new
+ * recap-only messages judged hidden drop out, and a message goes when all its lines do. A new
  * recap-only line with no verdict yet waits up to `holdMs`, then shows.
  */
 export function triageView(messages: StreamMessage[], input: TriageViewInput): TriageView {
@@ -75,8 +70,7 @@ export function triageView(messages: StreamMessage[], input: TriageViewInput): T
   const items: MessageView[] = []
   for (const message of messages) {
     if (message.kind === 'question') {
-      const t = input.triage.get(triageKey(message.id, 0))
-      items.push({ ...plain(message), ...(t?.advice ? { advice: t.advice } : {}), ...(t?.draft ? { draft: t.draft } : {}) })
+      items.push(plain(message))
       continue
     }
     const protectedTurn = !!message.images?.length || !!message.questions?.length
@@ -84,11 +78,11 @@ export function triageView(messages: StreamMessage[], input: TriageViewInput): T
     recapsOf(message).forEach((text, index) => {
       const key = triageKey(message.id, index)
       const t = input.triage.get(key)
-      const line: LineView = { index, text, dim: false, ...(t?.advice ? { advice: t.advice } : {}), ...(t?.draft ? { draft: t.draft } : {}) }
+      const line: LineView = { index, text, dim: false }
       if (protectedTurn) {
         lines.push(line)
       }
-      else if (t?.verdict === 'noise') {
+      else if (t?.verdict === 'hide') {
         hidden++
         if (input.showHidden)
           lines.push({ index, text, dim: true })

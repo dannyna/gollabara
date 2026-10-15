@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{
   /** Saved values; the sheet edits a copy and drops it when closed without saving */
   settings: Settings
   theme: ThemePreference
-  /** 대화 정리 · 조언: the server's triage engine */
+  /** 대화 정리: the server's triage engine */
   engine?: TriageEngine
   /** Gallery: start from these values instead of the saved ones */
   draft?: Partial<Settings>
@@ -146,7 +146,7 @@ async function save() {
         </div>
 
         <p :id="`${id}-triage`" class="label">
-          대화 정리 · 조언
+          대화 정리
         </p>
         <div class="theme-options" role="group" :aria-labelledby="`${id}-triage`" :aria-describedby="`${id}-triage-note`">
           <button
@@ -157,7 +157,7 @@ async function save() {
           </button>
         </div>
         <p :id="`${id}-triage-note`" class="description">
-          이 Mac의 claude 또는 codex CLI가 새 세션 메시지를 읽고, 잡담은 숨기고 답장 초안을 제안해요. 메시지 글은 그 CLI의 모델로 전송되고, 이미지는 보내지 않아요. 초안은 직접 보내기 전엔 세션에 가지 않아요.
+          이 Mac의 claude 또는 codex CLI가 새 세션 메시지를 읽고 볼 필요 없는 줄은 숨겨요. 메시지 글과 그 세션에 보낸 피드백 글은 그 CLI의 모델로 전송되고, 이미지는 보내지 않아요.
         </p>
 
         <div class="brand">

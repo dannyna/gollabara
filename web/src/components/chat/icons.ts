@@ -15,8 +15,6 @@ export const ICONS = {
   end: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
-  hint: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/>',
-  reply: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/>',
 } as const
 
 export type IconName = keyof typeof ICONS

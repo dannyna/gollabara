@@ -14,7 +14,6 @@ import { triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
 import NoticeLine from '../banner/NoticeLine.vue'
 import StateView from '../banner/StateView.vue'
-import AdviceLine from '../chat/AdviceLine.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
 import { toTimeline } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
@@ -51,7 +50,7 @@ const props = defineProps<{
   allMuted?: boolean
   /** Server triage engine; 'off' (the default) shows the chat exactly as it arrived */
   engine?: TriageEngine
-  /** Verdicts and advice by triageKey */
+  /** Verdicts by triageKey */
   triage?: ReadonlyMap<string, Triage>
   /** When recap lines arrived live, so new ones can wait briefly for a verdict */
   arrivals?: ReadonlyMap<string, number>
@@ -93,7 +92,7 @@ const pending = ref<PendingSend[]>([])
 const feedback = computed(() => confirmed.value.reduce(mergeFeedback, props.feedback ?? []).filter(f => inView(f.sessionId)))
 const mine = computed(() => toMyEntries(feedback.value, pending.value.filter(p => inView(p.request.sessionId))))
 
-// Triage: noise drops out unless revealed; a new recap-only line waits up to HOLD_MS (10 s) for its verdict
+// Triage: hidden lines drop out unless revealed; a new recap-only line waits up to HOLD_MS (10 s) for its verdict
 const showHidden = ref(false)
 const now = ref(Date.now())
 const view = computed(() => triageView(props.messages, {
@@ -219,14 +218,6 @@ function retry(p: PendingSend) {
   pending.value = pending.value.map(x => x.key === p.key ? { ...x, state: 'queued', reason: undefined } : x)
   void deliver(p)
 }
-
-// A draft reply only fills the composer, aimed at its session; the user decides whether to send
-function fillDraft(sessionId: string, text: string) {
-  clearTarget()
-  mentioned.value = sessionId
-  closeMention()
-  composer.value?.fill(text)
-}
 const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: artifactKey(m.id, i), ...img }))
 
 // Stick to the bottom only when the reader is already there. Otherwise count what
@@ -235,8 +226,8 @@ const unseen = ref(0)
 const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
 let first = true
 // Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
-// Scope changes, unmuting and revealing noise show older messages; those are not counted.
-// Watching what is shown means a held line counts when it appears, and hidden noise never does.
+// Scope changes, unmuting and revealing hidden lines show older messages; those are not counted.
+// Watching what is shown means a held line counts when it appears, and a hidden line never does.
 let lastId = -Infinity
 watch(shown, async (list) => {
   const arrived = list.filter(m => m.id > lastId).length
@@ -308,12 +299,9 @@ defineExpose({ reveal })
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
             :class="{ dim: viewOf.get(item.message.id)?.dim }"
           >
-            <template v-for="line in viewOf.get(item.message.id)?.lines" :key="line.index">
-              <p :class="{ dim: line.dim }">
-                {{ line.text }}
-              </p>
-              <AdviceLine :advice="line.advice" :draft="line.draft" @draft="fillDraft(item.message.sessionId, $event)" />
-            </template>
+            <p v-for="line in viewOf.get(item.message.id)?.lines" :key="line.index" :class="{ dim: line.dim }">
+              {{ line.text }}
+            </p>
             <ArtifactThumbs
               v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName"
               :active="selected" @pick="$emit('thumb', $event)" @open-image="openImage"
@@ -323,10 +311,6 @@ defineExpose({ reveal })
               v-for="(q, qi) in item.message.questions" :key="`q${qi}`" :question="q" inert
               :state="offline ? 'offline' : 'open'"
               :count="item.message.questions!.length > 1 ? `${qi + 1} / ${item.message.questions!.length}` : undefined"
-            />
-            <AdviceLine
-              v-if="item.message.kind === 'question'" :advice="viewOf.get(item.message.id)?.advice"
-              :draft="viewOf.get(item.message.id)?.draft" @draft="fillDraft(item.message.sessionId, $event)"
             />
           </SessionMessage>
         </template>
