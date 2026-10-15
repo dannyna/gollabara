@@ -143,7 +143,7 @@ function mapHook(input, session, opener = "unknown", fileRole) {
       const source = images.length === 1 ? imageSource(input.tool_input) : undefined;
       if (source)
         images[0].source = source;
-      const path = readFilePath(input.tool_input);
+      const path = input.tool_name?.startsWith("mcp__") ? undefined : readFilePath(input.tool_input);
       const role = path && fileRole ? fileRole(path) : "artifact";
       for (const image of images)
         image.role = role;

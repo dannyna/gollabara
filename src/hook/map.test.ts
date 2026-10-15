@@ -237,6 +237,8 @@ describe('image role', () => {
       throw new Error('no file to look at')
     }
     expect(roles(mapHook(post('mcp__od__render', {}), session, 'unknown', never))).toEqual(['artifact'])
+    // An MCP tool that renders a file it did not change this turn still made the picture
+    expect(roles(mapHook(post('mcp__od__render', { path: '/proj/index.html' }), session, 'unknown', never))).toEqual(['artifact'])
     // A relative screenshot name resolves against a cwd the hook can't know
     expect(roles(mapHook(post('mcp__playwright__browser_take_screenshot', { filename: 'login.png' }), session, 'unknown', never))).toEqual(['artifact'])
   })

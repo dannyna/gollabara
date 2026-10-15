@@ -190,8 +190,9 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       const source = images.length === 1 ? imageSource(input.tool_input) : undefined
       if (source)
         images[0]!.source = source
-      // Every page of a multi-page read comes from the same file, so they share its role
-      const path = readFilePath(input.tool_input)
+      // Every page of a multi-page read comes from the same file, so they share its role.
+      // An MCP result is the tool's own output, even when its input names a file it rendered
+      const path = input.tool_name?.startsWith('mcp__') ? undefined : readFilePath(input.tool_input)
       const role = path && fileRole ? fileRole(path) : 'artifact'
       for (const image of images)
         image.role = role
