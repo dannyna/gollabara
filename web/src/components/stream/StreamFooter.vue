@@ -3,15 +3,17 @@
 // the left, the follow state (or the pin) on the right. Always in the same place, never yellow.
 
 import type { Follow } from './follow'
-import { FOLLOW_TEXT, PINNED_TEXT } from './follow'
+import { FOLLOW_TEXT, HISTORY_TEXT, PINNED_TEXT } from './follow'
 
-defineProps<{ follow: Follow, pinned?: boolean }>()
+/** `history`: a run the reader jumped to (#77), which follows nothing until 「최신으로」 */
+defineProps<{ follow: Follow, pinned?: boolean, history?: boolean }>()
 </script>
 
 <template>
   <div class="stream-footer">
     <span><i class="dot" />이미지는 원래 비율 그대로</span>
     <span v-if="pinned" class="mono">{{ PINNED_TEXT.lead }} · <b class="how-key">{{ PINNED_TEXT.key }}</b><b class="how-touch">{{ PINNED_TEXT.touch }}</b></span>
+    <span v-else-if="history" class="mono">{{ HISTORY_TEXT }}</span>
     <span v-else class="mono">{{ FOLLOW_TEXT[follow] }}</span>
   </div>
 </template>

@@ -2,6 +2,7 @@ import type { IncomingEvent, SessionInfo } from '../shared/types'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Database } from 'bun:sqlite'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { FeedbackError, Store, TURN_IDLE_MS } from './store'
 
@@ -354,5 +355,71 @@ describe('ended sessions', () => {
     expect(store.session('cc-1')?.endedAt).toBe(800)
     expect(store.session('cc-2')).not.toHaveProperty('endedAt')
     expect(store.pidLinks()).toEqual([{ id: 'cc-2', pid: 4242, at: 800 }])
+  })
+})
+
+describe('history', () => {
+  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
+  const DAY = 86_400_000
+  /** One recap per call, each its own message, oldest first as the hook would store them */
+  const say = (session: SessionInfo, text: string, at: number) => store.ingest({ kind: 'recap', session, text }, at).message!
+
+  test('pages extend a run at either end with no gap, and say what lies past it', () => {
+    const ids = [1, 2, 3, 4, 5].map(n => say(od, `line ${n}`, n * 1000).id)
+    const latest = store.history({}, 2)
+    expect(latest.messages.map(m => m.id)).toEqual(ids.slice(3))
+    expect([latest.older, latest.newer]).toEqual([true, false])
+    const older = store.history({ before: ids[3]! }, 2)
+    expect(older.messages.map(m => m.id)).toEqual(ids.slice(1, 3))
+    expect([older.older, older.newer]).toEqual([true, true])
+    expect(store.history({ before: ids[1]! }, 2)).toMatchObject({ older: false, newer: true })
+    const newer = store.history({ after: ids[0]! }, 3)
+    expect(newer.messages.map(m => m.id)).toEqual(ids.slice(1, 4))
+    expect(newer.newer).toBe(true)
+  })
+
+  test('a jump starts at the first message of that time, and past the last one finds nothing newer', () => {
+    say(od, 'a month ago', 1000)
+    const day = say(od, 'that day', 30 * DAY)
+    say(od, 'same day', 30 * DAY + 5000)
+    say(od, 'today', 60 * DAY)
+    const page = store.history({ from: 30 * DAY - 1000 }, 2)
+    expect(page.messages.map(m => m.text)).toEqual(['that day', 'same day'])
+    expect(page.messages[0]!.id).toBe(day.id)
+    expect([page.older, page.newer]).toEqual([true, true])
+    expect(store.history({ from: 61 * DAY }, 2)).toMatchObject({ messages: [], older: true, newer: false })
+  })
+
+  test('a page carries its verdicts and the feedback sent in its span, so pages laid end to end hold each once', () => {
+    const first = say(od, 'first', 1000)
+    store.queueFeedback('od-1', 'before the second', undefined, 1500)
+    const second = say(od, 'second', 2000)
+    store.queueFeedback('od-1', 'after the second', undefined, 2500)
+    store.saveTriage({ messageId: first.id, index: 0, verdict: 'hide' })
+    const older = store.history({ before: second.id }, 10)
+    expect(older.triage).toEqual([{ messageId: first.id, index: 0, verdict: 'hide' }])
+    expect(older.feedback.map(f => f.text)).toEqual(['before the second'])
+    expect(store.history({}, 1).feedback.map(f => f.text)).toEqual(['after the second'])
+  })
+
+  test('days group by the view\'s local day, newest first, for every session or one', () => {
+    // 23:30 and 00:30 the next day in UTC+9 fall on different days there, the same day in UTC
+    const kst = 9 * 60
+    say(od, 'late', 2 * DAY - 9 * 3_600_000 - 30 * 60_000)
+    say(cc, 'early', 2 * DAY - 9 * 3_600_000 + 30 * 60_000)
+    say(cc, 'later', 3 * DAY)
+    const local = (day: number) => day * DAY - kst * 60_000
+    expect(store.days(kst)).toEqual([{ start: local(3), count: 1 }, { start: local(2), count: 1 }, { start: local(1), count: 1 }])
+    expect(store.days(0)).toEqual([{ start: 3 * DAY, count: 1 }, { start: 1 * DAY, count: 2 }])
+    expect(store.days(kst, 'cc-1').map(d => d.count)).toEqual([1, 1])
+  })
+
+  test('the day list and jumps read only the indexes', () => {
+    const db = new Database(join(dir, 'stream.db'))
+    const plan = (sql: string) => (db.query(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[]).map(r => r.detail).join('; ')
+    expect(plan('SELECT CAST((at + 0) / 86400000 AS INTEGER) AS day, count(*) FROM messages GROUP BY day')).toContain('COVERING INDEX messages_at')
+    expect(plan('SELECT id FROM messages WHERE at >= 5 ORDER BY at, id LIMIT 1')).toContain('INDEX messages_at')
+    expect(plan(`SELECT at FROM messages WHERE json_extract(body, '$.sessionId') = 'x'`)).toContain('INDEX messages_session')
+    db.close()
   })
 })

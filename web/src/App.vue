@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TriageEngine } from '../../src/shared/types'
+import type { HistoryDay, TriageEngine } from '../../src/shared/types'
 import type { Settings } from './settings'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { cellKeys, toArtifacts } from './artifacts'
@@ -8,6 +8,7 @@ import { resolveNotices } from './components/banner/notices'
 import StateView from './components/banner/StateView.vue'
 import AppToast from './components/overlay/AppToast.vue'
 import ConfirmDialog from './components/overlay/ConfirmDialog.vue'
+import DayPopover from './components/overlay/DayPopover.vue'
 import ImageViewer from './components/overlay/ImageViewer.vue'
 import SessionPopover from './components/overlay/SessionPopover.vue'
 import SettingsSheet from './components/overlay/SettingsSheet.vue'
@@ -20,6 +21,7 @@ import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { firstRunGuide, useHealth } from './firstrun'
+import { dayLoaded, fetchDays } from './history'
 import { usePin } from './pin'
 import { usePush } from './push'
 import { deleteSessionData, endedSessions, goneMutes, inScope, toSessionRows, useMutedSessions } from './sessions'
@@ -27,7 +29,7 @@ import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSe
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored } = useStream()
+const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored, history, loadOlder, loadNewer, jumpTo, toLatest } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute, forget } = useMutedSessions()
 const { toast } = useToast()
@@ -187,6 +189,12 @@ function select(key: string) {
 // A pinned cell holds the rail; the pin survives a reload while its cell is still there
 const { pinned, setPin } = usePin()
 watch(artifacts, (list) => {
+  // An older capture of the same screen, loaded with history, takes over as the cell's key
+  const cells = cellKeys(list)
+  if (selected.value && cells.has(selected.value))
+    selected.value = cells.get(selected.value)!
+  if (pinned.value && cells.has(pinned.value) && cells.get(pinned.value) !== pinned.value)
+    setPin(cells.get(pinned.value)!)
   // Before the server's hello the list is empty, not missing the pinned cell
   if (!messages.value.length || !pinned.value)
     return
@@ -243,6 +251,59 @@ watch([messages, sessions], ([list, known]) => {
     forget(goneMutes(muted.value, known, list))
 })
 
+// History (#77): pages load as a view reaches either end of the run. A failed page says so once
+// and pauses paging for a while, since a view at its end asks again as soon as a load settles.
+const PAGE_RETRY_MS = 10_000
+let pagingFrom = 0
+async function loadPage(end: 'older' | 'newer') {
+  if (!connected.value || Date.now() < pagingFrom)
+    return
+  try {
+    await (end === 'older' ? loadOlder() : loadNewer())
+  }
+  catch (error) {
+    pagingFrom = Date.now() + PAGE_RETRY_MS
+    toast((error as Error).message)
+  }
+}
+// The day jump lists the days that hold messages, of the session in view when scoped
+const daysOpen = ref(false)
+const days = ref<HistoryDay[] | null>(null)
+const daysError = ref(false)
+async function openDays() {
+  daysOpen.value = !daysOpen.value
+  if (!daysOpen.value)
+    return
+  days.value = null
+  daysError.value = false
+  try {
+    days.value = await fetchDays(scope.value)
+  }
+  catch {
+    daysError.value = true
+  }
+}
+async function pickDay(start: number) {
+  daysOpen.value = false
+  // A jump moves the rail on purpose, so the pin lets go as it does on 「새 산출물 n →」
+  setPin(null)
+  try {
+    await jumpTo(start, dayLoaded(messages.value, history.value.older, start))
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
+async function backToLatest() {
+  setPin(null)
+  try {
+    await toLatest()
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
+
 function onThumb(key: string) {
   // Mobile has no stream surface: a thumbnail opens the viewer directly
   if (matchMedia('(max-width: 767px)').matches) {
@@ -274,14 +335,23 @@ function onThumb(key: string) {
     <main v-else-if="messages.length || sessions.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
-        :ended="ended" :guide="guide" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
+        :ended="ended" :guide="guide" :history="history" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
+        @older="loadPage('older')" @newer="loadPage('newer')" @latest="backToLatest"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
-        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide"
+        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide" :history="history" :days-open="daysOpen"
         @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
-      />
+        @older="loadPage('older')" @newer="loadPage('newer')" @latest="backToLatest" @days="openDays"
+      >
+        <template #days>
+          <DayPopover
+            v-if="daysOpen" :days="days" :error="daysError" :scoped="scope != null" :anchor="() => chat?.daysButton"
+            @close="daysOpen = false" @pick="pickDay"
+          />
+        </template>
+      </ChatPanel>
     </main>
     <SettingsSheet
       v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"

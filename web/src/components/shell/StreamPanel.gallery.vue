@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import GalleryCase from '../../gallery/GalleryCase.vue'
+import { initialHistory } from '../../history'
 import { ALL, rail } from '../stream/gallery-samples'
 import { GUIDES } from './gallery-samples'
 import StreamPanel from './StreamPanel.vue'
@@ -32,6 +33,16 @@ onMounted(() => centered.value?.reveal(heroC, 'instant'))
   <GalleryCase title="이전 산출물을 보는 중 · 새 산출물 2 · 바닥은 일시 정지">
     <div class="frame">
       <StreamPanel :artifacts="artifacts" :selected="last" :preview="{ unseen: 2 }" />
+    </div>
+  </GalleryCase>
+  <GalleryCase title="지난 날짜로 이동 · 그 뒤에 온 산출물 2는 버튼에만 · 누르면 최신으로">
+    <div class="frame">
+      <StreamPanel :artifacts="artifacts" :history="{ ...initialHistory(), older: true, live: false, behind: { messages: 3, artifacts: 2 } }" />
+    </div>
+  </GalleryCase>
+  <GalleryCase title="지난 날짜로 이동 · 새로 온 것 없음 · 최신으로 →">
+    <div class="frame">
+      <StreamPanel :artifacts="artifacts" :history="{ ...initialHistory(), live: false }" />
     </div>
   </GalleryCase>
   <GalleryCase title="대화 썸네일에서 골라 가운데로 · 히어로 C">

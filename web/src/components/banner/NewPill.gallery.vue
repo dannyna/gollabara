@@ -27,6 +27,24 @@ import NewPill from './NewPill.vue'
       </div>
     </div>
   </GalleryCase>
+  <GalleryCase title="stream · a day jumped to, nothing new yet: 최신으로">
+    <div class="stream">
+      <NewPill kind="artifact" :count="0" />
+      <div class="footer">
+        <span>이미지는 원래 비율 그대로</span><span class="mono">지난 기록 · 최신으로 가면 다시 따라가요</span>
+      </div>
+    </div>
+  </GalleryCase>
+  <GalleryCase title="chat · a day jumped to, nothing new yet: 최신으로">
+    <div class="chat">
+      <div class="feed">
+        <NewPill kind="message" :count="0" />
+      </div>
+      <div class="composer">
+        세션에 메시지나 피드백을 남겨보세요
+      </div>
+    </div>
+  </GalleryCase>
   <GalleryCase title="chat · 새 메시지 1, 14 above the composer (mobile has no stream)">
     <div class="chat">
       <div class="feed">

@@ -97,6 +97,13 @@ export const MIGRATIONS: Migration[] = [
     db.run('ALTER TABLE triage_cache ADD COLUMN seen_at INTEGER NOT NULL DEFAULT 0')
     db.run('UPDATE triage_cache SET seen_at = ?', [Date.now()])
   },
+  // 6: history (#77). The day index groups by `at` and a day jump finds its first message by it,
+  // both from this index alone; retention's prune uses it too. Scoped day lists and session
+  // deletes find a session's messages through the expression index instead of reading every body.
+  (db) => {
+    db.run('CREATE INDEX messages_at ON messages (at)')
+    db.run(`CREATE INDEX messages_session ON messages (json_extract(body, '$.sessionId'))`)
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

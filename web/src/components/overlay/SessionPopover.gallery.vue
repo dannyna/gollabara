@@ -57,6 +57,24 @@ function mute(id: string) {
       </AppBar>
     </GalleryStage>
   </GalleryCase>
+  <GalleryCase title="이름으로 찾기 · 「od」 (전체 세션은 남는다)">
+    <GalleryStage :height="560">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" query="od" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="이름으로 찾기 · 맞는 세션 없음">
+    <GalleryStage :height="420">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" query="payments" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
   <GalleryCase title="연결 끊김 · 범위와 음소거는 그대로">
     <GalleryStage :height="760">
       <AppBar offline sessions-open>

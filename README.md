@@ -58,6 +58,7 @@ Early stage. What works today:
 - **Claude Code**, including Open Design runs started from it: images, recaps, and questions flow into the stream.
 - **Codex CLI:** recaps, images it views, and the questions it asks in Plan mode flow in too. Your feedback reaches a Codex session at its next step or when it ends its turn; it can't wake an idle one yet.
 - **Stepping in:** reply to a session, about one image or in general. Your feedback reaches it at its next step, and an idle session wakes up for it. Mute a session, or narrow the view to one.
+- **History:** scroll back past today, jump to any day that has messages, and find a session by name.
 - **Your phone over the tailnet:** open the stream from any device on your Tailscale tailnet.
 - **Notifications:** turn them on per device to hear when a session asks something or answers your feedback. The notification never shows what the session said.
 

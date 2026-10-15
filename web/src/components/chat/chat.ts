@@ -110,7 +110,8 @@ export interface StartRow {
 }
 
 export type TimelineItem
-  = | { type: 'date', key: string, label: string }
+  // `day`: local midnight, so a day jump can find the line
+  = | { type: 'date', key: string, label: string, day: number }
     | ({ type: 'system' } & SystemEvent)
     | ({ type: 'start' } & StartRow)
     | { type: 'message', key: string, message: StreamMessage }
@@ -130,9 +131,12 @@ export type FeedItem
  * Orders what the chat feed draws: a date line whenever the day changes, a 「… 시작」 row
  * where a session started, other system lines and the reader's own bubbles at their time,
  * then the messages. A start older than the oldest loaded message is out of view and gets
- * no row; sessions with nothing in view get none either.
+ * no row; sessions with nothing in view get none either. `range` bounds a run of history (#77)
+ * that starts after the first message or ends before the latest: lines and bubbles outside it
+ * belong to messages not loaded, so they wait until those are.
  */
-export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], events: SystemEvent[] = [], now = Date.now(), mine: MyEntry[] = []): TimelineItem[] {
+export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], events: SystemEvent[] = [], now = Date.now(), mine: MyEntry[] = [], range: { since?: number, until?: number } = {}): TimelineItem[] {
+  const { since = -Infinity, until = Infinity } = range
   const oldest = messages[0]?.at ?? -Infinity
   const inView = new Set(messages.map(m => m.sessionId))
   const lines = sessions
@@ -140,6 +144,7 @@ export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], 
     .map(s => ({ at: s.startedAt, item: { type: 'start', key: `start-${s.id}`, sessionId: s.id, name: s.name, at: s.startedAt } as TimelineItem }))
     .concat(events.map(e => ({ at: e.at, item: { type: 'system' as const, ...e } })))
     .concat(mine.map(entry => ({ at: entry.at, item: { type: 'mine', key: entry.key, entry } })))
+    .filter(l => l.at >= since && l.at <= until)
     .sort((a, b) => a.at - b.at)
 
   const rows: { at: number, item: TimelineItem }[] = []
@@ -156,7 +161,7 @@ export function toTimeline(messages: StreamMessage[], sessions: Session[] = [], 
   for (const { at, item } of rows) {
     if (startOfDay(at) !== day) {
       day = startOfDay(at)
-      out.push({ type: 'date', key: `d-${day}`, label: dayLabel(at, now) })
+      out.push({ type: 'date', key: `d-${day}`, label: dayLabel(at, now), day })
     }
     out.push(item)
   }

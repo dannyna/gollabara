@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { SessionRow } from '../../sessions'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { clock } from '../../artifacts'
+import { filterSessions } from '../../sessions'
 import OverlayIcon from './OverlayIcon.vue'
 import { useOverlay } from './useOverlay'
 
@@ -18,7 +19,9 @@ const props = withDefaults(defineProps<{
   preview?: boolean
   /** ≤767px: 'bottom' docks it to the bottom edge over a scrim, 'anchored' keeps it under the trigger */
   mobile?: 'bottom' | 'anchored'
-}>(), { mobile: 'bottom' })
+  /** Gallery: the name filter starts with this text */
+  query?: string
+}>(), { mobile: 'bottom', query: '' })
 
 const emit = defineEmits<{ close: [], select: [id: string | null], mute: [id: string] }>()
 
@@ -33,6 +36,11 @@ useOverlay({
   closeOnOutside: () => [props.anchor?.()],
   enabled: !props.preview,
 })
+
+// Filtering by name (#77): history keeps every session listed, so the list can grow long.
+// 「전체 세션」 stays above the field; the filter only narrows the session rows.
+const filter = ref(props.query)
+const shown = computed(() => filterSessions(props.sessions, filter.value))
 </script>
 
 <template>
@@ -57,7 +65,15 @@ useOverlay({
         <span><strong>전체 세션</strong><small>음소거한 세션은 숨겨요</small></span>
       </button>
 
-      <div v-for="s in sessions" :key="s.id" class="session-row" :class="{ 'is-current': scope === s.id, 'ended': s.ended }">
+      <input
+        v-if="sessions.length" v-model="filter" class="filter" type="search" placeholder="세션 이름으로 찾기"
+        aria-label="세션 이름으로 찾기" autocomplete="off" spellcheck="false"
+      >
+      <p v-if="sessions.length && !shown.length" class="no-match">
+        이름이 맞는 세션이 없어요
+      </p>
+
+      <div v-for="s in shown" :key="s.id" class="session-row" :class="{ 'is-current': scope === s.id, 'ended': s.ended }">
         <!-- A muted session stays listed so it can be unmuted, but it cannot be picked -->
         <button
           class="session-pick" type="button" :disabled="s.muted" :aria-pressed="scope === s.id"
@@ -131,6 +147,35 @@ useOverlay({
   min-height: 66px;
   margin-top: 14px;
   padding: 12px 10px;
+}
+/* Pressed into the surface like the composer box, so it reads as a field */
+.filter {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: inset 0 1px 4px oklch(0 0 0 / 0.13);
+  color: var(--fg);
+  font-size: 12px;
+}
+.filter::placeholder {
+  color: var(--muted);
+}
+.no-match {
+  padding: 14px 10px 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (pointer: coarse) {
+  .filter {
+    height: 44px;
+    /* 16px keeps iOS from zooming in on focus */
+    font-size: 16px;
+  }
 }
 .session-pick {
   min-height: 61px;

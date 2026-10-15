@@ -1,8 +1,8 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, IncomingEvent, Retention, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
-import type { Purged } from './store'
+import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, HistoryDay, HistoryPage, IncomingEvent, Retention, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
+import type { HistoryCursor, Purged } from './store'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -30,6 +30,25 @@ const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 const CHANNEL_WAIT_MS = 25_000
 const HARNESSES: Harness[] = ['claude-code', 'open-design', 'codex', 'claude-design']
 const PHONE_MAX = 2048
+/** Messages per history page by default, and at most */
+const HISTORY_PAGE = 200
+const HISTORY_MAX = 500
+
+/** An integer query parameter within [min, max], or `fallback` when missing or not a number */
+function clampInt(raw: string | null, min: number, max: number, fallback: number): number {
+  const n = raw === null || raw === '' ? Number.NaN : Number(raw)
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback
+}
+
+/** One cursor from `before`, `after` or `from`, in that order; none asks for the latest page */
+function historyCursor(params: URLSearchParams): HistoryCursor {
+  for (const key of ['before', 'after', 'from'] as const) {
+    const n = clampInt(params.get(key), 0, Number.MAX_SAFE_INTEGER, -1)
+    if (n >= 0)
+      return { [key]: n }
+  }
+  return {}
+}
 
 export function startServer() {
   const store = new Store(dataDir())
@@ -281,6 +300,12 @@ export function startServer() {
       if (url.pathname === '/api/messages')
         return Response.json(store.recent())
 
+      // History beyond what the hello sent (#77): pages of messages, and the days that hold any
+      if (url.pathname === '/api/history')
+        return Response.json(store.history(historyCursor(url.searchParams), clampInt(url.searchParams.get('limit'), 1, HISTORY_MAX, HISTORY_PAGE)) satisfies HistoryPage)
+      if (url.pathname === '/api/history/days')
+        return Response.json(store.days(clampInt(url.searchParams.get('tz'), -14 * 60, 14 * 60, 0), url.searchParams.get('session') || undefined) satisfies HistoryDay[])
+
       if (url.pathname === '/api/sessions')
         return Response.json(store.sessions().map(withChannel))
 
@@ -300,6 +325,7 @@ export function startServer() {
         ws.send(JSON.stringify({
           type: 'hello',
           messages,
+          older: messages.length > 0 && store.hasOlder(messages[0]!.id),
           sessions: store.sessions().map(withChannel),
           feedback: store.recentFeedback(),
           triage: store.triageFor(messages.map(m => m.id)),
