@@ -1,0 +1,27 @@
+AGENTS.md
+  s_b7f30c572db9a8::t_0388bfc1a438e7 79
+  s_b7f30c572db9a8::t_4ba560b145a15e 11
+  s_b7f30c572db9a8::t_108c3595c7c54c 10
+  s_b7f30c572db9a8::t_3c421587f14bc6 7
+  s_b7f30c572db9a8::t_19ebd0bc476143 81,84-86
+DESIGN.md
+  s_b7f30c572db9a8::t_61068b80638143 358
+  s_b7f30c572db9a8::t_12518ab5ac2385 302,304
+  s_b7f30c572db9a8::t_59d49883163e84 332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60ed147923410b795ff219f58fea5d845bf8197e",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
