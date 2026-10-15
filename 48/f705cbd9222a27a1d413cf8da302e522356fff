@@ -1,0 +1,51 @@
+web/src/triage.ts
+  s_b7f30c572db9a8::t_490d5b6f132d1d 1-100,103-111
+  s_b7f30c572db9a8::t_0c160c66e78ceb 102
+  s_b7f30c572db9a8::t_8f19bd0f4bd231 101
+web/src/components/chat/ChatComposer.vue
+  s_b7f30c572db9a8::t_0c160c66e78ceb 102-107
+web/src/components/overlay/SettingsSheet.gallery.vue
+  s_b7f30c572db9a8::t_61d165f46bfc03 2,15,37,67
+web/src/components/chat/HiddenToggle.vue
+  s_b7f30c572db9a8::t_47f388e6d7d370 1-37
+web/src/settings.ts
+  s_b7f30c572db9a8::t_e7f4526afe88ab 1-3,5,67-86
+web/src/components/chat/AdviceLine.vue
+  s_b7f30c572db9a8::t_c345238175c4a3 1-81
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_8f19bd0f4bd231 3,6,46-50,71-78,84-91,116
+web/src/triage.test.ts
+  s_b7f30c572db9a8::t_71add8696cd112 1-4,8-73
+  s_b7f30c572db9a8::t_c0ad99fcefe3ad 5-7
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_d36acbb70d65e0 224,315,329
+  s_b7f30c572db9a8::t_4246cf4def0829 418-419,431-433
+  s_b7f30c572db9a8::t_9ae3aa64b3b1fb 2,9,13,17,22,52-57,95-119,222-223,225-229,238-239,241,282-285,309,311-314,316,327-328,380-385,390-396
+  s_b7f30c572db9a8::t_f1cdacfd7b6097 330
+web/src/components/chat/Triage.gallery.vue
+  s_b7f30c572db9a8::t_c0ad99fcefe3ad 14-16
+  s_b7f30c572db9a8::t_11aaae677fb707 1-13,17-146
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_e7f4526afe88ab 2,6,14-15,31-32,41-42,148-161
+  s_b7f30c572db9a8::t_862d0973cbc9cb 162
+web/src/components/chat/icons.ts
+  s_b7f30c572db9a8::t_0c160c66e78ceb 18-19
+web/src/App.vue
+  s_b7f30c572db9a8::t_e7f4526afe88ab 2,17,21,53-62,138,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48f705cbd9222a27a1d413cf8da302e522356fff",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
