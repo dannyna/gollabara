@@ -123,6 +123,25 @@ describe('feedback', () => {
     expect(store.recentFeedback()).toEqual(claimed)
   })
 
+  test('a channel and a hook share the claim, so an item goes out once', () => {
+    store.queueFeedback('cc-1', 'darker header', undefined, 1000)
+    expect(store.claimFeedback('cc-1', 'channel', 2000).map(f => f.deliveredVia)).toEqual(['channel'])
+    expect(store.claimFeedback('cc-1', 'post-tool-use', 2001)).toEqual([])
+  })
+
+  test('the latest SessionStart from a process owns its pid (/clear starts a new session in the same process)', () => {
+    expect(store.sessionForPid(4242)).toBeNull()
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 600)
+    expect(store.sessionForPid(4242)).toBe('cc-1')
+    // Other events neither set nor clear it
+    store.ingest(image(cc), 700)
+    expect(store.sessionForPid(4242)).toBe('cc-1')
+    const cleared: SessionInfo = { ...cc, id: 'cc-2' }
+    store.ingest({ kind: 'session', session: cleared, pid: 4242 }, 800)
+    expect(store.sessionForPid(4242)).toBe('cc-2')
+    expect(store.session('cc-1')).not.toHaveProperty('pid')
+  })
+
   test('a claim leaves other sessions\' feedback queued', () => {
     store.queueFeedback('od-1', 'for od', undefined, 1000)
     store.queueFeedback('cc-1', 'for cc', undefined, 1000)

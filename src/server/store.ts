@@ -40,6 +40,7 @@ interface SessionRow {
   last_seen_at: number
   open_turn: number | null
   last_turn: number | null
+  pid: number | null
 }
 
 interface FeedbackRow {
@@ -76,7 +77,8 @@ export class Store {
       at INTEGER NOT NULL,
       body TEXT NOT NULL
     )`)
-    // open_turn: the turn message images join; last_turn: where a stop-hook continuation recap goes
+    // open_turn: the turn message images join; last_turn: where a stop-hook continuation recap goes;
+    // pid: the harness process, which links a channel server to the session
     this.db.run(`CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -86,8 +88,12 @@ export class Store {
       started_at INTEGER NOT NULL,
       last_seen_at INTEGER NOT NULL,
       open_turn INTEGER,
-      last_turn INTEGER
+      last_turn INTEGER,
+      pid INTEGER
     )`)
+    const sessionColumns = this.db.query('PRAGMA table_info(sessions)').all() as { name: string }[]
+    if (!sessionColumns.some(c => c.name === 'pid'))
+      this.db.run('ALTER TABLE sessions ADD COLUMN pid INTEGER')
     // image: stored file name; image_at / image_session: when and where it was captured, looked up once at queue time
     this.db.run(`CREATE TABLE IF NOT EXISTS feedback (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,7 +191,12 @@ export class Store {
     const base = { at: now, sessionId: session.id, sessionName: session.name }
     let result: Ingested = { session, message: null, created: false }
 
-    if (event.kind === 'question') {
+    if (event.kind === 'session' && event.pid) {
+      // /clear and resume start a new session in the same process: the latest SessionStart owns the pid
+      this.db.run('UPDATE sessions SET pid = NULL WHERE pid = ? AND id != ?', [event.pid, session.id])
+      this.db.run('UPDATE sessions SET pid = ? WHERE id = ?', [event.pid, session.id])
+    }
+    else if (event.kind === 'question') {
       // Questions stand alone; they neither join nor close a turn
       result = { session, message: this.insert({ ...base, kind: 'question', questions: event.questions }), created: true }
     }
@@ -226,6 +237,17 @@ export class Store {
   sessions(): Session[] {
     const rows = this.db.query('SELECT * FROM sessions ORDER BY last_seen_at DESC').all() as SessionRow[]
     return rows.map(toSession)
+  }
+
+  session(id: string): Session | null {
+    const row = this.db.query('SELECT * FROM sessions WHERE id = ?').get(id) as SessionRow | null
+    return row ? toSession(row) : null
+  }
+
+  /** The session running in the harness process `pid`, or null before its SessionStart arrived */
+  sessionForPid(pid: number): string | null {
+    const row = this.db.query('SELECT id FROM sessions WHERE pid = ?').get(pid) as { id: string } | null
+    return row?.id ?? null
   }
 
   /** Queues the user's feedback for a session. Throws FeedbackError for an unknown session or image. */

@@ -5,7 +5,8 @@ export type Harness = 'claude-code' | 'open-design' | 'codex' | 'claude-design'
 
 /** Event the hook sends to the server */
 export type IncomingEvent
-  = | { kind: 'session', session: SessionInfo }
+  // `pid`: the harness process the session runs in, so a channel server it spawned can find the session
+  = | { kind: 'session', session: SessionInfo, pid?: number }
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
     | { kind: 'recap', session: SessionInfo, text: string, continuation?: boolean }
@@ -27,6 +28,8 @@ export interface Session extends SessionInfo {
   /** First SessionStart, or the first event seen if the session started before the plugin was installed */
   startedAt: number
   lastSeenAt: number
+  /** A channel server is waiting on the session's feedback, so it reaches the session at once, even when idle */
+  channel?: boolean
 }
 
 export interface IncomingImage {
@@ -84,9 +87,9 @@ export interface StoredImage {
 
 /**
  * When a session picked up feedback: after a tool call, when it tried to end its turn,
- * or alongside the next prompt. Harnesses map their own hook points onto these.
+ * alongside the next prompt, or pushed through a channel. Harnesses map their own hook points onto these.
  */
-export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit'
+export type FeedbackVia = 'post-tool-use' | 'stop' | 'user-prompt-submit' | 'channel'
 
 /** Body of POST /api/feedback. The user writes it; gollabara only carries it. */
 export interface FeedbackRequest {

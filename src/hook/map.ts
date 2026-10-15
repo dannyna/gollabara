@@ -1,6 +1,7 @@
 // Turns Claude Code hook input (stdin JSON) into stream events.
 // Kept pure so it is easy to test. hook/index.ts handles I/O.
 import type { Feedback, FeedbackVia, IncomingEvent, IncomingImage, Question, SessionInfo } from '../shared/types'
+import { FEEDBACK_PREFIX, feedbackText } from '../shared/feedback'
 
 export interface HookInput {
   hook_event_name: string
@@ -30,9 +31,6 @@ export interface HookEnv {
   OD_PROJECT_ID?: string
 }
 
-/** Start of every feedback line, also how a delivery is recognised in the transcript */
-const FEEDBACK_PREFIX = '[gollabara] Feedback from the user'
-
 export function sessionName(cwd: string, branch?: string): string {
   const dir = cwd.split('/').filter(Boolean).pop() ?? cwd
   return branch && branch !== 'main' && branch !== 'master' ? `${dir} · ${branch}` : dir
@@ -61,7 +59,8 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
 /**
  * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
  * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
- * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply.
+ * Feedback gollabara delivered after that opener, or a gollabara channel message that opened the turn
+ * (recorded as a `peer` turn), makes the turn the user's: they wait on the reply.
  * The first line of a tail is usually cut off and is skipped like any unparsable line.
  */
 export function turnOpener(tail: string): TurnOpener {
@@ -85,6 +84,8 @@ export function turnOpener(tail: string): TurnOpener {
       return 'human'
     if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
       continue
+    if (isChannelFeedback(entry))
+      return 'human'
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
   }
   return 'unknown'
@@ -96,6 +97,15 @@ function isFeedbackDelivery(entry: any): boolean {
   return attachment?.type === 'hook_additional_context'
     && Array.isArray(attachment.content)
     && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
+}
+
+/** A turn a channel message opened, carrying gollabara feedback (another channel's message does not count) */
+function isChannelFeedback(entry: any): boolean {
+  if (entry?.origin?.kind !== 'channel')
+    return false
+  const content = entry.message?.content
+  const texts: unknown[] = typeof content === 'string' ? [content] : Array.isArray(content) ? content.map((c: any) => c?.text) : []
+  return texts.some(t => typeof t === 'string' && t.includes(FEEDBACK_PREFIX))
 }
 
 export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown'): IncomingEvent | null {
@@ -150,26 +160,10 @@ export function feedbackVia(hookEventName: string): FeedbackVia | null {
 export function feedbackOutput(hookEventName: string, items: Feedback[]): object | null {
   if (items.length === 0 || !feedbackVia(hookEventName))
     return null
-  const text = items.map(feedbackLine).join('\n')
+  const text = feedbackText(items)
   // On Stop this keeps the turn going without the error notice `decision: block` shows;
   // the claim already emptied the queue, so the re-entered Stop lets it end
   return { hookSpecificOutput: { hookEventName, additionalContext: text } }
-}
-
-/**
- * Labelled as the user's own words relayed by gollabara, stated as fact rather than as a system
- * instruction, so the session treats it as the user talking and not as untrusted tool output.
- */
-export function feedbackLine(item: Feedback): string {
-  const about = item.image
-    ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ''}`
-    : ''
-  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
-}
-
-function clock(at: number): string {
-  const d = new Date(at)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 /** Extracts a one-line recap from the turn's last reply */

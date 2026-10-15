@@ -8,7 +8,7 @@ import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { artifactKey, clock, splitSessionName } from '../../artifacts'
-import { failureReason, mergeFeedback, postFeedback, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
+import { failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, toMyEntries, VIA_LABEL } from '../../feedback'
 import { toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
@@ -148,6 +148,11 @@ const queue = computed<QueueGroup[]>(() => {
   }
   return [...groups.values()]
 })
+// 「바로 전달돼요」 only when every waiting session has a live channel
+const queueTrayNote = computed(() => queueNote(
+  [...new Set(feedback.value.filter(f => f.deliveredAt == null).map(f => f.sessionId))],
+  props.sessions ?? [],
+))
 
 // Chat thumbnails open the one app viewer at every width
 const { open } = useImageViewer()
@@ -354,7 +359,7 @@ defineExpose({ reveal })
       @mention-focus="mentionList?.focusFirst()" @mention-close="closeMention"
     >
       <template v-if="queue.length" #tray>
-        <QueueTray :groups="queue" note="세션이 다음 작업을 할 때 전달돼요" :actions="false" />
+        <QueueTray :groups="queue" :note="queueTrayNote" :actions="false" />
       </template>
       <template v-if="mentionOpen" #popover>
         <MentionList ref="mentionList" :options="mentionOptions" @pick="pickMention" @close="closeMention(); composer?.focus()" />

@@ -1,7 +1,7 @@
 // Feedback the user sends to sessions: who it goes to, how server records merge,
 // and what each bubble shows. The server and hook do the delivery (#22).
 
-import type { Feedback, FeedbackRequest, FeedbackVia } from '../../src/shared/types'
+import type { Feedback, FeedbackRequest, FeedbackVia, Session } from '../../src/shared/types'
 import type { DeliveryState } from './components/chat/MyMessage.vue'
 import { clock, splitSessionName } from './artifacts'
 
@@ -123,6 +123,16 @@ export const VIA_LABEL: Record<FeedbackVia, string> = {
   'post-tool-use': '작업 중에 전달됨',
   'stop': '턴을 마칠 때 전달됨',
   'user-prompt-submit': '다음 프롬프트와 함께 전달됨',
+  'channel': '채널로 바로 전달됨',
+}
+
+/**
+ * The queue tray's note: a session with a live channel gets feedback at once, even when idle;
+ * the others pick it up on their next hook. Every waiting session must have one for 「바로」.
+ */
+export function queueNote(sessionIds: string[], sessions: Session[]): string {
+  const live = new Set(sessions.filter(s => s.channel).map(s => s.id))
+  return sessionIds.length && sessionIds.every(id => live.has(id)) ? '바로 전달돼요' : '세션이 다음 작업을 할 때 전달돼요'
 }
 
 /** A failed POST: the status, or 0 when the server was not reached */
