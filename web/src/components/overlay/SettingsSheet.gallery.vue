@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TriageEngine } from '../../../../src/shared/types'
+import type { PushState } from '../../push'
 import type { Settings } from '../../settings'
 import type { ThemePreference } from '../../theme'
 import { onMounted, ref } from 'vue'
@@ -15,11 +16,25 @@ const theme = ref<ThemePreference>('dark')
 const engine = ref<TriageEngine>('off')
 
 const scrolled = ref<HTMLElement>()
+// 알림 받기 sits near the bottom of the sheet: those cases open scrolled to it
+const pushCases = ref<HTMLElement[]>([])
 onMounted(() => {
   const sheet = scrolled.value?.querySelector('.sheet')
   if (sheet)
     sheet.scrollTop = 150
+  for (const el of pushCases.value) {
+    const pushSheet = el.querySelector('.sheet')
+    if (pushSheet)
+      pushSheet.scrollTop = pushSheet.scrollHeight
+  }
 })
+const PUSH_STATES: { state: PushState, title: string }[] = [
+  { state: 'off', title: '알림 받기 · 꺼짐 (기본, 기기마다)' },
+  { state: 'on', title: '알림 받기 · 켜짐' },
+  { state: 'denied', title: '알림 받기 · 브라우저에서 막음' },
+  { state: 'unsupported', title: '알림 받기 · 지원하지 않는 브라우저' },
+  { state: 'ios-browser', title: '알림 받기 · iPhone 브라우저 (홈 화면 앱에서만)' },
+]
 
 const open = ref(false)
 const live = ref<Settings>({ ...saved })
@@ -41,6 +56,13 @@ function onSave(next: Settings) {
     <GalleryStage :height="480">
       <div ref="scrolled">
         <SettingsSheet :settings="saved" theme="system" preview />
+      </div>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase v-for="p in PUSH_STATES" :key="p.state" :title="p.title">
+    <GalleryStage :height="480">
+      <div ref="pushCases" :data-push="p.state">
+        <SettingsSheet :settings="saved" theme="dark" :push="p.state" preview />
       </div>
     </GalleryStage>
   </GalleryCase>

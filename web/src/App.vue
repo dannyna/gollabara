@@ -17,6 +17,7 @@ import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { usePin } from './pin'
+import { usePush } from './push'
 import { inScope, toSessionRows, useMutedSessions } from './sessions'
 import { putServerSettings, useSettings } from './settings'
 import { useTheme } from './theme'
@@ -64,6 +65,20 @@ async function setEngine(engine: TriageEngine) {
     // The server broadcasts the change too, so every open view follows
     serverSettings.value = await putServerSettings({ ...serverSettings.value, triage: engine })
     toast(engine === 'off' ? '대화 정리를 껐어요' : '대화 정리를 켰어요. 새 메시지부터 적용돼요')
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
+
+// 「알림 받기」: the browser's subscription is the state, read again whenever the sheet opens
+const { state: pushState, busy: pushBusy, refresh: refreshPush, set: setPushOn } = usePush()
+watch(settingsOpen, open => open && refreshPush().catch(() => {}))
+async function setPush(on: boolean) {
+  try {
+    await setPushOn(on)
+    if (pushState.value === (on ? 'on' : 'off'))
+      toast(on ? '이 기기에서 알림을 켰어요' : '이 기기에서 알림을 껐어요')
   }
   catch (error) {
     toast((error as Error).message)
@@ -173,7 +188,8 @@ function onThumb(key: string) {
     </main>
     <SettingsSheet
       v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"
-      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine"
+      :push="pushState" :push-busy="pushBusy"
+      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine" @update:push="setPush"
     />
     <ImageViewer v-if="viewerKey" v-model="viewerKey" :items="viewerItems" />
     <AppToast />

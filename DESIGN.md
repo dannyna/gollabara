@@ -353,7 +353,7 @@ A full-screen dialog: a top bar (close, session · branch with mono time and siz
 
 ### Settings sheet
 
-A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), the theme choice 「시스템」 / 「밝게」 / 「어둡게」, and 「대화 정리」 「끄기」 / 「Claude」 / 「Codex」, saved with 「설정 저장」. Those settings live in this browser only; saving connects to nothing and deletes no files. Theme and 「대화 정리」 apply at once instead. The engine choice is stored on the server, because the server runs it, and changing it works only from this Mac or the tailnet. Its note says that message text and the user's feedback text go to that CLI's model and images do not.
+A right-side sheet: 「서버 주소」, 「폰용 주소」 (https only), 「보관 기간」 (「7일」, 「30일」, 「계속 보관」), the theme choice 「시스템」 / 「밝게」 / 「어둡게」, and 「대화 정리」 「끄기」 / 「Claude」 / 「Codex」, saved with 「설정 저장」. Those settings live in this browser only; saving connects to nothing and deletes no files. Theme and 「대화 정리」 apply at once instead. The engine choice is stored on the server, because the server runs it, and changing it works only from this Mac or the tailnet. Its note says that message text and the user's feedback text go to that CLI's model and images do not. 「알림 받기」 「끄기」 / 「켜기」 also applies at once, for this device only, and asks for notification permission only when 「켜기」 is clicked. Its note says that only a content-free signal leaves the Mac. When the browser blocked notifications, has no push, or is Safari on iPhone (push reaches only the home-screen app), both buttons are disabled and the note says why, in muted text with no alert.
 
 ### Empty state
 

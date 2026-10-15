@@ -75,6 +75,16 @@ export const MIGRATIONS: Migration[] = [
       seen_at INTEGER NOT NULL
     )`)
   },
+  // 3: Web Push subscriptions, one per device that turned notifications on (#64). The endpoint is the
+  // browser vendor's push URL; p256dh and auth are the device's keys the payload is encrypted to.
+  (db) => {
+    db.run(`CREATE TABLE push_subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`)
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

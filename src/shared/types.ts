@@ -173,6 +173,22 @@ export interface Triage {
   tone?: Tone
 }
 
+/** A device's Web Push subscription (PushSubscription.toJSON()), the body of POST /api/push/subscribe */
+export interface PushSubscriptionKeys {
+  /** The browser vendor's push service URL for this device */
+  endpoint: string
+  /** base64url keys the payload is encrypted to (RFC 8291) */
+  keys: { p256dh: string, auth: string }
+}
+
+/**
+ * The whole payload of a push: which fixed copy the device shows, a question (`q`) or an answer
+ * to the user's feedback (`r`). It never carries session text, a name or an image (invariant 5).
+ */
+export interface PushPayload {
+  t: 'q' | 'r'
+}
+
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
   = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings }

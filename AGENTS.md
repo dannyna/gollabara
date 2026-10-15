@@ -8,7 +8,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 2. **The hook never blocks a session.** 1.5 s timeout, swallow every error, always exit 0. If the server is down, exit quietly. The one long-running hook, the wake-up Stop hook (`hook.js wait`), runs in the background (`asyncRewake`), so the session never waits on it; it exits 2 only to wake an idle session with the user's feedback.
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
 4. **Never judge artifacts.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing of images. A perceptual hash (dHash) is used only to group near-identical re-captures of one file (`src/shared/stacks.ts`); it is never shown and never used to judge an image. Triage of chat text (whether a recap line is shown, and its state) is allowed, opt-in, and off by default. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
-5. **Local only.** Data lives in local SQLite and image files. No third-party storage, no public internet exposure. The one exception is opt-in: with triage on, recap and question text, and the text of the user's latest feedback to that session, go to the model behind the user's own `claude` or `codex` CLI. Images never do.
+5. **Local only.** Data lives in local SQLite and image files. No third-party storage, no public internet exposure. The one exception is opt-in: with triage on, recap and question text, and the text of the user's latest feedback to that session, go to the model behind the user's own `claude` or `codex` CLI. Images never do. The one other exception is also opt-in, per device: a Web Push ping, encrypted end to end, that carries no session text, name or image. It travels through the browser vendor's push service (decision D1, #64).
 6. **Multi-harness by design.** Only the Claude Code plugin exists today, and Open Design runs go through it. Codex comes next; Antigravity, other harnesses and Claude Design follow after the MVP ([docs/ROADMAP.md](docs/ROADMAP.md)). Keep the event types in `src/shared/types.ts` free of Claude-Code-only concepts.
 
 ## Layout
@@ -140,6 +140,16 @@ Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main
 - **Doctor.** `golla doctor` prints whether the server answers `GET /api/health`, each harness's last hook version ("plugin outdated" for missing or older), p50/p95 latency and the latest failures from the health log, and the data directory.
 
 Open Design runs the same plugin. When the hook's env has `OD_PROJECT_ID`, the session is tagged `open-design` and named after that project id. The hook reads no other `OD_*` value, because the env also holds a tool token.
+
+## Notifications (opt-in)
+
+「알림 받기」 in the settings sheet subscribes this device to Web Push (`src/server/push.ts`, `web/src/push.ts`). It is off until the user turns it on, per device: the browser's own subscription is the state. Permission is asked only on that click.
+
+- **Keys.** The VAPID key pair is created once in `GOLLABARA_DATA/vapid.json` (mode 0600). `GET /api/push/key` returns the public key; `POST` and `DELETE /api/push/subscribe` (loopback and tailnet only, JSON) add or remove a device. Subscriptions live in the `push_subscriptions` table.
+- **Payload.** Only `{"t":"q"}` (a question) or `{"t":"r"}` (an answer to feedback), encrypted with RFC 8291 aes128gcm and signed with VAPID (RFC 8292). The service worker (`web/sw.js`) shows fixed copy, 「세션이 기다리고 있어요」 or 「피드백에 답이 왔어요」, under one tag so pings replace each other. A click focuses or opens the app.
+- **Triggers.** Every question, and the first recap after feedback was delivered to that session. Feedback claimed at Stop continues the turn, so its answer is the continuation recap, not that Stop's own recap, which may arrive after the claim. Deliveries from before the server started don't count. Muted sessions still ping, because mute lives in each browser (#79).
+- **Never blocking.** Pushes go out in the background with a 10 s timeout. A 404 or 410 from the push service drops the subscription; other failures lose only that ping.
+- **iOS.** Push reaches only the app added to the home screen; in Safari the setting says so.
 
 ## Triage (opt-in)
 

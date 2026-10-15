@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, Harness, HookSeen, IncomingEvent, IncomingImage, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, Harness, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -122,6 +122,21 @@ export class Store {
   hooks(expected?: string): HookSeen[] {
     const rows = this.db.query('SELECT harness, version, seen_at FROM hook_versions ORDER BY seen_at DESC').all() as { harness: Harness, version: string | null, seen_at: number }[]
     return rows.map(r => ({ harness: r.harness, version: r.version, seenAt: r.seen_at, outdated: hookOutdated(r.version, expected) }))
+  }
+
+  /** Adds or refreshes a device's push subscription; one row per endpoint */
+  savePushSubscription(sub: PushSubscriptionKeys, now = Date.now()): void {
+    this.db.run(`INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth`, [sub.endpoint, sub.keys.p256dh, sub.keys.auth, now])
+  }
+
+  deletePushSubscription(endpoint: string): void {
+    this.db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint])
+  }
+
+  pushSubscriptions(): PushSubscriptionKeys[] {
+    const rows = this.db.query('SELECT endpoint, p256dh, auth FROM push_subscriptions ORDER BY created_at').all() as { endpoint: string, p256dh: string, auth: string }[]
+    return rows.map(r => ({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }))
   }
 
   /** One stored message, or null */

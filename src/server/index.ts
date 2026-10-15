@@ -13,6 +13,7 @@ import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { allowRequest, listenHosts } from './listen'
 import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
+import { loadVapidKeys, Pusher, sendPush, toSubscription } from './push'
 import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
@@ -41,6 +42,10 @@ export function startServer() {
     dataDir: dataDir(),
     selfUrl: `http://127.0.0.1:${serverPort()}`,
   })
+  // Created on first use, once, in the data directory
+  let vapid: ReturnType<typeof loadVapidKeys> | null = null
+  const vapidKeys = () => vapid ??= loadVapidKeys(dataDir())
+  const pusher = new Pusher(store, async (sub, payload) => sendPush(sub, payload, await vapidKeys()))
 
   /**
    * Records which hook version a harness runs. Hooks from before the handshake send no headers; their
@@ -82,6 +87,8 @@ export function startServer() {
           publish({ type: created ? 'message' : 'message-upsert', message })
         // Queued, never awaited: the model never holds up ingestion
         triager.onIngest(event, { session, message, created })
+        // Background too: a slow push service never holds up ingestion
+        pusher.onIngest(event)
         return Response.json({ ok: true, id: message?.id ?? null })
       }
 
@@ -103,6 +110,28 @@ export function startServer() {
           publish({ type: 'settings', settings })
           return Response.json(settings)
         }
+      }
+
+      // Web Push: the device asks for the key it subscribes with, then hands its subscription over
+      if (url.pathname === '/api/push/key' && req.method === 'GET')
+        return Response.json({ publicKey: (await vapidKeys()).publicKey })
+
+      if (url.pathname === '/api/push/subscribe' && (req.method === 'POST' || req.method === 'DELETE')) {
+        // Like settings: only this machine and the tailnet may add a device that hears from it
+        if (!isTrustedSource(srv.requestIP(req)?.address))
+          return new Response('forbidden', { status: 403 })
+        const body = await req.json().catch(() => null) as { endpoint?: unknown } | null
+        if (req.method === 'DELETE') {
+          if (typeof body?.endpoint !== 'string')
+            return new Response('endpoint is required', { status: 400 })
+          store.deletePushSubscription(body.endpoint)
+          return Response.json({ ok: true })
+        }
+        const sub = toSubscription(body)
+        if (!sub)
+          return new Response('a push subscription is required', { status: 400 })
+        store.savePushSubscription(sub)
+        return Response.json({ ok: true })
       }
 
       if (url.pathname.startsWith('/api/feedback') && req.method === 'POST') {
@@ -247,6 +276,8 @@ export function startServer() {
   }
   function publishFeedback(status: 'queued' | 'delivered', feedback: Feedback) {
     publish({ type: 'feedback', status, feedback })
+    if (status === 'delivered')
+      pusher.onDelivered(feedback.sessionId, feedback.deliveredVia!)
   }
   function publishSession(id: string) {
     const session = store.session(id)
