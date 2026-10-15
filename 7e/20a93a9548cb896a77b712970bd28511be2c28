@@ -1,0 +1,100 @@
+web/src/components/banner/StateView.vue
+  s_b7f30c572db9a8::t_eb5afc30fe6cc6 44-46
+  s_b7f30c572db9a8::t_b426f7dd495d6e 32-33
+web/src/components/shell/CopyCommand.vue
+  s_b7f30c572db9a8::t_4a7be02d525c64 1-67
+web/src/components/shell/EmptyState.gallery.vue
+  s_b7f30c572db9a8::t_e0935e710d1767 5,9,12,15,18-30,37
+web/src/components/chat/QueueTray.vue
+  s_b7f30c572db9a8::t_88767a9a795a0c 8-13,15-17,21,26,36,45,49-57
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_decc8fab54d46f 75-90,93,100-117
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_a73f616ad0c7dc 3,34-43
+  s_b7f30c572db9a8::t_13c889f46bd069 44
+src/server/store.ts
+  s_b7f30c572db9a8::t_a3a976a90c95e6 139-141,145-147,178-179,182,187-196,204,209-210
+web/src/components/shell/gallery-samples.ts
+  s_b7f30c572db9a8::t_cf7b63de844582 1-37
+web/src/App.vue
+  s_b7f30c572db9a8::t_9cf2ac7cad6d32 25,32,241-243
+  s_b7f30c572db9a8::t_b5cf8034435288 22,145-146,151-160,272,274,277,282
+src/server/index.ts
+  s_b7f30c572db9a8::t_819d65b534f745 199-208
+web/src/components/chat/Timeline.gallery.vue
+  s_b7f30c572db9a8::t_9a7bbd4a122aea 34
+src/server/migrations.test.ts
+  s_b7f30c572db9a8::t_a3a976a90c95e6 88
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_a6dcea140a2df9 94-99
+web/src/components/shell/HarnessGuide.vue
+  s_b7f30c572db9a8::t_0cbc093954d250 1-13,16-22,24-37,39-108,111-121
+  s_b7f30c572db9a8::t_71631cbdeb3ae3 14-15
+  s_b7f30c572db9a8::t_7579d318a98951 38
+  s_b7f30c572db9a8::t_6ad43eb6be127c 23
+  s_b7f30c572db9a8::t_70e644ce4220dc 109-110
+web/src/firstrun.ts
+  s_b7f30c572db9a8::t_07e9aa6b2f0458 112
+  s_b7f30c572db9a8::t_567c2e07d8598b 7-8
+  s_b7f30c572db9a8::t_146323446c779f 1-6,9-111,113-134
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_07e9aa6b2f0458 128
+  s_b7f30c572db9a8::t_0d2094e9726a91 112-127,129-131
+web/src/components/shell/EmptyState.vue
+  s_b7f30c572db9a8::t_f34576610dccf9 158-159
+  s_b7f30c572db9a8::t_a15f5129c1e10f 2-8,10-16,18-21,23-25,37,40-47,50,53-54,57-67,70,73-74
+web/src/feedback.ts
+  s_b7f30c572db9a8::t_88767a9a795a0c 6,189-224
+  s_b7f30c572db9a8::t_dcce0107f9bb74 28-37
+  s_b7f30c572db9a8::t_ac0c4c392d097b 225
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_ddb7319fdf2c71 35
+  s_b7f30c572db9a8::t_3d6fe3b6b7b60d 341-344
+  s_b7f30c572db9a8::t_628baaf93f65e1 4
+  s_b7f30c572db9a8::t_eded3be55d4421 63-64
+  s_b7f30c572db9a8::t_dcce0107f9bb74 12,109
+  s_b7f30c572db9a8::t_c921fc279eb240 13,34,90,94-100,108,173-180,182-185,424
+web/src/firstrun.test.ts
+  s_b7f30c572db9a8::t_9161a4da2a8229 1-9,13-75
+  s_b7f30c572db9a8::t_fdf62ff317bc3a 10-12
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_e76f6773a2f8ca 9
+  s_b7f30c572db9a8::t_9b23e96c1d1e0f 19
+  s_b7f30c572db9a8::t_4ae74cc69e9a75 216-218
+  s_b7f30c572db9a8::t_fb3ec83858de42 36-37
+web/src/components/chat/QueueTray.gallery.vue
+  s_b7f30c572db9a8::t_9a7bbd4a122aea 21,37-38,53-54,63,72-89,105,120,132,144
+web/src/components/shell/HarnessGuide.gallery.vue
+  s_b7f30c572db9a8::t_c43530563e282d 1-81
+web/src/components/shell/StreamPanel.gallery.vue
+  s_b7f30c572db9a8::t_aac8a1975c977f 5
+  s_b7f30c572db9a8::t_0f4cdf88984f22 42-49,53-54
+AGENTS.md
+  s_b7f30c572db9a8::t_fcf3bdbea67a18 80,86,90,133
+  s_b7f30c572db9a8::t_4bb1cf0df9e2b2 134
+DESIGN.md
+  s_b7f30c572db9a8::t_fcf3bdbea67a18 327,371-376,416
+web/src/feedback.test.ts
+  s_b7f30c572db9a8::t_a73f616ad0c7dc 106-115,124-142
+  s_b7f30c572db9a8::t_dcce0107f9bb74 5,116-123
+  s_b7f30c572db9a8::t_00094f3bf80556 143
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_59af60f950a3ee 237-248,256,258,261-262
+  s_b7f30c572db9a8::t_dc66ecfd61ead8 249-255,257,259-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e20a93a9548cb896a77b712970bd28511be2c28",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
