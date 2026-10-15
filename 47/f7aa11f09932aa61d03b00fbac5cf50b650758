@@ -1,0 +1,28 @@
+web/src/components/chat/SessionMessage.gallery.vue
+  s_b7f30c572db9a8::t_d560d8e07c8601 14
+AGENTS.md
+  s_b7f30c572db9a8::t_d560d8e07c8601 63
+  s_b7f30c572db9a8::t_15f49d089eadb7 59-62,64-65
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_5cee5e5fbf7618 217,219
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_5cee5e5fbf7618 123
+src/hook/map.ts
+  s_b7f30c572db9a8::t_d560d8e07c8601 183-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47f7aa11f09932aa61d03b00fbac5cf50b650758",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
