@@ -6,6 +6,9 @@
 // The count is what actually arrived, never shortened to 「99+」. A plain button: count
 // changes are not announced, since the screen stays open all day. After the click the
 // parent scrolls to the latest and moves focus to the track or the feed.
+//
+// With no count it reads 「최신으로」: the way back from a day the reader jumped to, or from
+// far back in a long history, when nothing new has arrived (#77).
 defineProps<{
   count: number
   /** `artifact` sits on the stream (→), `message` on the chat (↓) */
@@ -16,7 +19,7 @@ defineEmits<{ click: [] }>()
 
 <template>
   <button class="new-pill" :class="kind" type="button" @click="$emit('click')">
-    {{ kind === 'artifact' ? `새 산출물 ${count} →` : `새 메시지 ${count} ↓` }}
+    {{ !count ? `최신으로 ${kind === 'artifact' ? '→' : '↓'}` : kind === 'artifact' ? `새 산출물 ${count} →` : `새 메시지 ${count} ↓` }}
   </button>
 </template>
 

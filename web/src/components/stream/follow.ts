@@ -19,6 +19,9 @@ export const FOLLOW_TEXT: Record<Follow, string> = {
   paused: '이전 산출물 · 자동 따라가기 일시 정지',
 }
 
+/** Footer text while the rail shows a run the reader jumped to, which follows nothing until 「최신으로」 */
+export const HISTORY_TEXT = '지난 기록 · 최신으로 가면 다시 따라가요'
+
 /**
  * Where following the latest leaves the rail: its right end, except that what comes after the
  * latest cell (a 「참고 이미지」 fold) never pushes that cell off the anchor. `latest` is the

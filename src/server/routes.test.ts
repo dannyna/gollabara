@@ -1,5 +1,5 @@
 import type { Server } from 'bun'
-import type { Session } from '../shared/types'
+import type { HistoryDay, HistoryPage, Session } from '../shared/types'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -89,6 +89,21 @@ describe('deleting a session', () => {
     expect(frames.find(f => f.type === 'deleted')).toMatchObject({ sessionIds: ['gone'], feedbackIds: [] })
     expect((await routes()).gone).toBeUndefined()
     ws.close()
+  })
+})
+
+describe('history', () => {
+  test('pages and days answer with their cursor; a bad parameter falls back instead of failing', async () => {
+    const say = (text: string) => fetch(`${url}/api/events`, { method: 'POST', headers: json, body: JSON.stringify({ kind: 'recap', session: { id: 'hist', name: 'hist', harness: 'claude-code', cwd: '/a' }, text }) })
+    const ids = [] as number[]
+    for (const text of ['one', 'two', 'three']) ids.push((await (await say(text)).json() as { id: number }).id)
+    const latest = await (await fetch(`${url}/api/history?limit=2`)).json() as HistoryPage
+    expect(latest.messages.map(m => m.id)).toEqual(ids.slice(1))
+    expect([latest.older, latest.newer]).toEqual([true, false])
+    const older = await (await fetch(`${url}/api/history?before=${ids[1]}&limit=nope`)).json() as HistoryPage
+    expect(older.messages.at(-1)!.id).toBe(ids[0])
+    const days = await (await fetch(`${url}/api/history/days?tz=540&session=hist`)).json() as HistoryDay[]
+    expect(days).toEqual([{ start: expect.any(Number), count: 3 }])
   })
 })
 

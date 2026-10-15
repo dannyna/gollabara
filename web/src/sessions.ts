@@ -33,6 +33,12 @@ export function toSessionRows(sessions: Session[], messages: StreamMessage[], mu
   return [...rows.values()].sort((a, b) => b.lastSeenAt - a.lastSeenAt)
 }
 
+/** Rows whose name or branch holds `query`, ignoring case and the spaces around it; every row for an empty one */
+export function filterSessions(rows: SessionRow[], query: string): SessionRow[] {
+  const q = query.trim().toLowerCase()
+  return q ? rows.filter(r => r.session.toLowerCase().includes(q) || !!r.branch?.toLowerCase().includes(q)) : rows
+}
+
 /** Ids of the sessions that ended, so every surface can fade them */
 export function endedSessions(sessions: Session[]): ReadonlySet<string> {
   return new Set(sessions.filter(s => s.endedAt != null).map(s => s.id))

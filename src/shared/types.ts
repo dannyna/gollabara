@@ -217,9 +217,30 @@ export interface PushPayload {
   t: 'q' | 'r'
 }
 
+/**
+ * `GET /api/history`: a run of messages with no gap, oldest first, with the verdicts on them and the
+ * feedback sent in the time they span. `older` and `newer` say whether more messages lie past either end.
+ */
+export interface HistoryPage {
+  messages: StreamMessage[]
+  triage: Triage[]
+  feedback: Feedback[]
+  older: boolean
+  newer: boolean
+}
+
+/** `GET /api/history/days`: one local day that holds messages */
+export interface HistoryDay {
+  /** Local midnight in ms, in the UTC offset the view asked with */
+  start: number
+  /** Messages stored that day */
+  count: number
+}
+
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
-  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings }
+  // `older`: messages exist before the first one sent (missing from servers before #77)
+  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings, older?: boolean }
     | { type: 'message', message: StreamMessage }
     // An existing message changed in place: same id, new content
     | { type: 'message-upsert', message: StreamMessage }

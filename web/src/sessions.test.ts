@@ -1,6 +1,6 @@
 import type { Session, StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { endedSessions, goneMutes, inScope, muteChanges, toSessionRows } from './sessions'
+import { endedSessions, filterSessions, goneMutes, inScope, muteChanges, toSessionRows } from './sessions'
 
 const msg = (id: number, sessionId: string, at: number): StreamMessage => ({ id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn' })
 const session = (id: string, lastSeenAt: number): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt })
@@ -25,6 +25,14 @@ describe('toSessionRows', () => {
       { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true, ended: false },
       { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true },
     ])
+  })
+
+  it('filters rows by name or branch, ignoring case, and keeps them all for an empty filter', () => {
+    const rows = toSessionRows([session('gollabara · feat/history', 3), session('Piuda', 2), session('api · main', 1)], [], new Set())
+    expect(filterSessions(rows, ' PIU ').map(r => r.session)).toEqual(['Piuda'])
+    expect(filterSessions(rows, 'history').map(r => r.session)).toEqual(['gollabara'])
+    expect(filterSessions(rows, 'zzz')).toEqual([])
+    expect(filterSessions(rows, '  ')).toBe(rows)
   })
 
   it('collects the ended sessions', () => {

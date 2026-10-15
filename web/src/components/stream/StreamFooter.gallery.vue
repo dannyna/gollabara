@@ -24,6 +24,11 @@ import StreamFooter from './StreamFooter.vue'
       <StreamFooter follow="paused" pinned />
     </div>
   </GalleryCase>
+  <GalleryCase title="지난 날짜로 이동 · 「최신으로」 전까지 따라가지 않음">
+    <div class="frame">
+      <StreamFooter follow="paused" history />
+    </div>
+  </GalleryCase>
 </template>
 
 <style scoped>
