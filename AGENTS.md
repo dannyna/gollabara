@@ -4,7 +4,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Invariants
 
-1. **Observer, not mediator.** gollabara never originates messages or questions and never asks a session for approval. Mirror only the session's own questions (`AskUserQuestion`). The one thing it sends to a session is feedback the user writes, delivered as-is. Answering `AskUserQuestion` and pausing a session remain out of scope. No dedicated `post` / `ask` tools for agents to decide what to send. Triage only decides which chat lines the user sees, and with which state; it never writes to a session, so only what the user sends reaches one.
+1. **Observer, not mediator.** gollabara never originates messages or questions and never asks a session for approval. Mirror only the session's own questions (`AskUserQuestion`). The one thing it sends to a session is feedback the user writes, delivered as-is. Answering `AskUserQuestion` and pausing a session remain out of scope. No dedicated `post` / `ask` tools for agents to decide what to send: the plugin's channel MCP server (`src/channel/`) declares only the `claude/channel` capability and exposes no tools. Triage only decides which chat lines the user sees, and with which state; it never writes to a session, so only what the user sends reaches one.
 2. **The hook never blocks a session.** 1.5 s timeout, swallow every error, always exit 0. If the server is down, exit quietly.
 3. **Only artifacts flow.** Never mirror full transcripts. The units are images, one-line recaps, and questions.
 4. **Never judge artifacts.** The server and the UI show received images as-is. No scoring, server-side screenshots, or diffing of images. A perceptual hash (dHash) is used only to group near-identical re-captures of one file (`src/shared/stacks.ts`); it is never shown and never used to judge an image. Triage of chat text (whether a recap line is shown, and its state) is allowed, opt-in, and off by default. Previewing HTML artifacts is a possible future capability, not a prohibition; it is out of the current scope.
@@ -13,16 +13,17 @@ A guide for agents (and people) working in this repository: product invariants, 
 
 ## Layout
 
-| Path          | Role                                                                      |
-| ------------- | ------------------------------------------------------------------------- |
-| `src/cli.ts`  | `golla` CLI entry point (`serve`, `hook`)                                 |
-| `src/hook/`   | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`     |
-| `src/server/` | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out        |
-| `src/shared/` | Types and config shared by the server, the hook, and the UI               |
-| `web/`        | Viewer UI (Vue 3 + Vite)                                                  |
-| `plugin/`     | Claude Code plugin. `bin/hook.js` is a build output, but it is committed  |
-| `docs/`       | Architecture SVGs (from the Open Design `gollabara-architecture` project) |
-| `spike/`      | Early hook-input capture experiments, reference only                      |
+| Path           | Role                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| `src/cli.ts`   | `golla` CLI entry point (`serve`, `hook`)                                                        |
+| `src/hook/`    | Hook input → stream events. `map.ts` is pure; I/O lives in `index.ts`                            |
+| `src/channel/` | Channel MCP server that pushes feedback into idle sessions. `protocol.ts` is pure                |
+| `src/server/`  | `golla serve`: SQLite, hash-named image storage, WebSocket fan-out                               |
+| `src/shared/`  | Types and config shared by the server, the hook, and the UI                                      |
+| `web/`         | Viewer UI (Vue 3 + Vite)                                                                         |
+| `plugin/`      | Claude Code plugin. `bin/hook.js` and `bin/channel.js` are build outputs, but they are committed |
+| `docs/`        | Architecture SVGs (from the Open Design `gollabara-architecture` project)                        |
+| `spike/`       | Early hook-input capture experiments, reference only                                             |
 
 ## Commands
 
@@ -30,7 +31,7 @@ Use [bun](https://bun.sh) 1.3+ only; never npm, pnpm, or yarn.
 
 ```bash
 bun install          # also installs the husky git hooks
-bun run build        # bundle the hook + build the web UI
+bun run build        # bundle the hook and the channel server + build the web UI
 bun run dev          # server, restarts on file change
 bun run dev:web      # web dev server (4748, proxies to 4747)
 bun test             # hook mapping tests
@@ -41,34 +42,48 @@ bun run lint:fix
 
 `bun install` sets up husky git hooks: pre-commit runs lint-staged, and commit-msg runs commitlint.
 
-After editing `src/hook/` or `src/shared/`, rebuild `plugin/bin/hook.js` with `bun run build:hook` and commit it. The plugin is copied into a cache and runs from this file alone.
+After editing `src/hook/`, `src/channel/` or `src/shared/`, rebuild `plugin/bin/hook.js` and `plugin/bin/channel.js` with `bun run build:hook` and `bun run build:channel`, and commit them. The plugin is copied into a cache and runs from these files alone.
 
-CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, then checks that the committed `plugin/bin/hook.js` matches the source.
+CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → web build, then checks that the committed `plugin/bin/hook.js` and `plugin/bin/channel.js` match the source.
 
 ## Configuration
 
-| Variable         | Default                 | Description                                                 |
-| ---------------- | ----------------------- | ----------------------------------------------------------- |
-| `GOLLABARA_PORT` | `4747`                  | Server port                                                 |
-| `GOLLABARA_URL`  | `http://127.0.0.1:4747` | Server the hook posts events to                             |
-| `GOLLABARA_DATA` | `~/.gollabara/data`     | Where messages and images are stored                        |
-| `GOLLABARA_HOOK` | unset                   | `off`: the hook exits at once, posting and claiming nothing |
+| Variable         | Default                 | Description                                                                                  |
+| ---------------- | ----------------------- | -------------------------------------------------------------------------------------------- |
+| `GOLLABARA_PORT` | `4747`                  | Server port                                                                                  |
+| `GOLLABARA_URL`  | `http://127.0.0.1:4747` | Server the hook posts events to and the channel server polls                                 |
+| `GOLLABARA_DATA` | `~/.gollabara/data`     | Where messages and images are stored                                                         |
+| `GOLLABARA_HOOK` | unset                   | `off`: the hook exits at once and the channel server stays off, posting and claiming nothing |
 
 ## Capture (Claude Code)
 
-| hook                             | What lands in the stream                                                              | Feedback delivered to the session               |
-| -------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `SessionStart`                   | Stored as a session record (`GET /api/sessions`), not a message                       | —                                               |
-| `PostToolUse` (all tools)        | Images in tool results, including MCP results (e.g. Open Design), with their `source` | `additionalContext` next to the tool result     |
-| `Stop`                           | First line of the turn's last reply, in full (recap), only for turns a human started  | `additionalContext`, which continues the turn   |
-| `PreToolUse` (`AskUserQuestion`) | The session's own question and options                                                | —                                               |
-| `UserPromptSubmit`               | Nothing                                                                               | `additionalContext` alongside the user's prompt |
+| hook                                 | What lands in the stream                                                               | Feedback delivered to the session                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `SessionStart`                       | Stored as a session record (`GET /api/sessions`), not a message, with the `claude` pid | —                                                                      |
+| `PostToolUse` (all tools)            | Images in tool results, including MCP results (e.g. Open Design), with their `source`  | `additionalContext` next to the tool result                            |
+| `Stop`                               | First line of the turn's last reply, in full (recap), only for turns a human started   | `additionalContext`, which continues the turn                          |
+| `PreToolUse` (`AskUserQuestion`)     | The session's own question and options                                                 | —                                                                      |
+| `UserPromptSubmit`                   | Nothing                                                                                | `additionalContext` alongside the user's prompt                        |
+| Channel (`plugin:gollabara:channel`) | Nothing                                                                                | `notifications/claude/channel`, which starts a turn in an idle session |
 
 An image's `source` is the file the tool names (`file_path`, `path`, or `filename` in the tool input), set only when the result holds exactly one image. The server stores it with a dHash in the message body. The stream hides earlier captures of the same screen behind the newest: identical bytes, or the same `source` and size within `DHASH_MAX_DISTANCE` bits of the newest capture.
 
 Feedback is queued with `POST /api/feedback`, which accepts only loopback and tailnet sources. On the three hooks above, the hook claims the session's pending feedback with one `POST /api/feedback/claim` in parallel with its event, inside the same 1.5 s budget. The claim marks the items delivered atomically, so a Stop that continued the turn for feedback lets the re-entered Stop (`stop_hook_active`) end the turn. The hook prints one JSON object on stdout only when it claimed something, and nothing otherwise. Feedback about an image carries the stored file's absolute path, so the session can open it.
 
 To tell who started a turn, Stop reads the tail of `transcript_path` and takes the last main-thread `user` entry with a `turnOrigin`. Only the entry that opens a turn has one. The tail starts at 256 KB and widens to 1, 4, then 8 MB until it holds an opener, because turns that Read screenshots can put megabytes after it. `human` and `sdk` count as the user. `task_notification` (Monitor events and background tasks), `peer`, `system` and `scheduled` post no recap, unless gollabara feedback was delivered after the opener (a `hook_additional_context` attachment starting with `[gollabara] Feedback from the user`): the user waits on that reply. Feedback claiming is the same either way. When the transcript can't be read, the opener isn't in the tail, or `turnOrigin` has another value, the recap is posted as before. A continuation Stop (`stop_hook_active`) always posts its recap.
+
+### Channel delivery (research preview)
+
+An idle session (its turn ended, waiting for input) runs no hook, so hook delivery waits for the user to type in its terminal. The plugin also ships a stdio MCP server, `plugin/bin/channel.js`, declared as a [Claude Code channel](https://code.claude.com/docs/en/channels) in `plugin/.claude-plugin/plugin.json`. A channel event starts a turn in an idle session; one that arrives while the session is busy is delivered on its next turn.
+
+- **Launch flag.** Custom channels load only with `claude --dangerously-load-development-channels plugin:gollabara@gollabara`, after a confirmation dialog. Claude Code still spawns the server in every session and silently drops the events of an unregistered channel, so the server reads its parent's command line and stays off unless this plugin is named after `--channels` or `--dangerously-load-development-channels`. Off, it only answers the MCP handshake, so plain sessions behave as before and show no prompt.
+- **Preview limits.** `claude -p` and the Agent SDK ignore the flag, so headless runs, including Open Design runs, keep hook delivery. Team and Enterprise organizations must enable channels (`channelsEnabled`).
+- **Protocol.** The server hand-rolls the MCP slice it needs (`src/channel/protocol.ts`): `initialize` with only `capabilities.experimental['claude/channel']`, `ping`, and `-32601` for everything else, including the `server/discover` probe for revision 2026-07-28. Claude Code does not register a channel server that negotiates that revision. `MCP_PROTOCOL_NEGOTIATION=legacy` is set in the server's env as the docs advise, but that variable is read by Claude Code, not the server, so the refusal is what keeps the earlier handshake.
+- **Linking.** Claude Code spawns the hook and the channel server as direct children, so both see the `claude` pid as their parent. SessionStart reports `process.ppid` with the session record; the latest SessionStart owns a pid, so `/clear` and resume move the link to the new session. The server long-polls `GET /api/channel/wait?pid=<its ppid>` (loopback and tailnet only). The endpoint answers 404 until SessionStart has linked the pid, and the server retries every 2 s.
+- **Exactly once.** The endpoint claims with the same atomic claim as `POST /api/feedback/claim` (`deliveredVia: 'channel'`), at once and again when `POST /api/feedback` wakes it, or returns `[]` after 25 s. Whichever path claims first delivers an item. The server sends the claimed items as one notification whose `content` is the same text the hook adds (`src/shared/feedback.ts`), with `meta: { from: 'gollabara' }` (`source` is set by Claude Code to the server name).
+- **Liveness.** A session with an open poll, or one that ended within 30 s, has `channel: true` in `GET /api/sessions` and the WebSocket session frames. The queue tray then says 「바로 전달돼요」 instead of 「세션이 다음 작업을 할 때 전달돼요」.
+- **Recap.** A channel turn opens with `turnOrigin: "peer"` and `origin.kind: "channel"`. When its content carries `[gollabara] Feedback from the user`, Stop counts it as the user's turn and posts the recap; another channel's turn stays a wake-up.
+- **Lifecycle.** The server exits when stdin closes, stdout breaks, or its parent changes, so an orphan never claims feedback. If the gollabara server is down it retries every 10 s, quietly.
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
 

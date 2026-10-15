@@ -1,7 +1,7 @@
-import type { Feedback } from '../../src/shared/types'
+import type { Feedback, Session } from '../../src/shared/types'
 import type { PendingSend } from './feedback'
 import { describe, expect, it } from 'bun:test'
-import { failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, resolveTarget, toMyEntries } from './feedback'
+import { failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, toMyEntries } from './feedback'
 
 function fb(id: number, sessionId: string, createdAt: number, deliveredAt?: number): Feedback {
   return {
@@ -94,5 +94,16 @@ describe('postFeedback', () => {
       throw new TypeError('offline')
     }) as unknown as typeof fetch
     expect(failureReason(await postFeedback({ sessionId: 'a', text: 'hi' }, fetcher).catch(e => e))).toBeUndefined()
+  })
+})
+
+describe('queueNote', () => {
+  const s = (id: string, channel?: boolean): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt: 0, ...(channel ? { channel } : {}) })
+
+  it('says 「바로」 only when every waiting session has a live channel', () => {
+    const sessions = [s('a', true), s('b')]
+    expect(queueNote(['a'], sessions)).toBe('바로 전달돼요')
+    expect(queueNote(['a', 'b'], sessions)).toBe('세션이 다음 작업을 할 때 전달돼요')
+    expect(queueNote(['gone'], sessions)).toBe('세션이 다음 작업을 할 때 전달돼요')
   })
 })

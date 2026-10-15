@@ -68,6 +68,8 @@ bun src/cli.ts serve                       # http://localhost:4747
 claude plugin marketplace add ./ && claude plugin install gollabara@gollabara
 ```
 
+쉬고 있는 세션에도 피드백이 바로 닿게 하려면 `claude --dangerously-load-development-channels plugin:gollabara@gollabara`로 시작하세요(Claude Code 채널 리서치 프리뷰).
+
 개발과 설정은 [AGENTS.md](AGENTS.md)를 참고하세요.
 
 ## 라이선스

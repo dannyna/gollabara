@@ -30,6 +30,10 @@ export async function runHook(): Promise<void> {
     // Only a first Stop needs to know who started the turn
     const opener = input.hook_event_name === 'Stop' && !input.stop_hook_active ? stopTurnOpener(input.transcript_path) : 'unknown'
     const event = mapHook(input, session, opener)
+    // Claude Code runs the hook command as its direct child (a one-command `sh -c` execs it), and it
+    // spawns the channel server the same way, so both see the claude pid as their parent
+    if (event?.kind === 'session')
+      event.pid = process.ppid
     const via = feedbackVia(input.hook_event_name)
     // Event and claim share one budget and run side by side; most tool calls only claim
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS)

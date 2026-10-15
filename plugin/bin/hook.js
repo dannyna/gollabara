@@ -18,10 +18,24 @@ function serverUrl() {
   return process.env.GOLLABARA_URL ?? `http://127.0.0.1:${serverPort()}`;
 }
 
+// src/shared/feedback.ts
+var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
+function feedbackLine(item) {
+  const about = item.image ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ""}` : "";
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
+}
+function feedbackText(items) {
+  return items.map(feedbackLine).join(`
+`);
+}
+function clock(at) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 // src/hook/map.ts
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
-var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
@@ -53,6 +67,8 @@ function turnOpener(tail) {
       return "human";
     if (!opens || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
       continue;
+    if (isChannelFeedback(entry))
+      return "human";
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
   }
   return "unknown";
@@ -60,6 +76,13 @@ function turnOpener(tail) {
 function isFeedbackDelivery(entry) {
   const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
   return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
+}
+function isChannelFeedback(entry) {
+  if (entry?.origin?.kind !== "channel")
+    return false;
+  const content = entry.message?.content;
+  const texts = typeof content === "string" ? [content] : Array.isArray(content) ? content.map((c) => c?.text) : [];
+  return texts.some((t) => typeof t === "string" && t.includes(FEEDBACK_PREFIX));
 }
 function mapHook(input, session, opener = "unknown") {
   switch (input.hook_event_name) {
@@ -103,17 +126,8 @@ function feedbackVia(hookEventName) {
 function feedbackOutput(hookEventName, items) {
   if (items.length === 0 || !feedbackVia(hookEventName))
     return null;
-  const text = items.map(feedbackLine).join(`
-`);
+  const text = feedbackText(items);
   return { hookSpecificOutput: { hookEventName, additionalContext: text } };
-}
-function feedbackLine(item) {
-  const about = item.image ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ""}` : "";
-  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
-}
-function clock(at) {
-  const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 function recapOf(message) {
   if (!message)
@@ -186,6 +200,8 @@ async function runHook() {
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch });
     const opener = input.hook_event_name === "Stop" && !input.stop_hook_active ? stopTurnOpener(input.transcript_path) : "unknown";
     const event = mapHook(input, session, opener);
+    if (event?.kind === "session")
+      event.pid = process2.ppid;
     const via = feedbackVia(input.hook_event_name);
     const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
     const post = (path, body) => fetch(`${serverUrl()}${path}`, {

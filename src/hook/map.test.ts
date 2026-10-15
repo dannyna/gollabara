@@ -176,6 +176,19 @@ describe('turn opener (real transcript tails, redacted)', () => {
     expect(turnOpener([...rest.slice(0, opener), feedback, ...rest.slice(opener)].join('\n'))).toBe('system')
   })
 
+  test('a turn a gollabara channel message opened (turnOrigin peer) posts its recap', () => {
+    const opener = turnOpener(tail('transcript-channel.jsonl'))
+    expect(opener).toBe('human')
+    expect(mapHook(stop as HookInput, session, opener)).toMatchObject({ kind: 'recap' })
+  })
+
+  test('a turn another channel opened stays a wake-up', () => {
+    const other = tail('transcript-channel.jsonl')
+      .replaceAll('plugin:gollabara:channel', 'plugin:telegram:telegram')
+      .replaceAll('[gollabara] Feedback from the user while you work (sent 11:02): ', '')
+    expect(turnOpener(other)).toBe('system')
+  })
+
   test('a continuation Stop keeps its recap whoever opened the turn', () => {
     expect(mapHook(odStopHookActive as HookInput, session, 'system')).toMatchObject({ kind: 'recap', continuation: true })
   })

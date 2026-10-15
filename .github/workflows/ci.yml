@@ -3,10 +3,11 @@ name: ci
 # Repo-wide CI.
 #
 # - check: on PRs, main pushes, and merge_group: bun install (frozen bun.lock) → lint (ESLint) → typecheck (vue-tsc)
-#   → test (bun test) → build:web (vite) → hook bundle drift check.
+#   → test (bun test) → build:web (vite) → hook and channel bundle drift check.
 #
-# plugin/bin/hook.js is a build output but is committed (AGENTS.md). The plugin is copied into a cache and runs
-# from this file alone, so PRs that change src/hook or src/shared without rebuilding are blocked here.
+# plugin/bin/hook.js and plugin/bin/channel.js are build outputs but are committed (AGENTS.md). The plugin is copied
+# into a cache and runs from these files alone, so PRs that change src/hook, src/channel or src/shared without
+# rebuilding are blocked here.
 # No deploy job — no secrets or OIDC needed.
 
 on:
@@ -52,11 +53,16 @@ jobs:
       - name: Build web
         run: bun run build:web
 
-      # Check that the committed hook bundle matches a fresh build from source.
-      - name: Hook bundle drift
+      # Check that the committed hook and channel bundles match a fresh build from source.
+      - name: Plugin bundle drift
         run: |
           bun run build:hook
+          bun run build:channel
           if ! git diff --exit-code plugin/bin/hook.js; then
             echo "::error file=plugin/bin/hook.js::The committed hook bundle is stale — run 'bun run build:hook' and commit plugin/bin/hook.js."
+            exit 1
+          fi
+          if ! git diff --exit-code plugin/bin/channel.js; then
+            echo "::error file=plugin/bin/channel.js::The committed channel bundle is stale — run 'bun run build:channel' and commit plugin/bin/channel.js."
             exit 1
           fi

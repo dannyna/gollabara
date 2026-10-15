@@ -11,10 +11,11 @@
     "dev": "bun run --watch src/cli.ts serve",
     "dev:web": "vite --config web/vite.config.ts",
     "build:web": "vite build --config web/vite.config.ts",
-    "build": "bun run build:hook && bun run build:web",
+    "build": "bun run build:hook && bun run build:channel && bun run build:web",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "test": "bun test",
     "build:hook": "bun build src/hook/entry.ts --target=bun --outfile plugin/bin/hook.js",
+    "build:channel": "bun build src/channel/entry.ts --target=bun --outfile plugin/bin/channel.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "husky || true"
