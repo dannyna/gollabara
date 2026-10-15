@@ -31,6 +31,8 @@ export interface HookEnv {
 }
 
 const RECAP_MAX = 160
+/** Start of every feedback line, also how a delivery is recognised in the transcript */
+const FEEDBACK_PREFIX = '[gollabara] Feedback from the user'
 
 export function sessionName(cwd: string, branch?: string): string {
   const dir = cwd.split('/').filter(Boolean).pop() ?? cwd
@@ -60,26 +62,41 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup): Ses
 /**
  * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
  * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
+ * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply.
  * The first line of a tail is usually cut off and is skipped like any unparsable line.
  */
 export function turnOpener(tail: string): TurnOpener {
   const lines = tail.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]
     // Cheap filter first: screenshot turns carry multi-MB base64 lines
-    if (!lines[i].includes('"turnOrigin"'))
+    const opens = line.includes('"turnOrigin"')
+    if (!opens && !line.includes(FEEDBACK_PREFIX))
       continue
     let entry: any
     try {
-      entry = JSON.parse(lines[i])
+      entry = JSON.parse(line)
     }
     catch {
       continue
     }
-    if (entry?.type !== 'user' || entry.isSidechain || typeof entry.turnOrigin !== 'string')
+    if (entry?.isSidechain)
+      continue
+    if (isFeedbackDelivery(entry))
+      return 'human'
+    if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
       continue
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
   }
   return 'unknown'
+}
+
+/** Hook context that handed gollabara feedback to the session (PostToolUse, Stop or UserPromptSubmit) */
+function isFeedbackDelivery(entry: any): boolean {
+  const attachment = entry?.type === 'attachment' ? entry.attachment : undefined
+  return attachment?.type === 'hook_additional_context'
+    && Array.isArray(attachment.content)
+    && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
 }
 
 export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpener = 'unknown'): IncomingEvent | null {
@@ -144,7 +161,7 @@ export function feedbackLine(item: Feedback): string {
   const about = item.image
     ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ''}`
     : ''
-  return `[gollabara] Feedback from the user while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
 }
 
 function clock(at: number): string {

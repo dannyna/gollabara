@@ -132,6 +132,20 @@ describe('turn opener (real transcript tails, redacted)', () => {
     expect(mapHook(stop as HookInput, session, opener)).toBeNull()
   })
 
+  test('a Monitor-opened turn that received gollabara feedback posts its recap', () => {
+    const opener = turnOpener(tail('transcript-monitor-feedback.jsonl'))
+    expect(opener).toBe('human')
+    expect(mapHook(stop as HookInput, session, opener)).toMatchObject({ kind: 'recap' })
+  })
+
+  test('feedback delivered before the turn opened does not count', () => {
+    const lines = tail('transcript-monitor-feedback.jsonl').split('\n')
+    const feedback = lines.find(l => l.includes('hook_additional_context'))!
+    const rest = lines.filter(l => l !== feedback)
+    const opener = rest.findLastIndex(l => l.includes('"turnOrigin"'))
+    expect(turnOpener([...rest.slice(0, opener), feedback, ...rest.slice(opener)].join('\n'))).toBe('system')
+  })
+
   test('a continuation Stop keeps its recap whoever opened the turn', () => {
     expect(mapHook(odStopHookActive as HookInput, session, 'system')).toMatchObject({ kind: 'recap', continuation: true })
   })

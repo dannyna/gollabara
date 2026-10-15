@@ -22,6 +22,7 @@ function serverUrl() {
 var HUMAN_TURN_ORIGINS = new Set(["human", "sdk"]);
 var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "scheduled"]);
 var RECAP_MAX = 160;
+var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
 function sessionName(cwd, branch) {
   const dir = cwd.split("/").filter(Boolean).pop() ?? cwd;
   return branch && branch !== "main" && branch !== "master" ? `${dir} \xB7 ${branch}` : dir;
@@ -37,19 +38,29 @@ function turnOpener(tail) {
   const lines = tail.split(`
 `);
   for (let i = lines.length - 1;i >= 0; i--) {
-    if (!lines[i].includes('"turnOrigin"'))
+    const line = lines[i];
+    const opens = line.includes('"turnOrigin"');
+    if (!opens && !line.includes(FEEDBACK_PREFIX))
       continue;
     let entry;
     try {
-      entry = JSON.parse(lines[i]);
+      entry = JSON.parse(line);
     } catch {
       continue;
     }
-    if (entry?.type !== "user" || entry.isSidechain || typeof entry.turnOrigin !== "string")
+    if (entry?.isSidechain)
+      continue;
+    if (isFeedbackDelivery(entry))
+      return "human";
+    if (!opens || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
       continue;
     return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
   }
   return "unknown";
+}
+function isFeedbackDelivery(entry) {
+  const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
+  return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
 }
 function mapHook(input, session, opener = "unknown") {
   switch (input.hook_event_name) {
@@ -96,7 +107,7 @@ function feedbackOutput(hookEventName, items) {
 }
 function feedbackLine(item) {
   const about = item.image ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ""}` : "";
-  return `[gollabara] Feedback from the user while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
 }
 function clock(at) {
   const d = new Date(at);
