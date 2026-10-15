@@ -1,0 +1,21 @@
+web/src/firstrun.ts
+  s_b7f30c572db9a8::t_a18fa580941a83 95
+web/src/components/banner/StateView.vue
+  s_b7f30c572db9a8::t_80e376de454179 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a5a0c8cd43f2820f6390d909ac6cb8787b4e94b",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
