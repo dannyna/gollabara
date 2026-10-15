@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Floating action bar on an artifact cell or a session message. It shows while the
 // pointer or keyboard focus is inside the host, which carries `data-floating-host`.
-// At most three actions: cell 답장 · 멈춤 · 확대 ↗, message 답장 · 멈춤.
+// Cell: 답장 · 확대 ↗. Message: 답장.
 
 withDefaults(defineProps<{
   variant?: 'cell' | 'message'
@@ -11,9 +11,8 @@ withDefaults(defineProps<{
   viewText?: string
   /** Cell only: 답장 picks the image as the feedback target (emits `reply`) */
   reply?: boolean
-  /** Accessible names, e.g. 「히어로 B에 답장」 · 「od 세션 멈춤」 */
+  /** Accessible name, e.g. 「히어로 B에 답장」 */
   replyLabel?: string
-  pauseLabel?: string
   /** Gallery: keep it visible without hover */
   shown?: boolean
 }>(), { variant: 'cell', viewText: '확대 ↗' })
@@ -29,14 +28,6 @@ defineEmits<{ view: [], reply: [] }>()
     <!-- Replying from a message is a later track: drawn, never sent -->
     <button v-else type="button" disabled>
       답장
-    </button>
-    <!-- Pausing is a later track. On a cell it stays in the Tab order (guide 04: four
-         stops per cell), so it is aria-disabled rather than disabled. -->
-    <button v-if="variant === 'cell'" type="button" class="off" aria-disabled="true" :aria-label="pauseLabel">
-      멈춤
-    </button>
-    <button v-else type="button" disabled>
-      멈춤
     </button>
     <button v-if="variant === 'cell'" type="button" :aria-label="viewLabel" @click="$emit('view')">
       {{ viewText }}
@@ -83,14 +74,6 @@ button {
 /* Drawn inside the bar so its edge does not clip the ring (OD stream guide 04-02) */
 button:focus-visible {
   outline-offset: -2px;
-}
-.off {
-  cursor: default;
-  opacity: 0.55;
-}
-.off:hover {
-  background: none;
-  color: inherit;
 }
 .on-message button {
   min-height: 32px;

@@ -11,18 +11,18 @@ const replied = ref(0)
 </script>
 
 <template>
-  <GalleryCase title="산출물 셀 · 답장(피드백 대상으로) · 멈춤(꺼짐, 탭 정지는 남김) · 확대 ↗">
+  <GalleryCase title="산출물 셀 · 답장(피드백 대상으로) · 확대 ↗">
     <GalleryStage :height="280">
       <div class="cell">
         <span class="hit"><img :src="hero.url" alt="히어로 B 회색조 와이어 목업"></span>
         <div class="cap mono">
           od · 14:34
         </div>
-        <FloatingActions view-label="히어로 B 크게 보기" reply reply-label="히어로 B에 답장" pause-label="od 세션 멈춤" shown />
+        <FloatingActions view-label="히어로 B 크게 보기" reply reply-label="히어로 B에 답장" shown />
       </div>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="세션 메시지 · 머리줄 위로 · 767px 이하에서는 숨김 (답장과 멈춤은 꺼짐)">
+  <GalleryCase title="세션 메시지 · 머리줄 위로 · 767px 이하에서는 숨김 (답장은 꺼짐)">
     <GalleryStage :height="170">
       <article class="message">
         <div class="head">

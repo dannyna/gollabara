@@ -173,7 +173,7 @@ gollabara is a UX engineer's viewfinder for watching, from one step back, the ar
 
 The symbol is a dot inside an open viewfinder (a pair of square brackets). The frame stands for observing; the dot is the moment you pick. In the app bar the symbol sits dark on a yellow rounded square, and that yellow appears again only on what you picked and on primary actions.
 
-gollabara is an observer, not a mediator. Night Dock draws replies, question answers, `@mention`, and pause/resume. Feedback the user writes is live (#22): the composer sends it to one session, optionally about one image, and the session picks it up through the hook. **Everything else is drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
+gollabara is an observer, not a mediator. Night Dock draws replies, question answers, and `@mention`. Pausing a session is out of scope and not drawn. Feedback the user writes is live (#22): the composer sends it to one session, optionally about one image, and the session picks it up through the hook. **Everything else is drawn but disabled** (see [Scope of the current build](#scope-of-the-current-build)). Nothing in the interface pushes the user to approve or decide.
 
 **Key Characteristics:**
 
@@ -286,14 +286,14 @@ Component structure is provisional. An atomic component system comes later; toda
 
 - **Identity:** Logo symbol plus wordmark. 「다시 연결 중」 appears next to it in muted text **only** while disconnected. No image or session counts and no always-on 「구경 중」 badge.
 - **Session menu button:** A single `--bg` button in the dock showing 「전체 세션」 or the selected session's name, with a muted chevron. Hover and open state add an inset `--muted` ring. Do not split it back into a segmented filter plus a separate manage button.
-- **Session menu:** A popover titled 「표시할 세션」 with the hint 「세션을 고르거나, 잠시 멈추고 음소거할 수 있어요.」. First row is 「전체 세션」 (「음소거한 세션은 숨겨요」); then one row per session with a check mark, name, branch, state (「작업 중」, 「쉬는 중」, 「멈춤」, 「음소거」), 「멈춤」/「재개」, 「음소거」/「음소거 해제」, and mono 「마지막 활동 hh:mm」. The current row gets a `--bg` fill.
+- **Session menu:** A popover titled 「표시할 세션」 with the hint 「세션을 고르거나 음소거할 수 있어요.」. First row is 「전체 세션」 (「음소거한 세션은 숨겨요」); then one row per session with a check mark, name, branch, state (「작업 중」, 「쉬는 중」, 「음소거」), 「음소거」/「음소거 해제」, and mono 「마지막 활동 hh:mm」. The current row gets a `--bg` fill.
   - Selecting a session changes the stream scope and closes the menu.
   - Muted sessions stay listed so they can be unmuted, but they cannot be selected.
   - Muting the selected session returns the scope to 「전체 세션」.
 
 ### Artifact cell
 
-An image on `--surface` in a 12px cell with a 2px transparent border and the image shadow. Hover shows a `--muted` border and a floating action bar (「답장」, 「멈춤」, 「확대 ↗」). **Selected:** the border turns `--accent`; this is the selection outline. **Pinned:** the same selection outline plus a 24px pin badge at the face's top left (an `--ink` circle with a 2px white ring and a white pin, so its edge reads on light and dark captures) and a pin before the caption's sequence number, which turns `--fg`. Yellow stays the outline's alone. Clicking a cell selects and pins it; clicking the pinned cell unpins it. The viewer opens from 「확대 ↗」 or a chat thumbnail, no longer from clicking a selected cell.
+An image on `--surface` in a 12px cell with a 2px transparent border and the image shadow. Hover shows a `--muted` border and a floating action bar (「답장」, 「확대 ↗」). **Selected:** the border turns `--accent`; this is the selection outline. **Pinned:** the same selection outline plus a 24px pin badge at the face's top left (an `--ink` circle with a 2px white ring and a white pin, so its edge reads on light and dark captures) and a pin before the caption's sequence number, which turns `--fg`. Yellow stays the outline's alone. Clicking a cell selects and pins it; clicking the pinned cell unpins it. The viewer opens from 「확대 ↗」 or a chat thumbnail, no longer from clicking a selected cell.
 
 ### Chat message and thumbnails
 
@@ -353,7 +353,6 @@ Before anything arrives the surfaces give way to a centered setup guide: a muted
 | Quote-reply        | 「답장」 on a chat message, or swipe a message right on mobile, fills the reply context in the composer.                                                                                                                                               | **Drawn, disabled**      |
 | Answer a question  | Pick a choice or 「직접 답하기」. A question already answered in the terminal shows 「터미널에서 답함」 and blocks a second answer.                                                                                                                    | **Drawn, disabled**      |
 | `@mention`         | Typing `@` or pressing 「@ 세션」 opens the session list; arrow keys move, Enter picks. Enter sends and Shift+Enter breaks a line on desktop.                                                                                                          | Live                     |
-| Pause / resume     | 「멈춤」/「재개」 in the session menu, on cells, and on messages.                                                                                                                                                                                      | **Drawn, disabled**      |
 | Mute               | 「음소거」 hides a session's artifacts and messages and adds a system line.                                                                                                                                                                            | Live, client-side filter |
 | Triage             | With 「대화 정리」 on, lines the model hides leave the chat; 「숨긴 메시지 n」 shows them dimmed.                                                                                                                                                      | Live, opt-in             |
 | Session scope      | Pick 「전체 세션」 or one session in the menu.                                                                                                                                                                                                         | Live                     |
@@ -397,7 +396,7 @@ On every state: no horizontal page scroll on mobile, visible focus, and text and
 - **Do** set times, sizes, counts, and sequence numbers in IBM Plex Mono.
 - **Do** let the original ratio set image width, uncropped.
 - **Do** separate with `--bg` and `--surface` before reaching for a shadow.
-- **Do** draw quote-reply, answers, and pause/resume disabled until they ship; feedback and `@mention` are live.
+- **Do** draw quote-reply and answers disabled until they ship; feedback and `@mention` are live. Pausing a session is out of scope (invariant 1), so it is not drawn at all.
 
 ### Don't:
 

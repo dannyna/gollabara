@@ -48,7 +48,7 @@ function mute(id: string) {
       </AppBar>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="연결 끊김 · 멈춤은 꺼진 채, 범위와 음소거는 그대로">
+  <GalleryCase title="연결 끊김 · 범위와 음소거는 그대로">
     <GalleryStage :height="760">
       <AppBar offline sessions-open>
         <template #sessions>
