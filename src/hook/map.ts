@@ -107,6 +107,10 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       const images = extractImages(input.tool_response)
       if (images.length === 0)
         return null
+      // One path names one image; a multi-page read shares a path across different pages
+      const source = images.length === 1 ? imageSource(input.tool_input) : undefined
+      if (source)
+        images[0]!.source = source
       return { kind: 'image', session, toolName: input.tool_name ?? '', images }
     }
     case 'PreToolUse': {
@@ -218,6 +222,19 @@ export function extractImages(response: unknown): IncomingImage[] {
   }
   visit(response, 0)
   return out
+}
+
+/**
+ * The file a tool says the image came from. Read takes `file_path`; screenshot tools
+ * (e.g. Playwright MCP's `filename`) and other MCP tools name it with `path` or `filename`.
+ */
+export function imageSource(toolInput: any): string | undefined {
+  for (const key of ['file_path', 'path', 'filename']) {
+    const value = toolInput?.[key]
+    if (typeof value === 'string' && value.trim())
+      return value.trim()
+  }
+  return undefined
 }
 
 function extractQuestions(toolInput: any): Question[] {
