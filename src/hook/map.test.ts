@@ -195,6 +195,33 @@ describe('turn opener (real transcript tails, redacted)', () => {
     expect(turnOpener([...rest.slice(0, opener), feedback, ...rest.slice(opener)].join('\n'))).toBe('system')
   })
 
+  describe('a prompt the user typed into a wake-up turn', () => {
+    const queued = (attachment: object, extra: object = {}) => JSON.stringify({ type: 'attachment', isSidechain: false, attachment: { type: 'queued_command', ...attachment }, ...extra })
+    const human = queued({ prompt: 'what is this session called?', commandMode: 'prompt', origin: { kind: 'human' } })
+    const peer = tail('transcript-monitor.jsonl').replace('"turnOrigin":"task_notification"', '"turnOrigin":"peer"')
+
+    test('a peer turn the user typed into posts its recap', () => {
+      const opener = turnOpener(`${peer}\n${human}`)
+      expect(opener).toBe('human')
+      expect(mapHook(stop as HookInput, session, opener)).toMatchObject({ kind: 'recap' })
+    })
+
+    test('a queued task notification does not count', () => {
+      const notification = queued({ prompt: '<task-notification>done</task-notification>', commandMode: 'task-notification', origin: { kind: 'task-notification', producer: 'session-task' } })
+      expect(turnOpener(`${peer}\n${notification}`)).toBe('system')
+    })
+
+    test('a prompt queued before the turn opened does not count', () => {
+      const lines = peer.split('\n')
+      const opener = lines.findLastIndex(l => l.includes('"turnOrigin"'))
+      expect(turnOpener([...lines.slice(0, opener), human, ...lines.slice(opener)].join('\n'))).toBe('system')
+    })
+
+    test('a subagent\'s queued prompt does not count', () => {
+      expect(turnOpener(`${peer}\n${queued({ commandMode: 'prompt', origin: { kind: 'human' } }, { isSidechain: true })}`)).toBe('system')
+    })
+  })
+
   test('a turn gollabara\'s wake-up hook opened posts its recap as a new turn, though its Stop comes as a continuation', () => {
     const opener = turnOpener(tail('transcript-rewake.jsonl'))
     expect(opener).toBe('rewake')
