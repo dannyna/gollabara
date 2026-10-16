@@ -41,7 +41,7 @@ const props = defineProps<{
   /** The run of messages in view (useStream); without it the rail has nothing older */
   history?: HistoryState
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [], older: [] }>()
+const emit = defineEmits<{ select: [key: string], unselect: [], open: [key: string], pin: [key: string | null], sessions: [], older: [] }>()
 
 /** How close to the start of the rail a page starts loading, in px */
 const PAGE_EDGE = 400
@@ -73,11 +73,13 @@ function markUserIntent() {
 }
 /** How following resumes once a move lets go of the pin; the rail may still be on its way there */
 let unpinTo: Follow | undefined
-/** Moving the rail by hand lets go of the pin: the reader has left the cell it held */
+/** Moving the rail by hand lets go of the pin, and of the selection a click gave it: the reader has left the cell */
 function letGo(to: Follow) {
   if (!props.pinned)
     return
   unpinTo = to
+  if (props.selected === props.pinned)
+    emit('unselect')
   emit('pin', null)
 }
 /** A step pauses following up front unless it lands on the latest, so a cell arriving mid-step cannot pull the rail back */

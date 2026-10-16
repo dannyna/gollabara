@@ -20,7 +20,7 @@ onMounted(() => centered.value?.reveal(heroC, 'instant'))
     <div class="frame">
       <StreamPanel
         :artifacts="artifacts" :selected="selected" :pinned="pinned"
-        @select="selected = $event" @pin="pinned = $event"
+        @select="selected = $event" @unselect="selected = null" @pin="pinned = $event"
       />
     </div>
   </GalleryCase>

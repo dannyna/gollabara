@@ -266,7 +266,7 @@ function onThumb(key: string) {
     <main v-else-if="messages.length || sessions.length" class="workspace">
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
-        :ended="ended" :guide="guide" :history="history" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
+        :ended="ended" :guide="guide" :history="history" @select="select" @unselect="selected = null" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
         @older="loadPage"
       />
       <ChatPanel
