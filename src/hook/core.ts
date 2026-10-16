@@ -21,7 +21,7 @@ import { fromTail, readHead, TRANSCRIPT_HEAD_BYTES, TRANSCRIPT_TAIL_WINDOWS } fr
  * it and reports a failure (Codex shows that in its TUI).
  */
 export const HARD_DEADLINE_MS = 2500
-const POST_TIMEOUT_MS = 1500
+export const POST_TIMEOUT_MS = 1500
 
 /**
  * SessionEnd runs on a shorter budget. Claude Code cancels SessionEnd hooks 1.5 s after it starts them

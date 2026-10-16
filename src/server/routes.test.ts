@@ -262,7 +262,8 @@ describe('answering a question from the app', () => {
     await setAnswer('on')
     const v = await viewer()
     const abort = new AbortController()
-    const held = hold('q2', abort.signal).catch(() => null)
+    // The hold answers its headers at once, so the abort lands while the body is read
+    const held = hold('q2', abort.signal).then(r => r.text()).catch(() => null)
     await v.until(() => v.frames.some(f => f.type === 'hold' && f.questionId === 'q2'))
     abort.abort()
     await held
@@ -272,6 +273,23 @@ describe('answering a question from the app', () => {
     expect(late.status).toBe(409)
     v.ws.close()
     await setAnswer('off')
+  })
+
+  test('the decision comes back before the answer, and turning the setting off releases open holds', async () => {
+    await start('ask', 'claude-code')
+    await setAnswer('on')
+    const v = await viewer()
+    const started = Date.now()
+    const res = await hold('q3')
+    // Headers as soon as the hold starts, not when it ends
+    expect(Date.now() - started).toBeLessThan(1000)
+    await v.until(() => v.frames.some(f => f.type === 'hold' && f.questionId === 'q3'))
+    await setAnswer('off')
+    expect(await res.json()).toEqual({ hold: false })
+    await v.until(() => v.frames.some(f => f.type === 'hold' && f.questionId === 'q3' && f.until === null))
+    expect(v.frames.filter(f => f.type === 'hold' && f.questionId === 'q3').map(f => f.until === null)).toEqual([false, true])
+    expect((await post('/api/questions/answer', { sessionId: 'ask', questionId: 'q3', answers: { 'Which?': 'A' } })).status).toBe(409)
+    v.ws.close()
   })
 })
 

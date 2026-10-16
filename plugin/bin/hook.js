@@ -659,15 +659,18 @@ async function runAsk() {
     const questions = extractQuestions(input.tool_input);
     if (!questions.length)
       return;
+    const abort = new AbortController;
+    let budget = setTimeout(() => abort.abort(), POST_TIMEOUT_MS);
     const res = await fetch(`${serverUrl()}/api/questions/hold`, {
       method: "POST",
       headers: { "content-type": "application/json", [HOOK_VERSION_HEADER]: PLUGIN_VERSION, [HOOK_HARNESS_HEADER]: "claude-code" },
       body: JSON.stringify({ sessionId: input.session_id, questionId: input.tool_use_id, questions }),
-      signal: AbortSignal.timeout(HOLD_TIMEOUT_MS)
-    });
+      signal: abort.signal
+    }).finally(() => clearTimeout(budget));
     if (!res.ok)
       return;
-    const answers = heldAnswers(await res.json());
+    budget = setTimeout(() => abort.abort(), HOLD_TIMEOUT_MS);
+    const answers = heldAnswers(await res.json().finally(() => clearTimeout(budget)));
     if (answers)
       await Bun.write(Bun.stdout, JSON.stringify(askOutput(input.tool_input, answers)));
   } catch {}

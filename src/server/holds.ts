@@ -57,6 +57,13 @@ export class Holds {
     })
   }
 
+  /** Ends every open hold with null, so each hook exits and its terminal dialog appears: 「앱에서 답하기」 went off */
+  releaseAll(): void {
+    // A copy: settling deletes from the map
+    for (const live of [...this.live.values()])
+      live.settle(null)
+  }
+
   /**
    * The app's answer to a held question. Every held question needs a non-empty answer (trimmed, at most
    * ANSWER_MAX characters) and no other key; a taken answer ends the hold and goes to the hook.

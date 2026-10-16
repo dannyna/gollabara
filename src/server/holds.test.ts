@@ -42,4 +42,14 @@ describe('question holds', () => {
     expect(changes).toEqual([['q1', 1030], ['q1', null], ['q2', 1030], ['q2', null]])
     expect(h.active()).toEqual([])
   })
+
+  test('releasing ends every open hold with null', async () => {
+    const { h, changes } = holds()
+    const first = h.hold('s', 'q1', questions, new AbortController().signal)
+    const second = h.hold('t', 'q2', questions, new AbortController().signal)
+    h.releaseAll()
+    expect([await first, await second]).toEqual([null, null])
+    expect(changes).toEqual([['q1', 2000], ['q2', 2000], ['q1', null], ['q2', null]])
+    expect(h.active()).toEqual([])
+  })
 })

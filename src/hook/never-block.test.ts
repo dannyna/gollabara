@@ -246,13 +246,36 @@ describe('ask hook', () => {
     expect(bodies).toHaveLength(1)
   }, 15_000)
 
-  test('a server that never answers: the hook gives up within its hard deadline, quietly', async () => {
+  test('a server that never answers: the hook gives up within its 1.5 s request budget, quietly', async () => {
     reset('hang')
-    // The request's own timeout (ANSWER_HOLD_MS + 2 s) ends it first, inside the ANSWER_HOLD_MS + 5 s deadline.
-    // Slow on purpose: a shorter hold for tests would leave the shipped values untested
     const run = await hook(ask, { mode: 'ask' })
     expect({ code: run.code, stdout: run.stdout }).toEqual({ code: 0, stdout: '' })
-    expect(run.ms).toBeGreaterThan(61_000)
-    expect(run.ms).toBeLessThan(66_000)
-  }, 75_000)
+    expect(run.ms).toBeLessThan(2500)
+  }, 10_000)
+
+  test('a hold the server started may answer past the 1.5 s budget', async () => {
+    // Like the real route: a space at once, the answer later in the body
+    const late = Bun.serve({
+      port: 0,
+      hostname: '127.0.0.1',
+      fetch: () => new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(' '))
+          setTimeout(() => {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify({ answers: { Which: 'A' } })))
+            controller.close()
+          }, 2200)
+        },
+      })),
+    })
+    try {
+      const run = await hook(ask, { mode: 'ask', url: late.url.href.replace(/\/$/, '') })
+      expect(run.code).toBe(0)
+      expect(JSON.parse(run.stdout)).toMatchObject({ hookSpecificOutput: { updatedInput: { answers: { Which: 'A' } } } })
+      expect(run.ms).toBeGreaterThan(2000)
+    }
+    finally {
+      late.stop(true)
+    }
+  }, 10_000)
 })

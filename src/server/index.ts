@@ -150,6 +150,9 @@ export function startServer() {
           const settings = store.saveSettings({ triage: engine, phone: phone?.trim(), answer }, seed === true)
           if (settings.triage !== previous)
             triager.onSettings(settings.triage)
+          // Holds open under the old value would keep their terminals waiting and still take the app's answer
+          if (settings.answer !== 'on')
+            holds.releaseAll()
           publish({ type: 'settings', settings })
           return Response.json(settings)
         }
@@ -260,9 +263,11 @@ export function startServer() {
         seeHook(req, session?.harness)
         if (store.settings().answer !== 'on' || viewers() === 0 || session?.endedAt || (session && session.harness !== 'claude-code'))
           return Response.json({ hold: false })
+        // The decision goes out at once (headers and a first byte), inside the hook's 1.5 s budget; the answer
+        // follows in the body. No idle timeout: the body says nothing more for up to ANSWER_HOLD_MS
         srv.timeout(req, 0)
-        const answers = await holds.hold(body.sessionId, body.questionId, questions, req.signal)
-        return Response.json(answers ? { answers } : { hold: false })
+        const { sessionId, questionId } = body
+        return heldResponse(signal => holds.hold(sessionId, questionId, questions, signal), req.signal)
       }
 
       // The app answers a held question. Only while the hold is live: an expired, answered or unknown one is 409
@@ -474,6 +479,34 @@ function heldQuestions(raw: unknown): Question[] | null {
   if (!Array.isArray(raw) || !raw.length || !raw.every(q => typeof q?.question === 'string' && q.question))
     return null
   return raw as Question[]
+}
+
+/**
+ * A hold's response: a space flushed at once, so the hook knows the hold began, then the JSON once it ends
+ * (leading whitespace is valid JSON). The hold ends when the hook's request goes away, by its signal or the
+ * stream's cancel, whichever Bun reports.
+ */
+function heldResponse(wait: (signal: AbortSignal) => Promise<Record<string, string> | null>, request: AbortSignal): Response {
+  const gone = new AbortController()
+  request.addEventListener('abort', () => gone.abort(), { once: true })
+  const encoder = new TextEncoder()
+  return new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(' '))
+      void wait(gone.signal).then((answers) => {
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(answers ? { answers } : { hold: false })))
+          controller.close()
+        }
+        catch {
+          // The hook went away first
+        }
+      })
+    },
+    cancel() {
+      gone.abort()
+    },
+  }), { headers: { 'content-type': 'application/json' } })
 }
 
 function serveWeb(pathname: string): Response {
