@@ -260,9 +260,11 @@ describe('deleting', () => {
     // Rows from before expiry outlived their session record
     const db = new Database(join(dir, 'stream.db'))
     db.run(`DELETE FROM sessions WHERE id = 'od-1'`)
+    // An early body named its session only as an object
+    const early = db.query('INSERT INTO messages (at, body) VALUES (1000, ?) RETURNING id').get(JSON.stringify({ session: { id: 'gone' }, recaps: ['done'] })) as { id: number }
     db.close()
     const purged = store.expire(3000, 0)
-    expect(purged).toMatchObject({ messageIds: [old.id], feedbackIds: [oldFeedback.id], sessionIds: [] })
+    expect(purged).toMatchObject({ messageIds: [old.id, early.id], feedbackIds: [oldFeedback.id], sessionIds: [] })
     expect(store.recent().map(m => m.id)).toEqual([newer.id])
   })
 

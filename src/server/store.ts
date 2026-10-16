@@ -181,7 +181,8 @@ export class Store {
     // Sessions are deleted last, so every subquery here sees the same set
     const ended = 'SELECT id FROM sessions WHERE ended_at < $ended'
     return this.purge({
-      messages: `json_extract(body, '$.sessionId') IN (${ended}) OR (at < $ended AND json_extract(body, '$.sessionId') NOT IN (SELECT id FROM sessions))`,
+      // A body with no sessionId (an early schema) names no session either
+      messages: `json_extract(body, '$.sessionId') IN (${ended}) OR (at < $ended AND coalesce(json_extract(body, '$.sessionId') NOT IN (SELECT id FROM sessions), 1))`,
       feedback: `session_id IN (${ended}) OR (created_at < $ended AND session_id NOT IN (SELECT id FROM sessions))`,
       sessions: 'ended_at < $ended',
       cache: 'seen_at < $cache',
