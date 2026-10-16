@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TriageEngine } from '../../../../src/shared/types'
+import type { AnswerSetting, TriageEngine } from '../../../../src/shared/types'
 import type { PushState } from '../../push'
 import type { Settings } from '../../settings'
 import type { ThemePreference } from '../../theme'
@@ -14,14 +14,22 @@ const saved: Settings = { server: 'http://127.0.0.1:4747', phone: 'https://my-ma
 // Gallery theme picks stay local; they never touch the app's stored theme
 const theme = ref<ThemePreference>('dark')
 const engine = ref<TriageEngine>('off')
+const answer = ref<AnswerSetting>('off')
 
 const scrolled = ref<HTMLElement>()
-// 알림 받기 sits near the bottom of the sheet: those cases open scrolled to it
+// 앱에서 답하기 and 알림 받기 sit low in the sheet: those cases open scrolled to them
 const pushCases = ref<HTMLElement[]>([])
+const answerCases = ref<HTMLElement[]>([])
 onMounted(() => {
   const sheet = scrolled.value?.querySelector('.sheet')
   if (sheet)
     sheet.scrollTop = 150
+  for (const el of answerCases.value) {
+    const answerSheet = el.querySelector<HTMLElement>('.sheet')
+    const row = el.querySelector<HTMLElement>('.switch-row')
+    if (answerSheet && row)
+      answerSheet.scrollTop = row.getBoundingClientRect().top - answerSheet.getBoundingClientRect().top - 140
+  }
   for (const el of pushCases.value) {
     const pushSheet = el.querySelector('.sheet')
     if (pushSheet)
@@ -66,6 +74,13 @@ function onSave(next: Settings) {
       </div>
     </GalleryStage>
   </GalleryCase>
+  <GalleryCase v-for="a in (['off', 'on'] as const)" :key="a" :title="a === 'on' ? '앱에서 답하기 · 켜짐' : '앱에서 답하기 · 꺼짐 (기본)'">
+    <GalleryStage :height="480">
+      <div ref="answerCases" :data-answer="a">
+        <SettingsSheet :settings="saved" theme="dark" :answer="a" preview />
+      </div>
+    </GalleryStage>
+  </GalleryCase>
   <GalleryCase title="입력 오류 · 필드 아래 fg 글자와 아이콘">
     <GalleryStage :height="680">
       <SettingsSheet :settings="saved" :draft="{ phone: 'http://my-mac.ts.net' }" :theme="theme" validate preview />
@@ -86,7 +101,7 @@ function onSave(next: Settings) {
       <button class="secondary demo-trigger" type="button" @click="open = true">
         설정 열기
       </button>
-      <SettingsSheet v-if="open" v-model:theme="theme" v-model:engine="engine" :settings="live" @close="open = false" @save="onSave" />
+      <SettingsSheet v-if="open" v-model:theme="theme" v-model:engine="engine" v-model:answer="answer" :settings="live" @close="open = false" @save="onSave" />
       <AppToast />
     </GalleryStage>
   </GalleryCase>

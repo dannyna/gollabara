@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import type { Question } from '../../../../src/shared/types'
+import type { AnswerFailure, Draft } from '../../answers'
 import type { QuestionState } from './QuestionCard.vue'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { ANSWER_MAX } from '../../../../src/shared/answer'
+import { draftAnswers, FAILURE_NOTE, holdNote } from '../../answers'
+import { clock } from '../../artifacts'
 import { answerLabel, clampStep, stepName, stepNav, toChoice } from './chat'
 import ChatIcon from './ChatIcon.vue'
 import QuestionCard from './QuestionCard.vue'
 
 // A session's AskUserQuestion set in one card, one question at a time (OD guide:
 // question-card-v3.html, 5). The current question fills the card, and an indicator at its foot steps
-// through the set: ‹, one dot per question, ›. The options are read-only rows: answering is not
-// built, so only stepping can be pressed.
+// through the set: ‹, one dot per question, ›. Read-only, the options are plain rows. While the session's
+// hook holds the set (not inert), they become buttons: a single choice records and steps on, a
+// multiSelect toggles, 「직접 답하기」 types an answer, and the last page sends every answer at once.
 // Stepping is view state only, never sent or stored. ←/→ belong to the stream rail and the
 // viewer, so the card handles no keys: Tab reaches the buttons, Enter or Space presses them.
 // One question is today's card, without steps.
@@ -17,18 +22,44 @@ import QuestionCard from './QuestionCard.vue'
 const props = withDefaults(defineProps<{
   questions: Question[]
   state?: QuestionState
-  /** Picked option indexes per question, for the terminal summary */
+  /** Picked option indexes per question: the answers once sent or answered, or a draft in the gallery */
   picks?: number[][]
+  /** Free-text answers per question, where the answer is no label */
+  texts?: (string | undefined)[]
   inert?: boolean
   /** The step shown first; the gallery uses it, the app always starts at the first question */
   start?: number
-}>(), { state: 'open', picks: () => [], start: 0 })
+  answeredAt?: number
+  /** While held: when the hold ends, and the clock the countdown reads */
+  until?: number
+  now?: number
+  failure?: AnswerFailure
+  retry?: boolean
+}>(), { state: 'open', picks: () => [], texts: () => [], start: 0, failure: 'network' })
+
+const emit = defineEmits<{
+  /** Every answer, keyed by question text */
+  send: [answers: Record<string, string>]
+  retry: []
+}>()
 
 const step = ref(clampStep(props.start, props.questions.length))
 const nav = computed(() => stepNav(props.questions, step.value))
 const current = computed(() => props.questions[nav.value.step]!)
 
 const panes = computed(() => props.questions.map(q => ({ question: q, options: q.options.map(toChoice) })))
+
+/** Answering here: held, and not sent yet (or sent and failed, with time to retry) */
+const live = computed(() => !props.inert && (props.state === 'open' || props.state === 'fail'))
+const drafts = ref<Draft[]>([])
+function resetDrafts() {
+  drafts.value = props.questions.map((_, i) => ({ picks: [...(props.picks[i] ?? [])], text: props.texts[i] }))
+}
+resetDrafts()
+// By value: the parent hands new arrays on every countdown tick, which must not drop the draft
+watch(() => JSON.stringify([props.picks, props.texts]), resetDrafts)
+const result = computed(() => draftAnswers(props.questions, drafts.value))
+const countdown = computed(() => live.value && props.until != null && props.now != null ? holdNote(props.until, props.now) : undefined)
 
 const root = ref<HTMLElement>()
 /** An arrow that turns disabled (on the first or last question) hands focus to the other one, if it had focus */
@@ -41,20 +72,60 @@ async function go(to: number, event: MouseEvent) {
     root.value?.querySelector<HTMLElement>('.arrow:not(:disabled)')?.focus()
 }
 
-// Answered in the terminal: each header with the picked answer, or the card's own copy when unknown
+/** The pressed option sits in a pane that turns inert, so focus follows to the next question's first control */
+async function stepOn(from: number) {
+  if (from >= props.questions.length - 1)
+    return
+  step.value = from + 1
+  await nextTick()
+  root.value?.querySelector<HTMLElement>('.pane.active .pick, .pane.active textarea')?.focus()
+}
+
+function pick(i: number, j: number) {
+  if (!live.value)
+    return
+  const d = drafts.value[i]!
+  if (props.questions[i]!.multiSelect) {
+    d.picks = d.picks.includes(j) ? d.picks.filter(x => x !== j) : [...d.picks, j]
+    return
+  }
+  d.picks = [j]
+  stepOn(i)
+}
+async function typeAnswer(i: number, on: boolean) {
+  drafts.value[i]!.text = on ? (drafts.value[i]!.text ?? '') : undefined
+  await nextTick()
+  root.value?.querySelector<HTMLElement>(on ? '.pane.active textarea' : '.pane.active .pick')?.focus()
+}
+function send() {
+  if (live.value && result.value.complete)
+    emit('send', result.value.answers)
+}
+
+// Sent or answered: each header with its answer; 「터미널에서 답했어요」 when the terminal's pick is unknown
 const summary = computed(() => props.questions.map((q, i) => ({
   header: q.header || `질문 ${i + 1}`,
-  answer: answerLabel(q.options.map(toChoice), props.picks[i] ?? []) || '터미널에서 답했어요',
+  answer: props.texts[i] ?? (answerLabel(q.options.map(toChoice), props.picks[i] ?? []) || (props.state === 'terminal' ? '터미널에서 답했어요' : '')),
 })))
+const SUMMARY_HEAD: Partial<Record<QuestionState, string>> = { terminal: '터미널에서 모두 답했어요', done: '앱에서 모두 답했어요' }
 </script>
 
 <template>
   <QuestionCard
-    v-if="questions.length === 1" :question="questions[0]!" :state="state" :picks="picks[0]" :inert="inert"
+    v-if="questions.length === 1" :question="questions[0]!" :state="state" :picks="picks[0]" :answer-text="texts[0]"
+    :inert="inert" :answered-at="answeredAt" :until="until" :now="now" :failure="failure" :retry="retry"
+    @send="emit('send', { [questions[0]!.question]: $event })" @retry="emit('retry')"
   />
-  <div v-else-if="state === 'terminal'" class="stepper summary">
+  <div v-else-if="state === 'terminal' || state === 'done' || state === 'sending'" class="stepper summary" :class="state">
     <div class="summary-head">
-      <ChatIcon name="term" />터미널에서 모두 답했어요
+      <template v-if="state === 'sending'">
+        <span class="spin" aria-hidden="true" />답 {{ questions.length }}개 보내는 중
+      </template>
+      <template v-else>
+        <ChatIcon :name="state === 'done' ? 'check' : 'term'" />{{ SUMMARY_HEAD[state] }}<template v-if="state === 'done' && answeredAt">
+          · <time>{{ clock(answeredAt) }}</time>
+        </template>
+      </template>
     </div>
     <dl>
       <template v-for="(row, i) in summary" :key="i">
@@ -63,7 +134,7 @@ const summary = computed(() => props.questions.map((q, i) => ({
       </template>
     </dl>
   </div>
-  <div v-else ref="root" class="pages" role="group" :aria-label="`질문 ${questions.length}개`">
+  <div v-else ref="root" class="pages" :class="{ live }" role="group" :aria-label="`질문 ${questions.length}개`">
     <div class="page">
       <div class="head">
         <ChatIcon name="question" /><b>{{ current.header || '세션에서 물었어요' }}</b>
@@ -76,7 +147,33 @@ const summary = computed(() => props.questions.map((q, i) => ({
           :inert="i !== nav.step || undefined" :aria-hidden="i !== nav.step || undefined"
         >
           <p>{{ p.question.question }}</p>
-          <ul class="options" :aria-label="`${p.question.header || `질문 ${i + 1}`} 선택지, 읽기 전용`">
+          <!-- Options and the typed answer share one cell too, so 「직접 답하기」 keeps the height -->
+          <div v-if="live" class="answer-cell">
+            <div
+              class="picks" :class="{ away: drafts[i]?.text != null }" :inert="drafts[i]?.text != null || undefined"
+              :role="p.question.multiSelect ? 'group' : 'radiogroup'" :aria-label="`${p.question.header || `질문 ${i + 1}`} 선택지`"
+            >
+              <button
+                v-for="(o, j) in p.options" :key="j" class="pick" :class="{ on: drafts[i]?.text == null && drafts[i]?.picks.includes(j) }"
+                type="button" :role="p.question.multiSelect ? 'checkbox' : 'radio'"
+                :aria-checked="drafts[i]?.text == null && !!drafts[i]?.picks.includes(j)" @click="pick(i, j)"
+              >
+                <span class="number" :class="{ multi: p.question.multiSelect }" aria-hidden="true">
+                  <ChatIcon v-if="drafts[i]?.text == null && drafts[i]?.picks.includes(j)" name="check" /><template v-else>{{ j + 1 }}</template>
+                </span>
+                <span>
+                  <span class="label">{{ o.label }}</span><span v-if="o.recommended" class="rec">추천</span>
+                  <span v-if="o.description" class="description">{{ o.description }}</span>
+                </span>
+              </button>
+            </div>
+            <textarea
+              v-if="drafts[i]" v-model="drafts[i].text" class="typed" :class="{ away: drafts[i].text == null }"
+              :inert="drafts[i].text == null || undefined" rows="3" :maxlength="ANSWER_MAX"
+              :aria-label="`${p.question.header || `질문 ${i + 1}`} 직접 답하기`" placeholder="답을 적어 주세요"
+            />
+          </div>
+          <ul v-else class="options" :aria-label="`${p.question.header || `질문 ${i + 1}`} 선택지, 읽기 전용`">
             <li v-for="(o, j) in p.options" :key="j">
               <span class="number" aria-hidden="true">{{ j + 1 }}</span>
               <div>
@@ -86,6 +183,31 @@ const summary = computed(() => props.questions.map((q, i) => ({
             </li>
           </ul>
         </div>
+      </div>
+      <!-- The foot keeps its place on every page; the send button shows on the last -->
+      <div v-if="live" class="q-foot">
+        <button class="direct-reply" type="button" @click="typeAnswer(nav.step, drafts[nav.step]?.text == null)">
+          {{ drafts[nav.step]?.text == null ? '직접 답하기' : '선택지로 돌아가기' }}
+        </button>
+        <button
+          class="primary" :class="{ away: nav.next }" type="button" :disabled="!result.complete"
+          :inert="!!nav.next || undefined" :aria-hidden="!!nav.next || undefined" @click="send"
+        >
+          {{ questions.length }}개 답 보내기
+        </button>
+      </div>
+      <div v-if="live && state === 'fail'" class="q-state strong">
+        <ChatIcon name="alert" />{{ FAILURE_NOTE[failure] }}<template v-if="retry">
+          · <button class="link" type="button" @click="emit('retry')">
+            다시 보내기
+          </button>
+        </template>
+      </div>
+      <div v-else-if="!live && state === 'fail'" class="q-state strong">
+        <ChatIcon name="alert" />{{ FAILURE_NOTE[failure] }}
+      </div>
+      <div v-if="countdown" class="q-state hold" role="timer">
+        {{ countdown }}
       </div>
       <span class="sr-only" role="status" aria-live="polite">{{ nav.step + 1 }}번째 질문 · {{ current.header || '세션에서 물었어요' }}</span>
       <div class="indicator">
@@ -97,8 +219,8 @@ const summary = computed(() => props.questions.map((q, i) => ({
           <ChatIcon name="previous" />
         </button>
         <button
-          v-for="(q, i) in questions" :key="i" class="dot" :class="{ current: i === nav.step }" type="button"
-          :aria-label="stepName(i, q)" :aria-current="i === nav.step ? 'step' : undefined" @click="go(i, $event)"
+          v-for="(q, i) in questions" :key="i" class="dot" :class="{ current: i === nav.step, answered: live && result.answered[i] }" type="button"
+          :aria-label="live && result.answered[i] ? `${stepName(i, q)} · 답함` : stepName(i, q)" :aria-current="i === nav.step ? 'step' : undefined" @click="go(i, $event)"
         >
           <span />
         </button>
@@ -192,7 +314,8 @@ const summary = computed(() => props.questions.map((q, i) => ({
   gap: 8px;
   min-width: 0;
 }
-.options .number {
+.options .number,
+.pick .number {
   display: grid;
   place-items: center;
   flex: none;
@@ -298,10 +421,6 @@ const summary = computed(() => props.questions.map((q, i) => ({
   margin-bottom: 12px;
   font-size: 11px;
 }
-.summary-head .chat-icon {
-  width: 13px;
-  height: 13px;
-}
 .summary dl {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -314,9 +433,188 @@ const summary = computed(() => props.questions.map((q, i) => ({
   margin: 0;
 }
 
+/* Held: the options turn into buttons, like the single card's rows */
+.answer-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 14px;
+}
+.picks,
+.answer-cell .typed {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.picks {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.away {
+  visibility: hidden;
+}
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+.pick:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--fg);
+  color: var(--fg);
+}
+.pick .label {
+  color: var(--fg);
+}
+.pick .number.multi {
+  border-radius: 4px;
+}
+.pick.on {
+  border-color: var(--fg);
+}
+.pick.on .number {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--surface);
+}
+.pick .number .chat-icon {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+.answer-cell .typed {
+  align-self: start;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: none;
+  box-shadow: inset 0 0 0 1px var(--fg);
+}
+.answer-cell .typed::placeholder {
+  color: var(--muted);
+}
+.q-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+.direct-reply {
+  min-height: 36px;
+  padding: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.direct-reply:hover:not(:disabled) {
+  background: none;
+  color: var(--fg);
+}
+.primary {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+.q-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.q-state.strong {
+  color: var(--fg);
+}
+.q-state.hold {
+  font-size: 10px;
+}
+.q-state .chat-icon,
+.summary-head .chat-icon {
+  width: 13px;
+  height: 13px;
+}
+.link {
+  min-height: auto;
+  padding: 0;
+  font-size: inherit;
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link:hover:not(:disabled) {
+  background: none;
+}
+/* An answered question's dot fills, so the set shows what is left */
+.dot.answered span {
+  background: var(--muted);
+}
+.dot.answered.current span {
+  background: var(--fg);
+}
+.summary.done .summary-head {
+  color: var(--fg);
+}
+.summary time {
+  font-size: inherit;
+}
+.spin {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--fg);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 767px) {
   .stepper {
     padding: 14px;
+  }
+  .direct-reply {
+    min-height: 44px;
+    font-size: 11px;
+  }
+  .answer-cell .typed {
+    font-size: 16px;
+  }
+}
+@media (max-width: 767px), (pointer: coarse) {
+  .direct-reply,
+  .primary,
+  .link {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 </style>

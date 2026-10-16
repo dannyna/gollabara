@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Feedback, Session, StreamMessage, Triage, TriageEngine } from '../../../../src/shared/types'
+import type { Holds, LocalAnswer } from '../../answers'
 import type { PendingSend } from '../../feedback'
 import type { Guide } from '../../firstrun'
 import type { HistoryState } from '../../history'
@@ -9,6 +10,7 @@ import type { ComposerAttachment, ComposerSend } from '../chat/ChatComposer.vue'
 import type { QueueGroup } from '../chat/QueueTray.vue'
 import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { postAnswer, questionView } from '../../answers'
 import { clock, splitSessionName } from '../../artifacts'
 import { discardFeedback, ENDED_NOTE, failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, toQueueGroups, VIA_LABEL, withoutRemoved } from '../../feedback'
 import { useNameHints } from '../../names'
@@ -66,6 +68,10 @@ const props = defineProps<{
   guide?: Guide | null
   /** The run of messages in view (useStream); without it the feed has nothing older */
   history?: HistoryState
+  /** Questions a session's hook holds for the app, by questionId; a card answers only while held */
+  holds?: Holds
+  /** The socket is open: a held card answers only then */
+  connected?: boolean
 }>()
 const emit = defineEmits<{
   thumb: [key: string]
@@ -83,7 +89,38 @@ const emit = defineEmits<{
   older: []
 }>()
 
-// Answering questions is not built yet: question cards are drawn inert.
+// A question card answers only while its session's hook holds it (answers.ts); the clock ticks each second
+// only while a hold is open, for the countdown. The app's own sends stay here until the server records them.
+const holdNow = ref(Date.now())
+let ticker: ReturnType<typeof setInterval> | undefined
+watch(() => props.holds?.size ?? 0, (size) => {
+  clearInterval(ticker)
+  ticker = undefined
+  holdNow.value = Date.now()
+  if (size)
+    ticker = setInterval(() => holdNow.value = Date.now(), 1000)
+}, { immediate: true })
+onBeforeUnmount(() => clearInterval(ticker))
+const sent = ref<Map<string, LocalAnswer>>(new Map())
+const sessionOf = (id: string) => props.sessions?.find(s => s.id === id)
+function questionOf(m: StreamMessage) {
+  return questionView({
+    message: m,
+    session: sessionOf(m.sessionId),
+    holds: props.holds ?? new Map(),
+    connected: props.connected ?? !props.offline,
+    now: holdNow.value,
+    local: m.questionId ? sent.value.get(m.questionId) : undefined,
+  })
+}
+async function answer(m: StreamMessage, answers: Record<string, string>) {
+  const id = m.questionId
+  if (!id)
+    return
+  sent.value = new Map(sent.value).set(id, { status: 'sending', answers, at: Date.now() })
+  const result = await postAnswer({ sessionId: m.sessionId, questionId: id, answers })
+  sent.value = new Map(sent.value).set(id, { status: result === 'ok' ? 'sent' : result, answers, at: Date.now() })
+}
 
 const feed = ref<HTMLElement>()
 const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
@@ -463,10 +500,10 @@ defineExpose({ reveal })
             >
               <ArtifactThumbs reference :thumbs="thumbsOf.get(item.message.id)!.references" @open-image="openImage" />
             </HiddenRow>
-            <!-- Answering is not built yet; several questions step in one card -->
+            <!-- Several questions step in one card; answerable only while held -->
             <QuestionStepper
-              v-if="item.message.questions?.length" :questions="item.message.questions" inert
-              :state="offline ? 'offline' : 'open'"
+              v-if="item.message.questions?.length" v-bind="questionOf(item.message)" :questions="item.message.questions" :now="holdNow"
+              @send="answer(item.message, $event)" @retry="answer(item.message, sent.get(item.message.questionId!)!.answers)"
             />
           </SessionMessage>
         </template>

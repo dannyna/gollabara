@@ -1,8 +1,10 @@
 // Connects to the server WebSocket for stream messages and feedback. Reconnects when dropped.
 
 import type { Feedback, ServerFrame, ServerSettings, Session, StreamMessage, Triage } from '../../src/shared/types'
+import type { Holds } from './answers'
 import type { HistoryState } from './history'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { applyHold, holdsFrom } from './answers'
 import { feedbackBySession, mergeFeedback, sortFeedback } from './feedback'
 import { fetchPage, helloRun, initialHistory, joinFeedback, joinPage, joinTriage, PAGE_SIZE } from './history'
 import { newLines, toTriageMap, triageKey } from './triage'
@@ -82,6 +84,8 @@ export function useStream() {
   /** Verdicts by triageKey; older servers send none */
   const triage = shallowRef<Map<string, Triage>>(new Map())
   const settings = shallowRef<ServerSettings>({ triage: 'off' })
+  /** Questions a session's `ask` hook holds for the app to answer, by questionId */
+  const holds = shallowRef<Holds>(new Map())
   /** When recap lines arrived live while triage was on, so new ones can wait for a verdict */
   const arrivals = shallowRef<Map<string, number>>(new Map())
   const connected = ref(false)
@@ -122,6 +126,10 @@ export function useStream() {
         feedback.value = kept ? joinFeedback(feedback.value, frame.feedback ?? []) : sortFeedback(frame.feedback ?? [])
         triage.value = kept ? joinTriage(triage.value, frame.triage ?? []) : toTriageMap(frame.triage ?? [])
         settings.value = frame.settings ?? { triage: 'off' }
+        holds.value = holdsFrom(frame.holds)
+      }
+      else if (frame.type === 'hold') {
+        holds.value = applyHold(holds.value, frame)
       }
       else if (frame.type === 'triage') {
         triage.value = new Map(triage.value).set(triageKey(frame.triage.messageId, frame.triage.index), frame.triage)
@@ -215,5 +223,5 @@ export function useStream() {
     ws?.close()
   })
 
-  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, offline: flag.offline, restored: flag.restored, history, loadOlder }
+  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, holds, arrivals, connected, offline: flag.offline, restored: flag.restored, history, loadOlder }
 }
