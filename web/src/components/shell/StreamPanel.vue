@@ -3,6 +3,7 @@
 // footer. It follows the latest artifact while the rail sits at the right end and holds
 // its place once the reader scrolls back, raising 「새 산출물 n →」 instead. A pinned cell
 // stops following altogether: arrivals only raise the pill, wherever the rail sits.
+// Moving the rail sideways (wheel, arrows, a swipe) lets go of the pin.
 // References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
 // History (#77): reaching the start loads older cells, and a run the reader jumped to loads newer
 // ones at its end; either keeps the view in place. Such a run never follows: arrivals wait on the
@@ -73,12 +74,38 @@ let userIntentUntil = 0
 function markUserIntent() {
   userIntentUntil = Date.now() + 1000
 }
+/** How following resumes once a move lets go of the pin; the rail may still be on its way there */
+let unpinTo: Follow | undefined
+/** Moving the rail by hand lets go of the pin: the reader has left the cell it held */
+function letGo(to: Follow) {
+  if (!props.pinned)
+    return
+  unpinTo = to
+  emit('pin', null)
+}
 /** A step pauses following up front unless it lands on the latest, so a cell arriving mid-step cannot pull the rail back */
 function onStep(left: number) {
   markUserIntent()
   const el = track.value!
-  if (!atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }, rail.value?.latestAlign()))
+  const latest = atLatest({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: left }, rail.value?.latestAlign())
+  letGo(latest ? 'following' : 'paused')
+  if (!latest)
     follow.value = 'paused'
+}
+/** A sideways swipe on a touch screen moves the rail natively, so it lets go here */
+let touchStart: { x: number, y: number } | undefined
+function onTouchStart(e: TouchEvent) {
+  markUserIntent()
+  touchStart = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }
+}
+function onTouchMove(e: TouchEvent) {
+  if (!touchStart)
+    return
+  const dx = Math.abs(e.touches[0]!.clientX - touchStart.x)
+  if (dx > 10 && dx > Math.abs(e.touches[0]!.clientY - touchStart.y)) {
+    touchStart = undefined
+    letGo('paused')
+  }
 }
 /** More than two widths back from the latest: 「최신으로 →」 shows even with nothing new */
 const far = ref(false)
@@ -255,8 +282,12 @@ watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevLis
 
 // Pinning stops following; letting go follows again only from the right end
 watch(() => props.pinned, () => {
+  const to = unpinTo
+  unpinTo = undefined
   if (pin.value)
     follow.value = 'paused'
+  else if (to)
+    follow.value = to
   else if (track.value)
     follow.value = atLatest(track.value, rail.value?.latestAlign()) ? 'following' : 'paused'
 })
@@ -308,7 +339,7 @@ const { setTarget } = useFeedbackTarget()
       v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin" :ended="ended"
       @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="onIntent" @pointerdown="markUserIntent"
-      @touchstart.passive="markUserIntent" @keydown="onIntent"
+      @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @keydown="onIntent"
     />
     <!-- Arrivals, a run the reader jumped to, or far back in a long one: each way back is the pill -->
     <NewPill
