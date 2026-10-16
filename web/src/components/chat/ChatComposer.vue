@@ -34,6 +34,8 @@ const props = withDefaults(defineProps<{
   note?: string
   /** Desktop-only muted hint at the start of the note line */
   hint?: string
+  /** The same hint at 767px and below, where the gestures differ */
+  mobileHint?: string
   /** How a message will reach the target session (e.g. 「바로 전달돼요」); takes the hint's place at every width */
   route?: string
   /** Why sending is blocked right now (offline, no target, tray full): replaces the hint in fg */
@@ -144,9 +146,14 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
       <InlineNote v-else-if="route">
         {{ route }}
       </InlineNote>
-      <InlineNote v-else-if="hint" class="desktop-hint">
-        {{ hint }}
-      </InlineNote>
+      <template v-else>
+        <InlineNote v-if="hint" class="desktop-hint">
+          {{ hint }}
+        </InlineNote>
+        <InlineNote v-if="mobileHint" class="mobile-hint">
+          {{ mobileHint }}
+        </InlineNote>
+      </template>
       <span v-if="noteText">{{ noteText }}</span>
     </div>
   </form>
@@ -302,6 +309,11 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
   }
   .composer-note {
     margin-top: 4px;
+  }
+}
+@media (min-width: 768px) {
+  .mobile-hint {
+    display: none;
   }
 }
 @media (max-width: 767px) {

@@ -1,11 +1,29 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, clampStep, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, stepName, stepNav, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
+import { answerLabel, choiceLayout, clampStep, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, stepName, stepNav, SWIPE_MAX_PX, SWIPE_REPLY_PX, swipeAxis, swipeOffset, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
 const session = (id: string, startedAt: number): Session => ({ id, name: `${id} · main`, harness: 'claude-code', cwd: '/', startedAt, lastSeenAt: startedAt })
+
+describe('swipe to reply', () => {
+  it('waits for the slop, then takes only drags that head clearly right', () => {
+    expect(swipeAxis(6, 3)).toBe('pending')
+    expect(swipeAxis(20, 5)).toBe('x')
+    expect(swipeAxis(20, 16)).toBe('y')
+    expect(swipeAxis(-20, 0)).toBe('y')
+    expect(swipeAxis(2, 30)).toBe('y')
+  })
+
+  it('follows the finger to the reply point, then resists up to the max, never left', () => {
+    expect(swipeOffset(-30)).toBe(0)
+    expect(swipeOffset(30)).toBe(30)
+    expect(swipeOffset(SWIPE_REPLY_PX)).toBe(SWIPE_REPLY_PX)
+    expect(swipeOffset(SWIPE_REPLY_PX + 20)).toBeCloseTo(SWIPE_REPLY_PX + 6)
+    expect(swipeOffset(400)).toBe(SWIPE_MAX_PX)
+  })
+})
 
 describe('question choices', () => {
   it('turns a trailing (Recommended) into the 추천 mark', () => {

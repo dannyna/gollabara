@@ -513,7 +513,7 @@ defineExpose({ reveal })
       <NewPill v-if="(unseen || far) && !offline" kind="message" :count="unseen" @click="jumpToLatest" />
     </div>
     <ChatComposer
-      ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :route="receiverRoute" :blocked="blocked"
+      ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" mobile-hint="메시지를 오른쪽으로 밀면 답장" :route="receiverRoute" :blocked="blocked"
       :target="receiver && shortName(receiver)" :target-hint="receiver ? shortHintOf(receiver) : undefined" :attachment="attachment" :mention-open="mentionOpen"
       @update:attachment="onAttachment" @send="send"
       @mention="mentionButton = !mentionButton" @mention-query="mentionQuery = $event"
@@ -575,7 +575,8 @@ defineExpose({ reveal })
 .feed {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  /* Sideways, a message swiped to reply slides under the edge instead of scrolling the feed */
+  overflow: hidden auto;
   /* A page joining above keeps the reader's place by hand (the scrollHeight delta), which the browser's own anchoring would double */
   overflow-anchor: none;
   padding: 0 22px 14px;
