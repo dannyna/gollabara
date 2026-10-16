@@ -45,7 +45,15 @@ export interface Session extends SessionInfo {
   channel?: boolean
   /** How feedback can reach the session right now (`routesFor`); missing on records from older servers */
   routes?: DeliveryRoute[]
+  /** What it is doing now, as far as the server saw; missing on an ended session and from older servers */
+  state?: SessionState
 }
+
+/**
+ * Mid-turn, mid-turn waiting on the user's answer to its own question, or between turns. Kept in the
+ * server's memory, so every session reads idle after a restart until it does something.
+ */
+export type SessionState = 'working' | 'waiting' | 'idle'
 
 /**
  * A way feedback reaches a session, whatever the harness calls its hook points: next to the next tool

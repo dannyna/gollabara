@@ -1,6 +1,6 @@
 // Which sessions have a wake-up Stop hook waiting on their feedback, the long polls they wait in, and whether
 // each session is mid-turn. In memory only: a waiter polls again within seconds after a restart.
-import type { FeedbackVia, IncomingEvent, SessionStartReason } from '../shared/types'
+import type { FeedbackVia, IncomingEvent, SessionStartReason, SessionState } from '../shared/types'
 
 /** A session counts as live this long after its last poll ended, covering the gap between polls */
 export const CHANNEL_GRACE_MS = 30_000
@@ -36,6 +36,8 @@ export function activityAfter(signal: ActivitySignal): Activity | null {
 export class ChannelLiveness {
   /** Sessions mid-turn; a session not listed (never seen, just started) counts as idle */
   private busy = new Set<string>()
+  /** Busy sessions whose latest busy signal was a question: they wait on the user until the next one */
+  private asking = new Set<string>()
 
   /** Turns each session started (idle to busy), so a wake-up waiter can tell the user took over */
   private turns = new Map<string, number>()
@@ -52,24 +54,38 @@ export class ChannelLiveness {
     return !this.busy.has(sessionId)
   }
 
+  /** What the session menu shows: mid-turn, mid-turn waiting on its own question, or idle */
+  state(sessionId: string): SessionState {
+    return this.isIdle(sessionId) ? 'idle' : this.asking.has(sessionId) ? 'waiting' : 'working'
+  }
+
   /**
-   * Applies what the session did. A session that turns idle wakes its waiting polls, so pending feedback
-   * goes out; one that turns busy wakes them too, so a wake-up waiter can step aside for the hooks.
+   * Applies what the session did, and tells whether its `state` changed, so a session frame goes out only then.
+   * A session that turns idle wakes its waiting polls, so pending feedback goes out; one that turns busy
+   * wakes them too, so a wake-up waiter can step aside for the hooks.
    */
-  observe(sessionId: string, signal: ActivitySignal): void {
+  observe(sessionId: string, signal: ActivitySignal): boolean {
     const next = activityAfter(signal)
     if (!next)
-      return
+      return false
+    const before = this.state(sessionId)
     const wasIdle = this.isIdle(sessionId)
     if (next === 'busy')
       this.busy.add(sessionId)
     else
       this.busy.delete(sessionId)
+    // Any other signal that says busy or idle means the question was answered (or the turn went on)
+    if ('event' in signal && signal.event === 'question')
+      this.asking.add(sessionId)
+    else
+      this.asking.delete(sessionId)
+    const changed = this.state(sessionId) !== before
     if (next === 'busy' ? !wasIdle : wasIdle)
-      return
+      return changed
     if (next === 'busy')
       this.turns.set(sessionId, (this.turns.get(sessionId) ?? 0) + 1)
     this.wake(sessionId)
+    return changed
   }
 
   /**

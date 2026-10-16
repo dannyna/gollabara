@@ -172,11 +172,21 @@ A session ends with a `session-end` event (the `SessionEnd` hook, from Claude Co
 - **Relinking.** The latest SessionStart owns a pid. When it takes the pid from another session (`/clear`, a resume in the same process, or a reused pid), that session is marked ended too, even if its own SessionEnd never came.
 - **No pid.** Records from before #96 have no pid and never heard their SessionEnd; migration 7 ended them at their last activity, and one still running comes back with its next event. A session that never reports a pid (an older hook) still ends only through SessionEnd.
 - **Coming back.** Any later event from an ended session (a resume, or any other event) clears `ended_at`. Feedback claims and wake-up polls do not.
-- **Effects.** `endedAt` appears in `GET /api/sessions` and the session frames, with `routes: []` and no `channel`. `POST /api/feedback` to an ended session answers 409 `session ended`, and the UI says 「끝난 세션이에요」. A wake-up waiter for it gets 410 `ended` and exits. Feedback queued before the end stays queued: the tray marks it 「끝나서 전달할 수 없어요」, and a session resumed within the hour still picks it up (see **Expiry**). A session-end also closes the session's open turn and drops its pid. The session menu lists only live sessions (a record without `endedAt`: working, waiting or idle); a search there also finds ended and message-only sessions, so their messages can still be scoped until they expire. An ended session has no 「끝남」 label: its name and text turn muted, and its avatar is dashed in the chat.
+- **Effects.** `endedAt` appears in `GET /api/sessions` and the session frames, with `routes: []` and no `channel` or `state`. `POST /api/feedback` to an ended session answers 409 `session ended`, and the UI says 「끝난 세션이에요」. A wake-up waiter for it gets 410 `ended` and exits. Feedback queued before the end stays queued: the tray marks it 「끝나서 전달할 수 없어요」, and a session resumed within the hour still picks it up (see **Expiry**). A session-end also closes the session's open turn and drops its pid. The session menu lists only live sessions (a record without `endedAt`: working, waiting or idle); a search there also finds ended and message-only sessions, so their messages can still be scoped until they expire. An ended session has no 「끝남」 label: its name and text turn muted, and its avatar is dashed in the chat.
 
 ### Delivery routes
 
 Every session in `GET /api/sessions` and the WebSocket session frames carries `routes`, the harness-neutral ways feedback can reach it now (`DeliveryRoute` in `src/shared/types.ts`, derived by `routesFor` in `src/shared/routes.ts`): `next-tool` (next to the next tool result), `next-prompt` (alongside the next prompt), `turn-end` (when it tries to end its turn) and `idle-wake` (waking an idle session). Claude Code and Open Design sessions have all four while their wake-up waiter is live, and the first three otherwise; Codex sessions have the first three. The UI builds its copy from the routes alone (`routeNote` in `web/src/feedback.ts`): 「바로 전달돼요」 with `idle-wake`, 「세션이 다음 작업을 하거나 턴을 마칠 때 전달돼요」 with `turn-end`. The composer states the target's route; the queue tray states the waiting sessions' shared route, or 「세션마다 전달 시점이 달라요」 with a route per group when they differ.
+
+### Session state
+
+A live session in `GET /api/sessions`, the `hello` frame and the WebSocket session frames also carries `state` (`SessionState` in `src/shared/types.ts`), which the session menu shows as 「작업 중」, 「기다리는 중」 or 「쉬는 중」. The server derives it from the same signals as busy and idle (see **Idle only**). `ChannelLiveness.state` in `src/server/channel.ts` holds it:
+
+- **`working`:** the session is busy.
+- **`waiting`:** the session is busy, and its latest busy signal was a question. The next busy or idle signal ends that, for instance the answer's PostToolUse claim.
+- **`idle`:** the session is idle. This covers a Stop that claimed nothing, a SessionStart other than `compact`, and a session the server has not seen.
+
+Events publish a session frame as before. A feedback claim, made at every tool call, publishes one only when it changes `state`. An ended session has no `state`. State lives in memory, so after a server restart every session reads `idle` until it does something. A Codex session that took feedback at Stop reads `working` until a later turn ends, because its continuation Stop never claims (see **Loop guard**).
 
 Session names are `<dir>` or `<dir> · <branch>` (the branch is omitted for main and master).
 

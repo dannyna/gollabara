@@ -26,8 +26,11 @@ export const SAMPLE_ARTIFACTS: Artifact[] = [
 ]
 
 export const SAMPLE_SESSIONS: SessionRow[] = [
-  { id: 'piuda', session: 'piuda', branch: 'desktop-shell', lastSeenAt: min(2), muted: false, ended: false, live: true },
-  { id: 'od', session: 'od', branch: 'landing-hero', lastSeenAt: min(5), muted: false, ended: false, live: true },
-  { id: 'client-e2e', session: 'client-e2e', branch: 'checkout', lastSeenAt: min(8), muted: false, ended: false, live: true },
-  { id: 'api', session: 'api', branch: 'quota-refill', lastSeenAt: min(9), muted: true, ended: false, live: true },
+  { id: 'piuda', session: 'piuda', branch: 'desktop-shell', lastSeenAt: min(2), muted: false, ended: false, live: true, harness: 'claude-code', state: 'working' },
+  { id: 'od', session: 'od', branch: 'landing-hero', lastSeenAt: min(5), muted: false, ended: false, live: true, harness: 'open-design', state: 'waiting' },
+  { id: 'client-e2e', session: 'client-e2e', branch: 'checkout', lastSeenAt: min(8), muted: false, ended: false, live: true, harness: 'codex', state: 'idle' },
+  { id: 'api', session: 'api', branch: 'quota-refill', lastSeenAt: min(9), muted: true, ended: false, live: true, harness: 'claude-code', state: 'idle' },
 ]
+
+/** The session menu's 「n분 전」 counts from here, a few minutes after the samples */
+export const SAMPLE_NOW = min(11)

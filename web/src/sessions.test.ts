@@ -1,6 +1,6 @@
 import type { Session, StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { endedSessions, filterSessions, goneMutes, inScope, listedSessions, muteChanges, toSessionRows } from './sessions'
+import { activityLabel, endedSessions, filterSessions, goneMutes, inScope, listedSessions, muteChanges, toSessionRows } from './sessions'
 
 const msg = (id: number, sessionId: string, at: number): StreamMessage => ({ id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn' })
 const session = (id: string, lastSeenAt: number): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt })
@@ -21,10 +21,16 @@ describe('toSessionRows', () => {
   it('lists recorded and message-only sessions, most recent first, with mute and end marked', () => {
     const rows = toSessionRows([session('a', 10), { ...session('b', 5), endedAt: 6 }], [msg(1, 'a', 30), msg(2, 'old', 20)], new Set(['old']))
     expect(rows).toEqual([
-      { id: 'a', session: 'a', lastSeenAt: 30, muted: false, ended: false, live: true },
+      { id: 'a', session: 'a', lastSeenAt: 30, muted: false, ended: false, live: true, harness: 'claude-code' },
       { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true, ended: false, live: false },
-      { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true, live: false },
+      { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true, live: false, harness: 'claude-code' },
     ])
+  })
+
+  it('carries a live session\'s state, never an ended one\'s', () => {
+    const rows = toSessionRows([{ ...session('a', 2), harness: 'codex', state: 'waiting' }, { ...session('b', 1), state: 'working', endedAt: 3 }], [], new Set())
+    expect(rows[0]).toMatchObject({ harness: 'codex', state: 'waiting' })
+    expect(rows[1]).not.toHaveProperty('state')
   })
 
   it('lists only live sessions for an empty query', () => {
@@ -56,6 +62,29 @@ describe('toSessionRows', () => {
 
   it('collects the ended sessions', () => {
     expect([...endedSessions([session('a', 1), { ...session('b', 1), endedAt: 2 }])]).toEqual(['b'])
+  })
+})
+
+describe('activityLabel', () => {
+  const now = new Date(2026, 9, 14, 14, 30).getTime()
+  const ago = (ms: number) => activityLabel(now - ms, now)
+
+  it('reads 방금 under a minute, and for a clock a little ahead', () => {
+    expect(ago(59_000)).toBe('방금')
+    expect(ago(-5_000)).toBe('방금')
+  })
+
+  it('counts minutes under an hour, then hours while it is still today', () => {
+    expect(ago(60_000)).toBe('1분 전')
+    expect(ago(59 * 60_000 + 59_000)).toBe('59분 전')
+    expect(ago(60 * 60_000)).toBe('1시간 전')
+    expect(ago(14 * 60 * 60_000 + 29 * 60_000)).toBe('14시간 전')
+  })
+
+  it('says 어제 for the calendar day before, then the date', () => {
+    expect(ago(14 * 60 * 60_000 + 31 * 60_000)).toBe('어제')
+    expect(activityLabel(new Date(2026, 9, 13, 0, 0).getTime(), now)).toBe('어제')
+    expect(activityLabel(new Date(2026, 9, 12, 23, 59).getTime(), now)).toBe('10/12')
   })
 })
 

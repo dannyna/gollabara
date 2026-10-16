@@ -1,7 +1,7 @@
 // Session scope and mute for the session menu. Mute is a client-side filter only:
 // it hides a session in this browser and sends nothing to the session.
 
-import type { Session, StreamMessage } from '../../src/shared/types'
+import type { Harness, Session, SessionState, StreamMessage } from '../../src/shared/types'
 import { ref } from 'vue'
 import { splitSessionName } from './artifacts'
 
@@ -17,6 +17,36 @@ export interface SessionRow {
   ended: boolean
   /** It has a record and has not ended (working, waiting or idle): the session menu lists it without a search */
   live: boolean
+  /** From the record; a message-only row has none */
+  harness?: Harness
+  /** What a live session is doing; an ended or message-only row has none */
+  state?: SessionState
+}
+
+/** The session menu's monogram: one letter per harness */
+export const HARNESS_MARK: Record<Harness, string> = {
+  'claude-code': 'C',
+  'codex': 'X',
+  'open-design': 'O',
+  'claude-design': 'D',
+}
+
+const startOfDay = (at: number) => new Date(at).setHours(0, 0, 0, 0)
+
+/** A row's last activity: 「방금」, minutes or hours ago today, 「어제」, else the date */
+export function activityLabel(at: number, now = Date.now()): string {
+  const minutes = Math.floor((now - at) / 60_000)
+  if (minutes < 1)
+    return '방금'
+  if (minutes < 60)
+    return `${minutes}분 전`
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000)
+  if (days === 0)
+    return `${Math.floor(minutes / 60)}시간 전`
+  if (days === 1)
+    return '어제'
+  const d = new Date(at)
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 /**
@@ -27,7 +57,8 @@ export function toSessionRows(sessions: Session[], messages: StreamMessage[], mu
   const rows = new Map<string, SessionRow>()
   for (const s of sessions) {
     const hint = hintOf(s.id)
-    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), ...(hint ? { hint } : {}), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null, live: s.endedAt == null })
+    const ended = s.endedAt != null
+    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), ...(hint ? { hint } : {}), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended, live: !ended, harness: s.harness, ...(s.state && !ended ? { state: s.state } : {}) })
   }
   for (const m of messages) {
     const row = rows.get(m.sessionId)
@@ -50,7 +81,8 @@ export function filterSessions<T extends Pick<SessionRow, 'session' | 'branch' |
 
 /**
  * The session menu's rows: only live sessions until the user searches, so ended and message-only
- * sessions stay out of the way but their history can still be scoped by name
+ * sessions stay out of the way but their history can still be scoped by name. The search field sits
+ * above 「전체 세션」, which every query keeps.
  */
 export function listedSessions<T extends Pick<SessionRow, 'session' | 'branch' | 'hint' | 'live'>>(rows: T[], query: string): T[] {
   return query.trim() ? filterSessions(rows, query) : rows.filter(r => r.live)
