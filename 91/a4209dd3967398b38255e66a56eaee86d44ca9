@@ -1,0 +1,29 @@
+src/server/index.ts
+  s_b7f30c572db9a8::t_0797c45b344bca 81,401
+src/shared/types.ts
+  s_b7f30c572db9a8::t_0797c45b344bca 279-280,289-291
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_0797c45b344bca 129
+web/src/answers.test.ts
+  s_b7f30c572db9a8::t_0797c45b344bca 41-50
+AGENTS.md
+  s_b7f30c572db9a8::t_2e99bc7503ab03 201
+web/src/answers.ts
+  s_b7f30c572db9a8::t_0797c45b344bca 11-21,25,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91a4209dd3967398b38255e66a56eaee86d44ca9",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}

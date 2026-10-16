@@ -1,0 +1,23 @@
+AGENTS.md
+  s_b7f30c572db9a8::t_7c9635418976ad 201
+src/server/index.ts
+  s_b7f30c572db9a8::t_0eeb70f499c50b 30-31,82-86,389-390
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_0eeb70f499c50b 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "467664e0f866dec18ef36e5475b5f05501cc56cc",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
