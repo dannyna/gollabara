@@ -1,0 +1,21 @@
+src/hook/core.ts
+  s_b7f30c572db9a8::t_5d2a90bb091888 19
+src/hook/never-block.test.ts
+  s_b7f30c572db9a8::t_d148555e7ced2a 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c330438745f01eb5913f89165e55cbffa3f550df",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
