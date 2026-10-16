@@ -1,0 +1,21 @@
+src/setup/harness.ts
+  s_b7f30c572db9a8::t_f43e813eb3d538 31,83-86
+src/setup/setup.test.ts
+  s_b7f30c572db9a8::t_980b2a01296387 10,255-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "679f56844fa892643df7f6181d7e302762ab90c1",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
