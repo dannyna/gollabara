@@ -62,6 +62,34 @@ describe('session delivery routes', () => {
 
 const json = { 'content-type': 'application/json' }
 
+describe('session state', () => {
+  test('rides on the session list and frames, with a frame only when a claim changes it', async () => {
+    const info = { id: 'st', name: 'st', harness: 'claude-code', cwd: '/a' }
+    const state = async () => ((await (await fetch(`${url}/api/sessions`)).json() as Session[]).find(s => s.id === 'st'))?.state
+    const claim = (via: string) => fetch(`${url}/api/feedback/claim`, { method: 'POST', headers: json, body: JSON.stringify({ sessionId: 'st', via }) })
+    await start('st', 'claude-code')
+    expect(await state()).toBe('idle')
+    const ws = new WebSocket(`${url.replace('http', 'ws')}/ws`)
+    const frames: { type: string, session?: Session }[] = []
+    ws.onmessage = e => frames.push(JSON.parse(e.data as string))
+    await new Promise(resolve => ws.onopen = resolve)
+    const states = () => frames.filter(f => f.type === 'session' && f.session?.id === 'st').map(f => f.session!.state)
+
+    await claim('user-prompt-submit')
+    await claim('post-tool-use')
+    await fetch(`${url}/api/events`, { method: 'POST', headers: json, body: JSON.stringify({ kind: 'question', session: info, questions: [{ question: 'Which?', options: [] }] }) })
+    await claim('post-tool-use')
+    await claim('stop')
+    for (let i = 0; i < 50 && states().length < 4; i++)
+      await Bun.sleep(10)
+    expect(states()).toEqual(['working', 'waiting', 'working', 'idle'])
+
+    await fetch(`${url}/api/events`, { method: 'POST', headers: json, body: JSON.stringify({ kind: 'session-end', session: info }) })
+    expect(await state()).toBeUndefined()
+    ws.close()
+  })
+})
+
 describe('settings', () => {
   test('a PUT changes only the keys it names; a seed never overwrites a stored value', async () => {
     const put = async (body: unknown) => fetch(`${url}/api/settings`, { method: 'PUT', headers: json, body: JSON.stringify(body) })

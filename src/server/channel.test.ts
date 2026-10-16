@@ -99,6 +99,37 @@ describe('busy or idle (a wake-up claims only from an idle session)', () => {
   })
 })
 
+describe('display state (working, waiting on a question, idle)', () => {
+  test('a question waits until the next busy signal; a Stop or SessionStart makes it idle', () => {
+    const live = new ChannelLiveness()
+    expect(live.state('s1')).toBe('idle')
+    expect(live.observe('s1', { claim: 'user-prompt-submit', claimed: 0 })).toBe(true)
+    expect(live.state('s1')).toBe('working')
+    expect(live.observe('s1', { event: 'question' })).toBe(true)
+    expect(live.state('s1')).toBe('waiting')
+    // The answer's tool result
+    expect(live.observe('s1', { claim: 'post-tool-use', claimed: 0 })).toBe(true)
+    expect(live.state('s1')).toBe('working')
+    live.observe('s1', { event: 'question' })
+    expect(live.observe('s1', { claim: 'stop', claimed: 0 })).toBe(true)
+    expect(live.state('s1')).toBe('idle')
+    live.observe('s1', { event: 'question' })
+    live.observe('s1', { event: 'session', reason: 'clear' })
+    expect(live.state('s1')).toBe('idle')
+  })
+
+  test('a signal that leaves the state as it was reports no change; a compaction keeps a question waiting', () => {
+    const live = new ChannelLiveness()
+    live.observe('s1', { claim: 'post-tool-use', claimed: 0 })
+    expect(live.observe('s1', { claim: 'post-tool-use', claimed: 0 })).toBe(false)
+    expect(live.observe('s1', { event: 'recap' })).toBe(false)
+    live.observe('s1', { event: 'question' })
+    expect(live.observe('s1', { event: 'session', reason: 'compact' })).toBe(false)
+    expect(live.state('s1')).toBe('waiting')
+    expect(live.observe('s2', { claim: 'stop', claimed: 0 })).toBe(false)
+  })
+})
+
 describe('wake-up waiters (one per session, stepping aside once the user takes over)', () => {
   test('a newer waiter replaces the older one, whose open poll returns', async () => {
     const live = new ChannelLiveness()

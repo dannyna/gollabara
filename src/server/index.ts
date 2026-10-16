@@ -55,7 +55,7 @@ export function startServer() {
     if (session.endedAt)
       return { ...session, routes: [] }
     const live = channels.isLive(session.id)
-    return { ...session, ...(live ? { channel: true } : {}), routes: routesFor(session.harness, live) }
+    return { ...session, ...(live ? { channel: true } : {}), routes: routesFor(session.harness, live), state: channels.state(session.id) }
   }
   const listen = listenHosts(process.env.GOLLABARA_HOST, networkInterfaces())
   const hosts = allowedHosts(listen.hosts, networkInterfaces(), hostname(), process.env.GOLLABARA_ALLOWED_HOSTS)
@@ -224,7 +224,9 @@ export function startServer() {
             return new Response('via is invalid', { status: 400 })
           seeHook(req, store.session(body.sessionId)?.harness)
           const items = store.claimFeedback(body.sessionId, body.via as FeedbackVia)
-          channels.observe(body.sessionId, { claim: body.via as FeedbackVia, claimed: items.length })
+          // Every tool call claims: a frame goes out only when the state it shows changed
+          if (channels.observe(body.sessionId, { claim: body.via as FeedbackVia, claimed: items.length }))
+            publishSession(body.sessionId)
           for (const feedback of items) publishFeedback('delivered', feedback)
           return Response.json(items)
         }
@@ -258,7 +260,8 @@ export function startServer() {
             if (!channels.isIdle(sessionId) || retired())
               return []
             const claimed = store.claimFeedback(sessionId, 'rewake')
-            channels.observe(sessionId, { claim: 'rewake', claimed: claimed.length })
+            if (channels.observe(sessionId, { claim: 'rewake', claimed: claimed.length }))
+              publishSession(sessionId)
             return claimed
           }
           let items = claim()

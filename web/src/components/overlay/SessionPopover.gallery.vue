@@ -1,12 +1,39 @@
 <script setup lang="ts">
+import type { SessionRow } from '../../sessions'
 import { computed, ref } from 'vue'
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import GalleryStage from '../../gallery/GalleryStage.vue'
 import AppBar from '../shell/AppBar.vue'
-import { SAMPLE_SESSIONS } from './gallery-samples'
+import { SAMPLE_NOW, SAMPLE_SESSIONS } from './gallery-samples'
 import SessionPopover from './SessionPopover.vue'
 
 function noop() {}
+
+const ago = (minutes: number) => SAMPLE_NOW - minutes * 60_000
+function row(id: string, session: string, extra: Partial<SessionRow>): SessionRow {
+  return { id, session, lastSeenAt: ago(1), muted: false, ended: false, live: true, harness: 'claude-code', state: 'idle', ...extra }
+}
+
+// 「infect」: two live sessions with one name (told apart by the parent path), and an ended one only a search finds
+const INFECT: SessionRow[] = [
+  row('iw', 'infectguide', { hint: 'work/', state: 'waiting', lastSeenAt: ago(2) }),
+  row('io', 'infectguide', { hint: 'oss/', harness: 'codex', lastSeenAt: ago(14) }),
+  row('legacy', 'infectguide-legacy', { ended: true, live: false, state: undefined, lastSeenAt: ago(60 * 20) }),
+  ...SAMPLE_SESSIONS,
+]
+
+// A long day: every harness and state, a message-only row (no record), and times from 방금 to a date
+const MANY: SessionRow[] = [
+  row('g', 'gollabara', { branch: 'feat/session-menu', state: 'working', lastSeenAt: SAMPLE_NOW }),
+  ...INFECT.slice(0, 2),
+  row('oda', 'od', { branch: 'gollabara-app', harness: 'open-design', state: 'working', lastSeenAt: ago(1) }),
+  ...SAMPLE_SESSIONS,
+  row('sw', 'starwrite', { harness: 'codex', lastSeenAt: ago(70) }),
+  row('docs', 'docs', { branch: 'adr-14', state: 'working', lastSeenAt: ago(95) }),
+  row('lab', 'lab', { harness: 'codex', state: 'waiting', lastSeenAt: ago(60 * 5) }),
+  row('night', 'nightly', { muted: true, lastSeenAt: ago(60 * 16) }),
+  { id: 'old', session: 'scratch', lastSeenAt: ago(60 * 24 * 3), muted: false, ended: false, live: true },
+]
 
 // Interactive: pick, mute, and the scope falls back to 전체 세션 when muted
 const bar = ref<InstanceType<typeof AppBar>>()
@@ -30,20 +57,47 @@ function mute(id: string) {
 </script>
 
 <template>
-  <GalleryCase title="열림 · 전체 세션 · 음소거한 api는 고를 수 없음 (≤767px에서는 바텀시트)">
-    <GalleryStage :height="760">
+  <GalleryCase title="열림 · 전체 세션 선택 · 세 하네스, 세 상태 · 음소거한 api는 고를 수 없음 (≤767px에서는 바텀시트)">
+    <GalleryStage :height="640">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" preview @close="noop" />
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="끝난 세션 · 목록에는 없고, 이름으로 찾으면 흐려진 채 ‘끝남’ (고를 수는 있다)">
+  <GalleryCase title="세션 하나를 보는 중 · od (채움만, 체크와 테두리 없음) · 음소거한 행은 스위치가 꺼짐">
+    <GalleryStage :height="640">
+      <AppBar scope-label="od · landing-hero" sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS" scope="od" :now="SAMPLE_NOW" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="검색 · 「infect」 · 같은 이름 둘은 흐린 상위 경로로 구분, 끝난 세션은 흐려진 채 ‘끝남’ (고를 수는 있다)">
     <GalleryStage :height="560">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => s.id === 'client-e2e' ? { ...s, ended: true, live: false } : s)" :scope="null" query="e2e" preview @close="noop" />
+          <SessionPopover :sessions="INFECT" :scope="null" query="infect" :now="SAMPLE_NOW" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="휴대폰 · 바텀시트 (손잡이는 이 모드에서만, 390에서 확인)">
+    <GalleryStage :height="760">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS" scope="piuda" :now="SAMPLE_NOW" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="세션 12개 · 패널 안에서 스크롤 · 기록 없는 세션은 이름 첫 글자, 상태 없음">
+    <GalleryStage :height="760">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="MANY" :scope="null" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
@@ -52,40 +106,7 @@ function mute(id: string) {
     <GalleryStage :height="420">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => ({ ...s, ended: true, live: false }))" :scope="null" preview @close="noop" />
-        </template>
-      </AppBar>
-    </GalleryStage>
-  </GalleryCase>
-  <GalleryCase title="세션 하나를 보는 중 · od">
-    <GalleryStage :height="760">
-      <AppBar scope-label="od · landing-hero" sessions-open>
-        <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" scope="od" preview @close="noop" />
-        </template>
-      </AppBar>
-    </GalleryStage>
-  </GalleryCase>
-  <GalleryCase title="이름으로 찾기 · 「od」 (전체 세션은 남는다)">
-    <GalleryStage :height="560">
-      <AppBar sessions-open>
-        <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" query="od" preview @close="noop" />
-        </template>
-      </AppBar>
-    </GalleryStage>
-  </GalleryCase>
-  <GalleryCase title="이름이 같은 두 세션 · 흐린 상위 경로로 구분 (경로로도 찾을 수 있다)">
-    <GalleryStage :height="460">
-      <AppBar scope-label="e2e-app" scope-hint="repo/" sessions-open>
-        <template #sessions>
-          <SessionPopover
-            :sessions="[
-              { id: 'a', session: 'e2e-app', hint: 'repo/', lastSeenAt: SAMPLE_SESSIONS[0]!.lastSeenAt, muted: false, ended: false, live: true },
-              { id: 'b', session: 'e2e-app', hint: 'repo2/', lastSeenAt: SAMPLE_SESSIONS[1]!.lastSeenAt, muted: false, ended: false, live: true },
-              ...SAMPLE_SESSIONS.slice(0, 2),
-            ]" scope="a" preview @close="noop"
-          />
+          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => ({ ...s, ended: true, live: false, state: undefined }))" :scope="null" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
@@ -94,31 +115,31 @@ function mute(id: string) {
     <GalleryStage :height="420">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" query="payments" preview @close="noop" />
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" query="payments" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
   </GalleryCase>
   <GalleryCase title="연결 끊김 · 범위와 음소거는 그대로">
-    <GalleryStage :height="760">
+    <GalleryStage :height="640">
       <AppBar offline sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" preview @close="noop" />
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="모바일 · 트리거 아래에 그대로 (바텀시트의 대안, 390에서 확인)">
-    <GalleryStage :height="760">
+  <GalleryCase title="모바일 · 트리거 아래에 그대로, 손잡이 없음 (바텀시트의 대안, 390에서 확인)">
+    <GalleryStage :height="640">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" mobile="anchored" preview @close="noop" />
+          <SessionPopover :sessions="SAMPLE_SESSIONS" :scope="null" mobile="anchored" :now="SAMPLE_NOW" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="직접 열어 보기 · 바깥 누르기 · Esc · Tab 순환">
-    <GalleryStage :height="760">
+  <GalleryCase title="직접 열어 보기 · 바깥 누르기 · Esc · Tab 순환 · 표시 스위치">
+    <GalleryStage :height="640">
       <AppBar ref="bar" :scope-label="label" :sessions-open="open" @sessions="open = !open">
         <template #sessions>
           <SessionPopover
