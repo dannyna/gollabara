@@ -66,3 +66,26 @@ export const E2E_MULTI: Question = {
     { label: '주문 완료', description: '영수증 · 홈으로 돌아가기' },
   ],
 }
+
+/** One AskUserQuestion with three questions of different heights (OD question-stepper.html) */
+export const ENDED_SET: Question[] = [
+  {
+    header: '끝난 세션',
+    question: '전체 세션 목록에는 지금 23개가 떠요 … 끝난 세션은 어떻게 할까요?',
+    options: [
+      { label: '검색할 때만 보이기 (Recommended)', description: '평소 목록에서는 빼고, 검색 결과에서만 보여 줘요.' },
+      { label: '완전히 숨기기', description: '전체 세션 목록과 검색 결과에서 모두 숨겨요.' },
+      { label: '맨 아래에 접어 두기', description: '목록 아래에 모아 두고, 펼치면 볼 수 있어요.' },
+    ],
+  },
+  {
+    header: '대화 표시',
+    question: '대화창에 남은 끝난 세션의 지난 메시지에는 … 어떻게 할까요?',
+    options: [{ label: '흐리게만' }, { label: '「끝남」 글자 빼기 (Recommended)' }, { label: '지금처럼 유지' }, { label: '아무 표시 없이' }],
+  },
+  {
+    header: '확인 순서',
+    question: '변경한 내용을 어디부터 확인할까요?',
+    options: [{ label: '세션 목록' }, { label: '대화창' }],
+  },
+]

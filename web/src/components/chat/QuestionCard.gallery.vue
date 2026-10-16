@@ -3,6 +3,7 @@ import ChatFrame from '../../gallery/ChatFrame.vue'
 import { E2E_MULTI, HERO_ROWS, HERO_SHORT, S, time } from '../../gallery/fixtures'
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import QuestionCard from './QuestionCard.vue'
+import QuestionStepper from './QuestionStepper.vue'
 import SessionMessage from './SessionMessage.vue'
 
 const ASK = '시안 3개 올렸어. 하나 골라 줘.'
@@ -31,9 +32,9 @@ const ASK = '시안 3개 올렸어. 하나 골라 줘.'
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="04 · 질문이 여러 개">
-    <ChatFrame note="한 장씩 넘긴다. 마지막 문항에 답할 때 한꺼번에 보낸다.">
+    <ChatFrame note="한 카드에서 한 장씩 넘긴다 (chat/QuestionStepper). 마지막 문항에 답할 때 한꺼번에 보낸다.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
-        {{ ASK }}<QuestionCard :question="HERO_ROWS" count="1 / 2" />
+        {{ ASK }}<QuestionStepper :questions="[HERO_ROWS, E2E_MULTI]" />
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
@@ -82,8 +83,7 @@ const ASK = '시안 3개 올렸어. 하나 골라 줘.'
   <GalleryCase title="app · 답하기 준비 중 (inert)">
     <ChatFrame note="지금 앱이 그리는 상태. 질문과 선택지는 그대로 읽히고, 모든 버튼은 꺼져 있다.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
-        <QuestionCard :question="HERO_ROWS" count="1 / 2" inert />
-        <QuestionCard :question="E2E_MULTI" count="2 / 2" inert />
+        <QuestionStepper :questions="[HERO_ROWS, E2E_MULTI]" inert />
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
