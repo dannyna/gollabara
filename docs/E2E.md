@@ -106,15 +106,15 @@ Covers #76 and #98.
 
 Covers MVP 5, #75, #78, invariant 4.
 
-| ID  | Covers | Steps                                                                                  | Expected                                                                                                      | How  | Result |
-| --- | ------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---- | ------ |
-| U1  | #75    | Open the app on an empty data dir                                                      | The first-run page: server running, `bunx gollabara setup` with a copy button, start a session                | auto | pass   |
-| U2  | #75    | Open it after a hook was seen, with no session today; then with an outdated hook       | Empty panels name the connected harnesses and the next step; outdated shows `golla update`                    | auto | pass   |
-| U3  | stream | With C4–C6 data: step the rail, open the viewer, pin a cell, let a new artifact arrive | Steps land on cells; the viewer zooms and pages; the pin holds; 「새 산출물 n →」 appears while not following | auto | pass   |
-| U4  | chat   | Mute a session from its avatar menu; scope to one session                              | Muted lines collapse to one system line; the scope shows only that session in both panels                     | auto | pass   |
-| U5  | #78    | Delete a session's data that shares an image with another session                      | Its rows leave every open view; the shared image file stays on disk; its unshared images are gone             | auto | pass   |
-| U6  | triage | Turn 「대화 정리」 to Claude, produce a progress-only recap and a result recap         | The progress line folds into 「숨긴 메시지 1」; the result line shows, with a tone; images are never judged   | auto | pass   |
-| U7  | layout | Repeat U1–U4 at 390 px and 834 px, dark and light                                      | No overflow; the chat-only layout on a phone                                                                  | auto | pass   |
+| ID  | Covers | Steps                                                                                                      | Expected                                                                                                                                                  | How  | Result |
+| --- | ------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------ |
+| U1  | #75    | Open the app on an empty data dir                                                                          | The first-run page: server running, `bunx gollabara setup` with a copy button, start a session                                                            | auto | pass   |
+| U2  | #75    | Open it after a hook was seen, with no session today; then with an outdated hook                           | Empty panels name the connected harnesses and the next step; outdated shows `golla update`                                                                | auto | pass   |
+| U3  | stream | With C4–C6 data: step the rail, open the viewer, pin a cell, let a new artifact arrive, then step the rail | Steps land on cells; the viewer zooms and pages; the pin holds until the rail moves, and a step lets it go; 「새 산출물 n →」 appears while not following | auto | pass   |
+| U4  | chat   | Mute a session from its avatar menu; scope to one session                                                  | Muted lines collapse to one system line; the scope shows only that session in both panels                                                                 | auto | pass   |
+| U5  | #78    | Delete a session's data that shares an image with another session                                          | Its rows leave every open view; the shared image file stays on disk; its unshared images are gone                                                         | auto | pass   |
+| U6  | triage | Turn 「대화 정리」 to Claude, produce a progress-only recap and a result recap                             | The progress line folds into 「숨긴 메시지 1」; the result line shows, with a tone; images are never judged                                               | auto | pass   |
+| U7  | layout | Repeat U1–U4 at 390 px and 834 px, dark and light                                                          | No overflow; the chat-only layout on a phone                                                                                                              | auto | pass   |
 
 ## History
 

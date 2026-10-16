@@ -24,8 +24,6 @@ const props = withDefaults(defineProps<{
    * points to the terminal. The live app always passes this.
    */
   inert?: boolean
-  /** Inside a question stepper: no card of its own and no eyebrow, the stepper draws them */
-  bare?: boolean
 }>(), { state: 'open', picks: () => [] })
 
 const options = computed(() => props.question.options.map(toChoice))
@@ -49,8 +47,8 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
 </script>
 
 <template>
-  <div class="question" :class="{ closed, offline: state === 'offline', inert, bare }">
-    <div v-if="!bare" class="eyebrow">
+  <div class="question" :class="{ closed, offline: state === 'offline', inert }">
+    <div class="eyebrow">
       <ChatIcon name="question" /><b>{{ question.header || '세션에서 물었어요' }}</b>
       <template v-if="multi">
         · 여러 개 고르기
@@ -141,12 +139,6 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
   padding: 16px;
   border-radius: 16px;
   background: var(--bg);
-}
-.question.bare {
-  margin: 0;
-  padding: 0;
-  border-radius: 0;
-  background: none;
 }
 .eyebrow {
   display: flex;
@@ -380,7 +372,7 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
 }
 
 @media (max-width: 767px) {
-  .question:not(.bare) {
+  .question {
     padding: 14px;
   }
   .choice {
