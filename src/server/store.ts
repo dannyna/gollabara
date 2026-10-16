@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackQuote, FeedbackVia, Harness, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { AnswerSetting, Feedback, FeedbackImage, FeedbackQuote, FeedbackVia, Harness, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, QuestionAnswer, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -13,6 +13,7 @@ import { migrate } from './migrations'
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
+export const ANSWER_SETTINGS: AnswerSetting[] = ['on', 'off']
 
 /** What an expiry or a session delete removed: the rows for the views to drop, and the image files */
 export interface Purged {
@@ -101,9 +102,11 @@ export class Store {
     const stored = new Map(rows.map(r => [r.key, r.value]))
     const triage = stored.get('triage')
     const phone = stored.get('phone')
+    const answer = stored.get('answer')
     return {
       triage: triage && (TRIAGE_ENGINES as string[]).includes(triage) ? triage as TriageEngine : 'off',
       ...(phone !== undefined ? { phone } : {}),
+      ...(answer && (ANSWER_SETTINGS as string[]).includes(answer) ? { answer: answer as AnswerSetting } : {}),
     }
   }
 
@@ -287,7 +290,12 @@ export class Store {
     }
     else if (event.kind === 'question') {
       // Questions stand alone; they neither join nor close a turn
-      result = { session, message: this.insert({ ...base, kind: 'question', questions: event.questions }), created: true }
+      const id = event.id ? { questionId: event.id } : {}
+      result = { session, message: this.insert({ ...base, kind: 'question', questions: event.questions, ...id }), created: true }
+    }
+    else if (event.kind === 'answer') {
+      // Answered in the terminal, or the PostToolUse after an app answer, which keeps the app's record
+      result = { session, message: this.recordAnswer(session.id, event.questionId, event.answers, 'terminal', now), created: false }
     }
     else if (event.kind === 'image') {
       const images = saved.map(i => ({ ...i, at: now }))
@@ -316,6 +324,22 @@ export class Store {
 
     this.db.run('UPDATE sessions SET open_turn = ?, last_turn = ? WHERE id = ?', [openTurn, lastTurn, session.id])
     return result
+  }
+
+  /**
+   * Records how the session's question was answered, in its message body, so hello, history, expiry and
+   * delete carry it. The first answer wins: the updated message, or null when the question is unknown or
+   * already answered.
+   */
+  recordAnswer(sessionId: string, questionId: string, answers: Record<string, string>, via: QuestionAnswer['via'], now = Date.now()): StreamMessage | null {
+    const row = this.db.query(`SELECT id, body FROM messages WHERE json_extract(body, '$.sessionId') = ? AND json_extract(body, '$.questionId') = ?
+      ORDER BY id DESC LIMIT 1`).get(sessionId, questionId) as { id: number, body: string } | null
+    if (!row)
+      return null
+    const message: StreamMessage = { id: row.id, ...JSON.parse(row.body) }
+    if (message.answer)
+      return null
+    return this.update({ ...message, answer: { answers, via, at: now } })
   }
 
   recent(limit = 300): StreamMessage[] {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TriageEngine } from '../../../../src/shared/types'
+import type { AnswerSetting, TriageEngine } from '../../../../src/shared/types'
 import type { PushState } from '../../push'
 import type { Settings, SettingsErrors } from '../../settings'
 import type { ThemePreference } from '../../theme'
@@ -14,6 +14,8 @@ const props = withDefaults(defineProps<{
   theme: ThemePreference
   /** 대화 정리: the server's triage engine */
   engine?: TriageEngine
+  /** 앱에서 답하기: whether the server holds Claude Code's questions for the app */
+  answer?: AnswerSetting
   /** 알림 받기: this device's push subscription */
   push?: PushState
   /** Turning push on or off is in progress */
@@ -35,6 +37,8 @@ const emit = defineEmits<{
   'update:theme': [theme: ThemePreference]
   // Applies at once too: it is stored on the server, not in this browser
   'update:engine': [engine: TriageEngine]
+  // Applies at once too, on the server
+  'update:answer': [answer: AnswerSetting]
   // Applies at once: it subscribes this device with its browser
   'update:push': [on: boolean]
 }>()
@@ -160,6 +164,20 @@ async function save() {
         </div>
         <p :id="`${id}-triage-note`" class="description">
           이 Mac의 claude 또는 codex CLI가 새 세션 메시지를 읽고 볼 필요 없는 줄은 숨겨요. 메시지 글과 그 세션에 보낸 피드백 글은 그 CLI의 모델로 전송되고, 이미지는 보내지 않아요.
+        </p>
+
+        <div class="switch-row">
+          <span :id="`${id}-answer`">앱에서 답하기</span>
+          <button
+            class="switch" type="button" role="switch" :aria-checked="answer === 'on'" :aria-labelledby="`${id}-answer`"
+            :aria-describedby="`${id}-answer-note`" @click="emit('update:answer', answer === 'on' ? 'off' : 'on')"
+          >
+            <span class="track" aria-hidden="true"><span class="knob" /></span>
+            <span aria-hidden="true">{{ answer === 'on' ? '켜짐' : '꺼짐' }}</span>
+          </button>
+        </div>
+        <p :id="`${id}-answer-note`" class="description">
+          세션이 물으면 60초 동안 여기서 답할 수 있어요. 그동안 터미널에는 질문이 보이지 않아요. Claude Code 세션만 돼요.
         </p>
 
         <p :id="`${id}-push`" class="label">
@@ -294,6 +312,55 @@ input[aria-invalid='true'] {
   border-color: var(--fg);
   background: var(--fg);
   color: var(--surface);
+}
+/* One switch on the label's line, like the session menu's show switch */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 19px 0 0;
+  font-size: 12px;
+}
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0 0 6px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.switch:hover:not(:disabled) {
+  background: none;
+  color: var(--fg);
+}
+.track {
+  display: block;
+  width: 25px;
+  height: 14px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--fg);
+}
+.knob {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translateX(11px);
+}
+.switch[aria-checked='false'] .track {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.switch[aria-checked='false'] .knob {
+  background: var(--muted);
+  transform: none;
 }
 .brand {
   margin-top: 35px;

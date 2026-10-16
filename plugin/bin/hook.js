@@ -1,11 +1,12 @@
 // @bun
 // src/hook/entry.ts
+import process5 from "process";
+
+// src/hook/ask.ts
 import process4 from "process";
 
-// src/hook/core.ts
-import { existsSync, readFileSync as readFileSync2, statSync as statSync2 } from "fs";
-import { dirname, join as join3, resolve } from "path";
-import process2 from "process";
+// src/shared/answer.ts
+var ANSWER_HOLD_MS = 60000;
 
 // src/shared/config.ts
 import { homedir } from "os";
@@ -32,6 +33,11 @@ var plugin_default = {
 var PLUGIN_VERSION = plugin_default.version;
 var HOOK_VERSION_HEADER = "x-gollabara-hook";
 var HOOK_HARNESS_HEADER = "x-gollabara-harness";
+
+// src/hook/core.ts
+import { existsSync, readFileSync as readFileSync2, statSync as statSync2 } from "fs";
+import { dirname, join as join3, resolve } from "path";
+import process2 from "process";
 
 // src/hook/health.ts
 import { appendFileSync, mkdirSync, readFileSync, renameSync, statSync } from "fs";
@@ -308,6 +314,8 @@ function mapHook(input, session, opener = "unknown", fileRole) {
       return reason ? { kind: "session", session, reason } : { kind: "session", session };
     }
     case "PostToolUse": {
+      if (input.tool_name === "AskUserQuestion")
+        return answerEvent(input, session);
       const images = extractImages(input.tool_response);
       if (images.length === 0)
         return null;
@@ -324,7 +332,9 @@ function mapHook(input, session, opener = "unknown", fileRole) {
       if (!QUESTION_TOOLS.has(input.tool_name ?? ""))
         return null;
       const questions = extractQuestions(input.tool_input);
-      return questions.length ? { kind: "question", session, questions } : null;
+      if (!questions.length)
+        return null;
+      return typeof input.tool_use_id === "string" && input.tool_use_id ? { kind: "question", session, questions, id: input.tool_use_id } : { kind: "question", session, questions };
     }
     case "Stop": {
       if (opener === "system" && !input.stop_hook_active)
@@ -430,6 +440,13 @@ function imageSource(toolInput) {
       return value.trim();
   }
   return;
+}
+function answerEvent(input, session) {
+  const raw = input.tool_response?.answers ?? input.tool_input?.answers;
+  if (typeof input.tool_use_id !== "string" || !input.tool_use_id || !raw || typeof raw !== "object" || Array.isArray(raw))
+    return null;
+  const answers = Object.fromEntries(Object.entries(raw).filter((e) => typeof e[1] === "string"));
+  return Object.keys(answers).length ? { kind: "answer", session, questionId: input.tool_use_id, answers } : null;
 }
 function extractQuestions(toolInput) {
   const list = Array.isArray(toolInput?.questions) ? toolInput.questions : [];
@@ -603,8 +620,64 @@ async function runWait() {
   }
 }
 
+// src/hook/ask.ts
+var ASK_DEADLINE_MS = ANSWER_HOLD_MS + 5000;
+var HOLD_TIMEOUT_MS = ANSWER_HOLD_MS + 2000;
+function askOutput(toolInput, answers) {
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "allow",
+      updatedInput: { questions: toolInput?.questions, answers }
+    }
+  };
+}
+function heldAnswers(body) {
+  const answers = body?.answers;
+  if (!answers || typeof answers !== "object" || Array.isArray(answers))
+    return null;
+  const entries = Object.entries(answers);
+  return entries.length && entries.every(([, v]) => typeof v === "string") ? answers : null;
+}
+async function runAsk() {
+  if (process4.env.GOLLABARA_HOOK === "off" || headless(process4.env.CLAUDE_CODE_ENTRYPOINT) || process4.env.OD_PROJECT_ID)
+    return;
+  try {
+    let timer;
+    const raw = await Promise.race([
+      Bun.stdin.text(),
+      new Promise((resolve2) => {
+        timer = setTimeout(resolve2, HARD_DEADLINE_MS, null);
+      })
+    ]);
+    clearTimeout(timer);
+    if (raw === null)
+      return;
+    const input = JSON.parse(raw);
+    if (input.tool_name !== "AskUserQuestion" || !input.session_id || typeof input.tool_use_id !== "string" || !input.tool_use_id)
+      return;
+    const questions = extractQuestions(input.tool_input);
+    if (!questions.length)
+      return;
+    const abort = new AbortController;
+    let budget = setTimeout(() => abort.abort(), POST_TIMEOUT_MS);
+    const res = await fetch(`${serverUrl()}/api/questions/hold`, {
+      method: "POST",
+      headers: { "content-type": "application/json", [HOOK_VERSION_HEADER]: PLUGIN_VERSION, [HOOK_HARNESS_HEADER]: "claude-code" },
+      body: JSON.stringify({ sessionId: input.session_id, questionId: input.tool_use_id, questions }),
+      signal: abort.signal
+    }).finally(() => clearTimeout(budget));
+    if (!res.ok)
+      return;
+    budget = setTimeout(() => abort.abort(), HOLD_TIMEOUT_MS);
+    const answers = heldAnswers(await res.json().finally(() => clearTimeout(budget)));
+    if (answers)
+      await Bun.write(Bun.stdout, JSON.stringify(askOutput(input.tool_input, answers)));
+  } catch {}
+}
+
 // src/hook/entry.ts
-var mode = process4.argv[2];
+var mode = process5.argv[2];
 if (mode !== "wait")
-  exitAt(mode === "session-end" ? SESSION_END_DEADLINE_MS : HARD_DEADLINE_MS);
-process4.exit(mode === "wait" ? await runWait() : (await runHook(mode === "codex" ? "codex" : "claude-code"), 0));
+  exitAt(mode === "session-end" ? SESSION_END_DEADLINE_MS : mode === "ask" ? ASK_DEADLINE_MS : HARD_DEADLINE_MS);
+process5.exit(mode === "wait" ? await runWait() : mode === "ask" ? (await runAsk(), 0) : (await runHook(mode === "codex" ? "codex" : "claude-code"), 0));

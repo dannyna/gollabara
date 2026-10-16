@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TriageEngine } from '../../src/shared/types'
+import type { AnswerSetting, TriageEngine } from '../../src/shared/types'
 import type { Settings } from './settings'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { cellKeys, toArtifacts } from './artifacts'
@@ -28,7 +28,7 @@ import { migrateLocalSettings, putServerSettings, sheetSettings, useSettings } f
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored, history, loadOlder } = useStream()
+const { messages, sessions, feedback, triage, settings: serverSettings, holds, arrivals, connected, offline, restored, history, loadOlder } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute, forget } = useMutedSessions()
 const { toast } = useToast()
@@ -84,6 +84,15 @@ async function setEngine(engine: TriageEngine) {
     // The server broadcasts the change too, so every open view follows
     serverSettings.value = await putServerSettings({ triage: engine })
     toast(engine === 'off' ? '대화 정리를 껐어요' : '대화 정리를 켰어요. 새 메시지부터 적용돼요')
+  }
+  catch (error) {
+    toast((error as Error).message)
+  }
+}
+async function setAnswer(answer: AnswerSetting) {
+  try {
+    serverSettings.value = await putServerSettings({ answer })
+    toast(answer === 'on' ? '앱에서 답하기를 켰어요. 다음 질문부터 적용돼요' : '앱에서 답하기를 껐어요')
   }
   catch (error) {
     toast((error as Error).message)
@@ -277,14 +286,14 @@ function onThumb(key: string) {
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
         :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide" :history="history"
-        @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
+        :holds="holds" :connected="connected" @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
         @older="loadPage"
       />
     </main>
     <SettingsSheet
       v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"
-      :push="pushState" :push-busy="pushBusy"
-      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine" @update:push="setPush"
+      :answer="serverSettings.answer ?? 'off'" :push="pushState" :push-busy="pushBusy"
+      @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine" @update:answer="setAnswer" @update:push="setPush"
     />
     <ConfirmDialog
       v-if="deleting" :title="`${deletingName} 세션의 데이터를 지울까요?`" confirm-label="지우기"

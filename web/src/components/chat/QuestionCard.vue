@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { Question } from '../../../../src/shared/types'
-import { computed, ref, watch } from 'vue'
+import type { AnswerFailure } from '../../answers'
+import { computed, nextTick, ref, watch } from 'vue'
+import { ANSWER_MAX } from '../../../../src/shared/answer'
+import { FAILURE_NOTE, holdNote, rawAnswer } from '../../answers'
 import { clock } from '../../artifacts'
 import { answerLabel, choiceLayout, toChoice } from './chat'
 import ChatIcon from './ChatIcon.vue'
 
 // The session's own AskUserQuestion, word for word. The only surface inside a
-// session message.
+// session message. It answers only while the session's hook holds the question
+// (answers.ts decides); otherwise it is drawn inert. The card sends nothing
+// itself: it emits the answer and its parent posts it.
 export type QuestionState = 'open' | 'typed' | 'sending' | 'done' | 'terminal' | 'fail' | 'offline'
 
 const props = withDefaults(defineProps<{
@@ -16,38 +21,94 @@ const props = withDefaults(defineProps<{
   picks?: number[]
   /** 「1 / 3」 when the session asked several questions */
   count?: string
-  /** Direct reply preview in the typed state */
+  /** The direct reply's text in the typed state */
   typed?: string
+  /** A free-text answer (no label), shown instead of the picks once sent or answered */
+  answerText?: string
   answeredAt?: number
-  /**
-   * Answering is not built yet: every control is drawn but disabled.
-   * The live app always passes this.
-   */
+  /** Not answerable now: every control is drawn but disabled */
   inert?: boolean
-}>(), { state: 'open', picks: () => [] })
+  /** While held: when the hold ends, and the clock the countdown reads */
+  until?: number
+  now?: number
+  /** In the fail state: why it failed, and whether 「다시 보내기」 can go */
+  failure?: AnswerFailure
+  retry?: boolean
+}>(), { state: 'open', picks: () => [], failure: 'network' })
+
+const emit = defineEmits<{
+  /** The answer as Claude Code expects it: a raw label, labels joined with ", ", or typed text */
+  send: [answer: string]
+  /** 「다시 보내기」: the same answer again */
+  retry: []
+}>()
 
 const options = computed(() => props.question.options.map(toChoice))
 const layout = computed(() => choiceLayout(options.value))
 const multi = computed(() => !!props.question.multiSelect)
-const closed = computed(() => ['sending', 'done', 'terminal'].includes(props.state))
-const locked = computed(() => closed.value || props.state === 'offline' || props.inert)
+// 「직접 답하기」 opens the typed state inside the card
+const typing = ref(props.state === 'typed')
+const view = computed<QuestionState>(() => props.state === 'open' && typing.value ? 'typed' : props.state)
+const closed = computed(() => ['sending', 'done', 'terminal'].includes(view.value))
+const locked = computed(() => closed.value || view.value === 'offline' || (view.value === 'fail' && !props.retry) || props.inert)
 
-// Picks stay local: the gallery can toggle an open card, nothing is sent
 const chosen = ref<number[]>([...props.picks])
-watch(() => props.picks, p => chosen.value = [...p])
+// By value: the parent hands a new array on every countdown tick, which must not drop the picks
+watch(() => props.picks.join(), () => chosen.value = [...props.picks])
+const text = ref(props.typed ?? '')
+watch(() => props.typed, t => text.value = t ?? '')
+const field = ref<HTMLTextAreaElement>()
+const root = ref<HTMLElement>()
+// Sending disables or replaces the control that sent (a pick, 「보내기」, 「다시 보내기」), which would drop
+// focus to the page: the card takes it instead, if it was inside the card
+watch(locked, async (on, before) => {
+  if (!on || before || !root.value?.contains(document.activeElement))
+    return
+  await nextTick()
+  const active = document.activeElement as HTMLButtonElement | null
+  if (!root.value?.contains(active) || active?.disabled)
+    root.value?.focus({ preventScroll: true })
+}, { flush: 'pre' })
+// A hold that runs out mid-answer leaves the read-only card, not a disabled draft
+watch(() => props.inert, (inert) => {
+  if (inert && props.state === 'open') {
+    typing.value = false
+    chosen.value = [...props.picks]
+  }
+})
+
 function toggle(i: number) {
   if (locked.value)
     return
-  if (multi.value)
+  if (multi.value) {
     chosen.value = chosen.value.includes(i) ? chosen.value.filter(x => x !== i) : [...chosen.value, i]
-  else
-    chosen.value = [i]
+    return
+  }
+  chosen.value = [i]
+  // A single choice is the answer: it goes at once
+  emit('send', rawAnswer(props.question, [i]))
 }
-const picked = computed(() => answerLabel(options.value, chosen.value))
+function sendPicks() {
+  if (!locked.value && chosen.value.length)
+    emit('send', rawAnswer(props.question, chosen.value))
+}
+function sendText() {
+  if (!props.inert && text.value.trim())
+    emit('send', text.value.trim())
+}
+async function openTyped() {
+  if (props.inert)
+    return
+  typing.value = true
+  await nextTick()
+  field.value?.focus()
+}
+const picked = computed(() => props.answerText ?? answerLabel(options.value, chosen.value))
+const countdown = computed(() => props.until != null && props.now != null && !props.inert ? holdNote(props.until, props.now) : undefined)
 </script>
 
 <template>
-  <div class="question" :class="{ closed, offline: state === 'offline', inert }">
+  <div ref="root" class="question" :class="{ closed, offline: view === 'offline', inert }" tabindex="-1">
     <div class="eyebrow">
       <ChatIcon name="question" /><b>{{ question.header || '세션에서 물었어요' }}</b>
       <template v-if="multi">
@@ -57,15 +118,16 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
     </div>
     <p>{{ question.question }}</p>
 
-    <template v-if="state === 'typed'">
-      <div class="typed">
-        {{ typed }}
-      </div>
+    <template v-if="view === 'typed'">
+      <textarea
+        ref="field" v-model="text" class="typed" rows="2" :maxlength="ANSWER_MAX"
+        :disabled="inert" aria-label="직접 답하기" placeholder="답을 적어 주세요"
+      />
       <div class="q-foot">
-        <button class="direct-reply" type="button" :disabled="inert">
+        <button class="direct-reply" type="button" :disabled="inert" @click="typing = false">
           선택지로 돌아가기
         </button>
-        <button class="primary" type="button" :disabled="inert || !typed">
+        <button class="primary" type="button" :disabled="inert || !text.trim()" @click="sendText">
           보내기
         </button>
       </div>
@@ -91,41 +153,48 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
       </button>
     </div>
 
-    <template v-if="state === 'open' || state === 'fail'">
-      <div v-if="state === 'fail'" class="q-state strong">
-        <ChatIcon name="alert" />전달하지 못했어요 · <button class="link" type="button" :disabled="inert">
-          다시 보내기
-        </button>
-      </div>
-      <div v-if="state === 'fail'" class="q-state">
-        터미널에서 바로 답해도 돼요
-      </div>
+    <template v-if="view === 'open' || view === 'fail'">
+      <template v-if="view === 'fail'">
+        <div class="q-state strong">
+          <ChatIcon name="alert" />{{ FAILURE_NOTE[failure] }}<template v-if="retry">
+            · <button class="link" type="button" :disabled="inert" @click="emit('retry')">
+              다시 보내기
+            </button>
+          </template>
+        </div>
+        <div v-if="failure !== 'closed'" class="q-state">
+          터미널에서 바로 답해도 돼요
+        </div>
+      </template>
       <div v-else-if="multi" class="q-foot">
-        <button class="direct-reply" type="button" :disabled="inert">
+        <button class="direct-reply" type="button" :disabled="inert" @click="openTyped">
           직접 답하기
         </button>
-        <button class="primary" type="button" :disabled="inert || !chosen.length">
+        <button class="primary" type="button" :disabled="inert || !chosen.length" @click="sendPicks">
           {{ chosen.length ? `${chosen.length}개 골라 보내기` : '골라 주세요' }}
         </button>
       </div>
-      <button v-else class="direct-reply" type="button" :disabled="inert">
+      <button v-else class="direct-reply" type="button" :disabled="inert" @click="openTyped">
         직접 답하기
       </button>
     </template>
-    <div v-else-if="state === 'sending'" class="q-state">
+    <div v-else-if="view === 'sending'" class="q-state">
       <span class="spin" aria-hidden="true" />{{ picked }}로 답하는 중
     </div>
-    <div v-else-if="state === 'done'" class="q-state strong">
+    <div v-else-if="view === 'done'" class="q-state strong">
       <ChatIcon name="check" />{{ picked }}로 답했어요<template v-if="answeredAt">
         · <time>{{ clock(answeredAt) }}</time>
       </template>
     </div>
-    <div v-else-if="state === 'terminal'" class="q-state strong">
+    <div v-else-if="view === 'terminal'" class="q-state strong">
       <ChatIcon name="term" />{{ picked ? `터미널에서 ${picked}로 먼저 답했어요` : '터미널에서 먼저 답했어요' }}
     </div>
-    <!-- Inert cards never promise an answer after reconnecting: the app cannot answer yet -->
-    <div v-else-if="state === 'offline' && !inert" class="q-state">
+    <!-- Only a question still held can be answered after reconnecting -->
+    <div v-else-if="view === 'offline' && !inert" class="q-state">
       <ChatIcon name="plug" />다시 연결되면 답할 수 있어요
+    </div>
+    <div v-if="countdown && (view === 'open' || view === 'typed' || view === 'fail')" class="q-state hold" role="timer">
+      {{ countdown }}
     </div>
   </div>
 </template>
@@ -316,12 +385,22 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
   color: var(--on-accent);
 }
 .typed {
+  display: block;
+  width: 100%;
   margin-top: 10px;
   padding: 10px 12px;
+  border: 0;
   border-radius: 12px;
   background: var(--surface);
+  color: var(--fg);
+  font: inherit;
   font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
   box-shadow: inset 0 0 0 1px var(--fg);
+}
+.typed::placeholder {
+  color: var(--muted);
 }
 .q-state {
   display: flex;
@@ -334,6 +413,10 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
 }
 .q-state.strong {
   color: var(--fg);
+}
+/* The countdown sits under the actions, a step quieter; role=timer keeps it from being announced each second */
+.q-state.hold {
+  font-size: 10px;
 }
 .q-state .chat-icon {
   width: 13px;
@@ -378,6 +461,10 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
   .direct-reply {
     min-height: 44px;
     font-size: 11px;
+  }
+  /* 16px keeps iOS from zooming into the field */
+  .typed {
+    font-size: 16px;
   }
 }
 @media (max-width: 767px), (pointer: coarse) {

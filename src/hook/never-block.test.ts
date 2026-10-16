@@ -187,3 +187,95 @@ describe('SessionEnd budget', () => {
     expect(run.ms).toBeLessThan(SESSION_END_BOUND_MS)
   }, 10_000)
 })
+
+// `hook.js ask` holds AskUserQuestion for the app (opt-in), so it is exempt from the 1.5 s and 2.5 s budget above.
+// It still must never block when nobody can answer, never print anything but the answer, and end by its own deadline.
+describe('ask hook', () => {
+  const questions = [{ question: 'Which?', header: 'Pick', options: [{ label: 'A', description: 'first' }, { label: 'B' }], multiSelect: false }]
+  const ask = JSON.stringify({ session_id: 's', transcript_path: '/nowhere.jsonl', cwd: '/tmp', hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: { questions }, tool_use_id: 'toolu_1' })
+  const answering = { answers: { Which: 'B' } as Record<string, string> | null }
+  let holdServer: Server<undefined>
+  const holdUrl = () => holdServer.url.href.replace(/\/$/, '')
+  const bodies: unknown[] = []
+  beforeAll(() => {
+    holdServer = Bun.serve({
+      port: 0,
+      hostname: '127.0.0.1',
+      async fetch(req) {
+        bodies.push(await req.json())
+        return Response.json(answering.answers ? { answers: answering.answers } : { hold: false })
+      },
+    })
+  })
+  afterAll(() => holdServer.stop(true))
+
+  test('exits at once, printing nothing, with the server down, with no hold, headless, or with GOLLABARA_HOOK=off', async () => {
+    const runs = [
+      await hook(ask, { mode: 'ask', url: downUrl }),
+      await (async () => {
+        answering.answers = null
+        return hook(ask, { mode: 'ask', url: holdUrl() })
+      })(),
+      await hook(ask, { mode: 'ask', url: holdUrl(), env: { CLAUDE_CODE_ENTRYPOINT: 'sdk-cli' } }),
+      await hook(ask, { mode: 'ask', url: holdUrl(), env: { GOLLABARA_HOOK: 'off' } }),
+      await hook(ask, { mode: 'ask', url: holdUrl(), env: { OD_PROJECT_ID: 'od' } }),
+    ]
+    for (const run of runs) {
+      expect({ code: run.code, stdout: run.stdout }).toEqual({ code: 0, stdout: '' })
+      expect(run.ms).toBeLessThan(1500)
+    }
+    // Only the no-hold run reached the server
+    expect(bodies).toHaveLength(1)
+  }, 15_000)
+
+  test('an answer from the app comes out as the tool input, with the questions as asked', async () => {
+    answering.answers = { Which: 'B' }
+    bodies.length = 0
+    const run = await hook(ask, { mode: 'ask', url: holdUrl() })
+    expect(run.code).toBe(0)
+    expect(JSON.parse(run.stdout)).toEqual({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', updatedInput: { questions, answers: { Which: 'B' } } },
+    })
+    expect(bodies).toEqual([{ sessionId: 's', questionId: 'toolu_1', questions }])
+    // Another tool, or a stalled stdin, never reaches the server
+    const other = await hook(ask.replace('AskUserQuestion', 'Bash'), { mode: 'ask', url: holdUrl() })
+    expect({ code: other.code, stdout: other.stdout }).toEqual({ code: 0, stdout: '' })
+    const stalled = await hook(null, { mode: 'ask', url: holdUrl() })
+    expect({ code: stalled.code, stdout: stalled.stdout }).toEqual({ code: 0, stdout: '' })
+    expect(stalled.ms).toBeLessThan(3000)
+    expect(bodies).toHaveLength(1)
+  }, 15_000)
+
+  test('a server that never answers: the hook gives up within its 1.5 s request budget, quietly', async () => {
+    reset('hang')
+    const run = await hook(ask, { mode: 'ask' })
+    expect({ code: run.code, stdout: run.stdout }).toEqual({ code: 0, stdout: '' })
+    expect(run.ms).toBeLessThan(2500)
+  }, 10_000)
+
+  test('a hold the server started may answer past the 1.5 s budget', async () => {
+    // Like the real route: a space at once, the answer later in the body
+    const late = Bun.serve({
+      port: 0,
+      hostname: '127.0.0.1',
+      fetch: () => new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(' '))
+          setTimeout(() => {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify({ answers: { Which: 'A' } })))
+            controller.close()
+          }, 2200)
+        },
+      })),
+    })
+    try {
+      const run = await hook(ask, { mode: 'ask', url: late.url.href.replace(/\/$/, '') })
+      expect(run.code).toBe(0)
+      expect(JSON.parse(run.stdout)).toMatchObject({ hookSpecificOutput: { updatedInput: { answers: { Which: 'A' } } } })
+      expect(run.ms).toBeGreaterThan(2000)
+    }
+    finally {
+      late.stop(true)
+    }
+  }, 10_000)
+})
