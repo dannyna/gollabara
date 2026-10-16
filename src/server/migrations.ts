@@ -104,6 +104,11 @@ export const MIGRATIONS: Migration[] = [
     db.run('CREATE INDEX messages_at ON messages (at)')
     db.run(`CREATE INDEX messages_session ON messages (json_extract(body, '$.sessionId'))`)
   },
+  // 7: close the records left open from before #96 (#112). That server ignored SessionEnd and stored no pid, so they
+  // never end. Each ends at its last activity; one still running comes back with its next event.
+  (db) => {
+    db.run('UPDATE sessions SET ended_at = last_seen_at WHERE ended_at IS NULL AND pid IS NULL')
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

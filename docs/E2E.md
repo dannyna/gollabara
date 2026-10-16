@@ -92,15 +92,15 @@ Covers MVP 4, #71, #72, the Codex capture table.
 
 Covers #76 and #98.
 
-| ID  | Covers | Steps                                                          | Expected                                                                                             | How  | Result |
-| --- | ------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---- | ------ |
-| E1  | #76    | End a session normally (`claude -p` exit)                      | `endedAt` is set by SessionEnd; the UI shows 「끝남」 and fades the name and text, not the images    | auto | pass   |
-| E2  | #76    | `kill -9` a running session                                    | Marked ended within 60 s                                                                             | auto | pass   |
-| E3  | #76    | Send feedback to an ended session                              | 409 `session ended`; the composer says 「끝난 세션이에요」 and does not send                         | auto | pass   |
-| E4  | #98    | Queue feedback, then end the session                           | The tray shows 「끝나서 전달할 수 없어요」 with 「지우기」; 「지우기」 removes it in every open view | auto | pass   |
-| E5  | #76    | Resume an ended session that has queued feedback (`claude -r`) | `endedAt` clears; the queued feedback is delivered                                                   | auto | pass   |
-| E6  | #76    | `/clear` in an interactive session                             | The old session is marked ended; the new one takes the pid                                           | tmux | pass   |
-| E7  | #98    | Two sessions in directories with the same name queue feedback  | The tray shows two groups                                                                            | auto | pass   |
+| ID  | Covers | Steps                                                          | Expected                                                                                                                                         | How  | Result |
+| --- | ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ------ |
+| E1  | #76    | End a session normally (`claude -p` exit)                      | `endedAt` is set by SessionEnd; the UI fades the name and text, not the images, with no 「끝남」 label; the session menu drops it until searched | auto | pass   |
+| E2  | #76    | `kill -9` a running session                                    | Marked ended within 60 s                                                                                                                         | auto | pass   |
+| E3  | #76    | Send feedback to an ended session                              | 409 `session ended`; the composer says 「끝난 세션이에요」 and does not send                                                                     | auto | pass   |
+| E4  | #98    | Queue feedback, then end the session                           | The tray shows 「끝나서 전달할 수 없어요」 with 「지우기」; 「지우기」 removes it in every open view                                             | auto | pass   |
+| E5  | #76    | Resume an ended session that has queued feedback (`claude -r`) | `endedAt` clears; the queued feedback is delivered                                                                                               | auto | pass   |
+| E6  | #76    | `/clear` in an interactive session                             | The old session is marked ended; the new one takes the pid                                                                                       | tmux | pass   |
+| E7  | #98    | Two sessions in directories with the same name queue feedback  | The tray shows two groups                                                                                                                        | auto | pass   |
 
 ## Stream, chat and first run
 
@@ -125,7 +125,7 @@ Covers #77.
 | H1  | #77    | Seed 35 days of messages; open 「날짜」 and pick the day 30 days ago | The chat and the rail land on that day's first message                                           | auto | pass        |
 | H2  | #77    | From H1, scroll up, then down to the end                             | Older pages load and the view stays put; scrolling down rejoins the live tail                    | auto | pass        |
 | H3  | #77    | While on an old day, post a new event                                | 「새 메시지 1 ↓」 appears and nothing jumps; pressing it returns to the latest and follows again | auto | pass        |
-| H4  | #77    | Type part of a session's name or branch in the 「전체 세션」 menu    | Only matching sessions are listed; picking one scopes the view                                   | auto | pass        |
+| H4  | #77    | Type part of a session's name or branch in the 「전체 세션」 menu    | Only matching sessions are listed, ended ones included; picking one scopes the view              | auto | pass        |
 | H5  | #76    | Day-jump into an ended session's history                             | Its old messages are shown, faded as ended                                                       | auto | fail (#106) |
 
 ## Retention and settings

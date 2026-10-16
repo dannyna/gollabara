@@ -19,7 +19,7 @@ const props = defineProps<{
   /** The view is scoped to this session */
   scoped?: boolean
   muted?: boolean
-  /** The session ended: the avatar and name fade, and 「끝남」 follows the name */
+  /** The session ended: the avatar and name fade, and the accessible name says 「끝남」 */
   ended?: boolean
   /** A system line's 17px avatar: the button wraps the name in the line's text, and the menu centres under the line */
   small?: boolean
@@ -93,7 +93,6 @@ function onKeydown(e: KeyboardEvent) {
       <SessionAvatar :name="name" :small="small" :ended="ended" />
       <span v-if="small">{{ label }}</span>
       <strong v-else :class="{ ended }"><SessionName :name="name" :hint="hint" /></strong>
-      <span v-if="ended && !small" class="ended-tag">끝남</span>
       <ChatIcon v-if="!small" class="caret" name="chev" />
     </button>
     <SessionMenu
@@ -128,14 +127,8 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 11px;
   font-weight: 600;
 }
-/* Ended: the name takes the muted colour (not opacity), and a plain 「끝남」 says why */
+/* Ended: the name takes the muted colour (not opacity); the dashed avatar and the label's 「끝남」 say why */
 .head-hit strong.ended {
-  color: var(--muted);
-}
-.ended-tag {
-  flex: none;
-  font-size: 10px;
-  font-weight: 400;
   color: var(--muted);
 }
 .caret {

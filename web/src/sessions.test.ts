@@ -1,6 +1,6 @@
 import type { Session, StreamMessage } from '../../src/shared/types'
 import { describe, expect, it } from 'bun:test'
-import { endedSessions, filterSessions, goneMutes, inScope, muteChanges, toSessionRows } from './sessions'
+import { endedSessions, filterSessions, goneMutes, inScope, listedSessions, muteChanges, toSessionRows } from './sessions'
 
 const msg = (id: number, sessionId: string, at: number): StreamMessage => ({ id, at, sessionId, sessionName: `${sessionId} · feat/x`, kind: 'turn' })
 const session = (id: string, lastSeenAt: number): Session => ({ id, name: id, harness: 'claude-code', cwd: '/', startedAt: 0, lastSeenAt })
@@ -21,10 +21,22 @@ describe('toSessionRows', () => {
   it('lists recorded and message-only sessions, most recent first, with mute and end marked', () => {
     const rows = toSessionRows([session('a', 10), { ...session('b', 5), endedAt: 6 }], [msg(1, 'a', 30), msg(2, 'old', 20)], new Set(['old']))
     expect(rows).toEqual([
-      { id: 'a', session: 'a', lastSeenAt: 30, muted: false, ended: false },
-      { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true, ended: false },
-      { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true },
+      { id: 'a', session: 'a', lastSeenAt: 30, muted: false, ended: false, live: true },
+      { id: 'old', session: 'old', branch: 'feat/x', lastSeenAt: 20, muted: true, ended: false, live: false },
+      { id: 'b', session: 'b', lastSeenAt: 5, muted: false, ended: true, live: false },
     ])
+  })
+
+  it('lists only live sessions for an empty query', () => {
+    const rows = toSessionRows([session('a', 10), { ...session('b', 5), endedAt: 6 }], [msg(1, 'old', 20)], new Set())
+    expect(listedSessions(rows, '').map(r => r.id)).toEqual(['a'])
+    expect(listedSessions(rows, '  ').map(r => r.id)).toEqual(['a'])
+  })
+
+  it('finds ended and message-only sessions by a query', () => {
+    const rows = toSessionRows([session('web', 10), { ...session('piuda', 5), endedAt: 6 }], [msg(1, 'pixel', 20)], new Set())
+    expect(listedSessions(rows, 'pi').map(r => r.id)).toEqual(['pixel', 'piuda'])
+    expect(listedSessions(rows, 'piuda')[0]).toMatchObject({ ended: true, live: false })
   })
 
   it('filters rows by name or branch, ignoring case, and keeps them all for an empty filter', () => {

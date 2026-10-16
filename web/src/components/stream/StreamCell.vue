@@ -24,7 +24,7 @@ const props = defineProps<{
   selected?: boolean
   /** The rail holds this cell in place while new artifacts arrive */
   pinned?: boolean
-  /** Its session ended: the name fades and says 「끝남」. The image is shown as received, never faded */
+  /** Its session ended: the name fades (screen readers hear 「끝남」). The image is shown as received, never faded */
   ended?: boolean
   /** Text for the size slot when the artifact has no pixel size, e.g. 「HTML」 */
   sizeLabel?: string
@@ -67,7 +67,7 @@ const state = computed(() => props.face ?? loaded.value)
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
-      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" :hint="hintOf(a.sessionId)" /><span v-if="ended" class="ended-tag">끝남</span></strong>
+      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" :hint="hintOf(a.sessionId)" /><span v-if="ended" class="ended-tag"> · 끝남</span></strong>
       <p class="meta-line mono">
         <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
         <!-- Narrow cells shorten the stem and keep the extension, so the cut lands mid-name -->
@@ -166,14 +166,17 @@ const state = computed(() => props.face ?? loaded.value)
   font-size: 12px;
   font-weight: 500;
 }
-/* An ended session: muted name (not opacity), and a plain 「끝남」 */
+/* An ended session: muted name (not opacity). 「끝남」 is for screen readers only */
 .ended .meta strong {
   color: var(--muted);
 }
 .ended-tag {
-  flex: none;
-  font-size: 10px;
-  font-weight: 400;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* Later cells of a run: the session is named once, at the start */
 .meta strong.continued {

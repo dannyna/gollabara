@@ -67,7 +67,7 @@ function toggleMute(name: string) {
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="03b · 끝난 세션 · 머리줄과 메뉴">
-    <ChatFrame note="세션이 끝나면(SessionEnd, 또는 프로세스가 사라지면) 아바타는 점선 테두리, 이름과 본문은 muted, 이름 뒤에 ‘끝남’. 이미지는 받은 그대로. 메뉴 첫 줄도 ‘끝남’을 말한다.">
+    <ChatFrame note="세션이 끝나면(SessionEnd, 또는 프로세스가 사라지면) 아바타는 점선 테두리, 이름과 본문은 muted. 이름 뒤에 ‘끝남’은 붙이지 않고, 화면 낭독기만 듣는다. 이미지는 받은 그대로. 메뉴 첫 줄은 ‘끝남’을 말한다.">
       <SessionMessage :name="S.api" :at="time(14, 20)" ended>
         쿼터 리필 배치 정리하고 종료.
       </SessionMessage>

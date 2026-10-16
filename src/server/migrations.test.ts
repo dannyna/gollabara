@@ -81,6 +81,28 @@ describe('migrations', () => {
     })
   }
 
+  test('migration 7 ends the sessions that have no pid at their last activity, and only those', () => {
+    openStore()
+    const db = open()
+    db.run('PRAGMA user_version = 6')
+    const insert = db.prepare(`INSERT INTO sessions (id, name, harness, cwd, started_at, last_seen_at, pid, ended_at)
+      VALUES (?, ?, 'claude-code', '/a', 100, ?, ?, ?)`)
+    insert.run('stale', 'piuda', 500, null, null)
+    insert.run('live', 'api', 600, 4242, null)
+    insert.run('ended', 'od', 700, null, 650)
+    db.close()
+    const store = openStore()
+    expect(store.session('stale')?.endedAt).toBe(500)
+    expect(store.session('live')).not.toHaveProperty('endedAt')
+    expect(store.session('ended')?.endedAt).toBe(650)
+    // A session that was in fact still running comes back with its next event
+    const back = store.ingest({ kind: 'recap', session: { id: 'stale', name: 'piuda', harness: 'claude-code', cwd: '/a' }, text: 'still here' }, 800)
+    expect(back.session).not.toHaveProperty('endedAt')
+    const after = open()
+    expect(version(after)).toBe(SCHEMA_VERSION)
+    after.close()
+  })
+
   test('reopening an upgraded database runs nothing again', () => {
     openStore()
     const db = open()

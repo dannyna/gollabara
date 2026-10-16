@@ -13,8 +13,10 @@ export interface SessionRow {
   hint?: string
   lastSeenAt: number
   muted: boolean
-  /** The session ended (its process is gone); it fades but stays listed */
+  /** The session ended (its process is gone); it fades, and only a search lists it */
   ended: boolean
+  /** It has a record and has not ended (working, waiting or idle): the session menu lists it without a search */
+  live: boolean
 }
 
 /**
@@ -25,12 +27,12 @@ export function toSessionRows(sessions: Session[], messages: StreamMessage[], mu
   const rows = new Map<string, SessionRow>()
   for (const s of sessions) {
     const hint = hintOf(s.id)
-    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), ...(hint ? { hint } : {}), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null })
+    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), ...(hint ? { hint } : {}), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null, live: s.endedAt == null })
   }
   for (const m of messages) {
     const row = rows.get(m.sessionId)
     if (!row)
-      rows.set(m.sessionId, { id: m.sessionId, ...splitSessionName(m.sessionName), lastSeenAt: m.at, muted: muted.has(m.sessionId), ended: false })
+      rows.set(m.sessionId, { id: m.sessionId, ...splitSessionName(m.sessionName), lastSeenAt: m.at, muted: muted.has(m.sessionId), ended: false, live: false })
     else if (m.at > row.lastSeenAt)
       row.lastSeenAt = m.at
   }
@@ -44,6 +46,14 @@ export function toSessionRows(sessions: Session[], messages: StreamMessage[], mu
 export function filterSessions<T extends Pick<SessionRow, 'session' | 'branch' | 'hint'>>(rows: T[], query: string): T[] {
   const q = query.trim().toLowerCase()
   return q ? rows.filter(r => `${r.hint ?? ''}${r.session}`.toLowerCase().includes(q) || !!r.branch?.toLowerCase().includes(q)) : rows
+}
+
+/**
+ * The session menu's rows: only live sessions until the user searches, so ended and message-only
+ * sessions stay out of the way but their history can still be scoped by name
+ */
+export function listedSessions<T extends Pick<SessionRow, 'session' | 'branch' | 'hint' | 'live'>>(rows: T[], query: string): T[] {
+  return query.trim() ? filterSessions(rows, query) : rows.filter(r => r.live)
 }
 
 /** Ids of the sessions that ended, so every surface can fade them */

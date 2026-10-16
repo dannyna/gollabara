@@ -2,7 +2,7 @@
 import type { SessionRow } from '../../sessions'
 import { computed, ref } from 'vue'
 import { clock } from '../../artifacts'
-import { filterSessions } from '../../sessions'
+import { listedSessions } from '../../sessions'
 import OverlayIcon from './OverlayIcon.vue'
 import { useOverlay } from './useOverlay'
 
@@ -37,10 +37,11 @@ useOverlay({
   enabled: !props.preview,
 })
 
-// Filtering by name (#77): history keeps every session listed, so the list can grow long.
-// 「전체 세션」 stays above the field; the filter only narrows the session rows.
+// Only live sessions until the user searches (#112); a search also finds ended and message-only
+// ones, so their history can still be scoped. 「전체 세션」 stays above the field.
 const filter = ref(props.query)
-const shown = computed(() => filterSessions(props.sessions, filter.value))
+const searching = computed(() => !!filter.value.trim())
+const shown = computed(() => listedSessions(props.sessions, filter.value))
 </script>
 
 <template>
@@ -70,7 +71,7 @@ const shown = computed(() => filterSessions(props.sessions, filter.value))
         aria-label="세션 이름으로 찾기" autocomplete="off" spellcheck="false"
       >
       <p v-if="sessions.length && !shown.length" class="no-match">
-        이름이 맞는 세션이 없어요
+        {{ searching ? '이름이 맞는 세션이 없어요' : '실행 중인 세션이 없어요' }}
       </p>
 
       <div v-for="s in shown" :key="s.id" class="session-row" :class="{ 'is-current': scope === s.id, 'ended': s.ended }">
@@ -225,7 +226,7 @@ const shown = computed(() => filterSessions(props.sessions, filter.value))
   color: var(--muted);
   font-weight: 400;
 }
-/* An ended session stays listed and selectable; its name fades to muted */
+/* An ended session (found by a search) stays selectable; its name fades to muted */
 .session-row.ended .scope-name strong {
   color: var(--muted);
 }
