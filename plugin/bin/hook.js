@@ -24,7 +24,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.3.4",
+  version: "0.4.0",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -83,7 +83,8 @@ import { isAbsolute } from "path";
 var FEEDBACK_PREFIX = "[gollabara] Feedback from the user";
 function feedbackLine(item) {
   const about = item.image ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ""}` : "";
-  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`;
+  const reply = item.quote ? `, replying to your message from ${clock(item.quote.at)}: ${JSON.stringify(item.quote.text)}` : "";
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}${reply}): ${item.text}`;
 }
 function feedbackText(items) {
   return items.map(feedbackLine).join(`

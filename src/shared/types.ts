@@ -138,6 +138,8 @@ export interface FeedbackRequest {
   text: string
   /** A stored image the feedback is about: its /img/<name> url or bare file name */
   image?: string
+  /** The session's chat message the feedback replies to */
+  quote?: FeedbackQuote
 }
 
 /** Body of POST /api/feedback/claim, sent by the hook */
@@ -158,11 +160,18 @@ export interface FeedbackImage {
   sessionName?: string
 }
 
+/** A session's chat message the user replied to: its recap line (one line, at most 300 chars) and when it was posted */
+export interface FeedbackQuote {
+  text: string
+  at: number
+}
+
 export interface Feedback {
   id: number
   sessionId: string
   text: string
   image?: FeedbackImage
+  quote?: FeedbackQuote
   createdAt: number
   /** Unset while queued */
   deliveredAt?: number

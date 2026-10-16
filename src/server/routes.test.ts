@@ -1,5 +1,5 @@
 import type { Server } from 'bun'
-import type { HistoryPage, Session } from '../shared/types'
+import type { Feedback, HistoryPage, Session } from '../shared/types'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -158,6 +158,36 @@ describe('ended sessions', () => {
 
     await start('gone', 'claude-code')
     expect((await post('/api/feedback', { sessionId: 'gone', text: 'hello' })).status).toBe(200)
+  })
+})
+
+describe('quote-reply', () => {
+  test('a quote rides with the feedback through the POST, hello, history and the claim', async () => {
+    const post = (path: string, body: unknown) => fetch(`${url}${path}`, { method: 'POST', headers: json, body: JSON.stringify(body) })
+    await start('qr', 'claude-code')
+    const long = `  Sidebar\n state saved. ${'x'.repeat(400)}`
+    const res = await post('/api/feedback', { sessionId: 'qr', text: 'run e2e too', quote: { text: long, at: 1234 } })
+    const queued = await res.json() as Feedback
+    expect(queued.quote!.at).toBe(1234)
+    expect(queued.quote!.text).toStartWith('Sidebar state saved. xxx')
+    expect(queued.quote!.text).toHaveLength(300)
+
+    const ws = new WebSocket(`${url.replace('http', 'ws')}/ws`)
+    const hello = await new Promise<{ feedback: Feedback[] }>(resolve => ws.onmessage = e => resolve(JSON.parse(e.data as string)))
+    ws.close()
+    expect(hello.feedback.find(f => f.id === queued.id)?.quote).toEqual(queued.quote)
+    const page = await (await fetch(`${url}/api/history`)).json() as HistoryPage
+    expect(page.feedback.find(f => f.id === queued.id)?.quote).toEqual(queued.quote)
+    const claimed = await (await post('/api/feedback/claim', { sessionId: 'qr', via: 'post-tool-use' })).json() as Feedback[]
+    expect(claimed.map(f => f.quote)).toEqual([queued.quote])
+  })
+
+  test('a malformed quote is refused, and feedback without one has none', async () => {
+    const post = (body: unknown) => fetch(`${url}/api/feedback`, { method: 'POST', headers: json, body: JSON.stringify({ sessionId: 'qr', text: 'hi', ...body as object }) })
+    await start('qr', 'claude-code')
+    for (const quote of [null, 'line', { text: 'line' }, { text: '  ', at: 1 }, { text: 3, at: 1 }, { text: 'line', at: 'noon' }])
+      expect((await post({ quote })).status).toBe(400)
+    expect(await (await post({})).json()).not.toHaveProperty('quote')
   })
 })
 

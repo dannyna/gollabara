@@ -17,6 +17,14 @@ const open = () => new Database(join(dir, 'stream.db'))
 const openStore = () => new Store(dir)
 const version = (db: Database) => (db.query('PRAGMA user_version').get() as { user_version: number }).user_version
 const columns = (db: Database, table: string) => (db.query(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(c => c.name)
+/** Winds a current database back to `to`, undoing the later migrations that a rerun would repeat */
+function rewind(db: Database, to: number): void {
+  if (to < 9) {
+    db.run('ALTER TABLE feedback DROP COLUMN quote_text')
+    db.run('ALTER TABLE feedback DROP COLUMN quote_at')
+  }
+  db.run(`PRAGMA user_version = ${to}`)
+}
 const count = (db: Database, table: string) => (db.query(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n
 
 /** A database from before versioning (user_version 0); `later` adds the columns that were added on open */
@@ -84,7 +92,7 @@ describe('migrations', () => {
   test('migration 7 ends the sessions that have no pid at their last activity, and only those', () => {
     openStore()
     const db = open()
-    db.run('PRAGMA user_version = 6')
+    rewind(db, 6)
     const insert = db.prepare(`INSERT INTO sessions (id, name, harness, cwd, started_at, last_seen_at, pid, ended_at)
       VALUES (?, ?, 'claude-code', '/a', 100, ?, ?, ?)`)
     insert.run('stale', 'piuda', 500, null, null)
@@ -106,12 +114,27 @@ describe('migrations', () => {
   test('migration 8 drops the stored 「보관 기간」 and keeps the other settings', () => {
     openStore()
     const db = open()
-    db.run('PRAGMA user_version = 7')
+    rewind(db, 7)
     db.run(`INSERT INTO settings VALUES ('retention', '7'), ('phone', 'https://mac.ts.net')`)
     db.close()
     expect(openStore().settings()).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
     const after = open()
     expect(after.query(`SELECT value FROM settings WHERE key = 'retention'`).get()).toBeNull()
+    expect(version(after)).toBe(SCHEMA_VERSION)
+    after.close()
+  })
+
+  test('migration 9 adds the quote columns to feedback; older rows read without a quote', () => {
+    openStore()
+    const db = open()
+    rewind(db, 8)
+    db.run(`INSERT INTO sessions (id, name, harness, cwd, started_at, last_seen_at) VALUES ('a', 'piuda', 'claude-code', '/a', 100, 200)`)
+    db.run(`INSERT INTO feedback (session_id, text, created_at) VALUES ('a', 'before quotes', 300)`)
+    db.close()
+    const store = openStore()
+    expect(store.recentFeedback()[0]).not.toHaveProperty('quote')
+    const after = open()
+    expect(columns(after, 'feedback')).toEqual(expect.arrayContaining(['quote_text', 'quote_at']))
     expect(version(after)).toBe(SCHEMA_VERSION)
     after.close()
   })

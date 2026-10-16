@@ -1,7 +1,9 @@
-import type { Feedback, Harness, Session } from '../../src/shared/types'
+import type { Feedback, Harness, Session, StreamMessage } from '../../src/shared/types'
 import type { PendingSend } from './feedback'
+import type { BodyPart, MessageView } from './triage'
 import { describe, expect, it } from 'bun:test'
 import { routesFor } from '../../src/shared/routes'
+import { messageTargetOf } from './components/overlay/useFeedbackTarget'
 import { discardFeedback, failureReason, feedbackBySession, FeedbackSendError, mergeFeedback, postFeedback, queueNote, resolveTarget, routeNote, sessionRouteNote, toMyEntries, toQueueGroups, withoutRemoved } from './feedback'
 
 function fb(id: number, sessionId: string, createdAt: number, deliveredAt?: number): Feedback {
@@ -73,6 +75,36 @@ describe('toMyEntries', () => {
     const at = new Date(2026, 9, 14, 14, 34).getTime()
     const [entry] = toMyEntries([{ ...fb(1, 'a', 100, 200), image: { url: '/img/x.png', path: '/d/x.png', at, sessionName: 'od · hero' } }], [])
     expect(entry!.quote).toEqual({ text: 'od · 14:34', image: '/img/x.png' })
+  })
+
+  it('quotes the replied message by its recap line', () => {
+    const [entry] = toMyEntries([{ ...fb(1, 'a', 100, 200), quote: { text: 'Saved the state.', at: 90 } }], [])
+    expect(entry!.quote).toEqual({ text: 'Saved the state.' })
+  })
+})
+
+describe('messageTargetOf', () => {
+  const msg = (over: Partial<StreamMessage> = {}): StreamMessage => ({ id: 4, at: 500, sessionId: 'a', sessionName: 'piuda', kind: 'turn', recaps: ['first', 'second'], ...over })
+  const lineOf = (index: number, text: string, weak = false): BodyPart => ({ type: 'line', line: { index, text, tone: 'default', filled: false, weak } })
+  const viewOf = (message: StreamMessage, parts: BodyPart[], folded = false): MessageView => ({ message, parts, folded })
+
+  it('quotes the latest line on screen, trimmed to one line, at the message\'s session and time', () => {
+    expect(messageTargetOf(viewOf(msg(), [lineOf(0, 'first'), lineOf(1, `  second\n  line ${'y'.repeat(400)}`)]))).toEqual({
+      sessionId: 'a',
+      at: 500,
+      quote: { messageId: 4, text: `second line ${'y'.repeat(288)}` },
+    })
+  })
+
+  it('skips a line triage dimmed, and never quotes a hidden one', () => {
+    const hidden: BodyPart = { type: 'hidden', key: 'h', lines: [{ key: 'k', sessionName: 'piuda', at: 500, text: 'tick' }] }
+    expect(messageTargetOf(viewOf(msg(), [lineOf(0, 'shown'), lineOf(1, 'dimmed', true), hidden]))?.quote?.text).toBe('shown')
+  })
+
+  it('has nothing to quote on questions, image-only turns or folded messages', () => {
+    expect(messageTargetOf(viewOf(msg({ kind: 'question', text: 'Which?' }), [lineOf(0, 'Which?')]))).toBeNull()
+    expect(messageTargetOf(viewOf(msg({ recaps: [] }), []))).toBeNull()
+    expect(messageTargetOf(viewOf(msg(), [], true))).toBeNull()
   })
 })
 

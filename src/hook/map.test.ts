@@ -407,6 +407,13 @@ describe('feedback delivery', () => {
     ])
   })
 
+  test('a quote-reply names the message it answers, its time and its recap line', () => {
+    const reply: Feedback = { id: 3, sessionId: 's1', text: 'Run e2e too', quote: { text: 'Saved the "collapsed" state.', at: at(23, 12) }, createdAt: at(23, 18) }
+    const out = feedbackOutput('PostToolUse', [reply]) as { hookSpecificOutput: { additionalContext: string } }
+    expect(out.hookSpecificOutput.additionalContext)
+      .toBe('[gollabara] Feedback from the user while you work (sent 23:18, replying to your message from 23:12: "Saved the \\"collapsed\\" state."): Run e2e too')
+  })
+
   test('nothing to print without items or on other hooks', () => {
     expect(feedbackOutput('Stop', [])).toBeNull()
     expect(feedbackOutput('SessionStart', [plain])).toBeNull()

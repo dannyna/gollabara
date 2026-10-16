@@ -18,15 +18,17 @@ defineProps<{
   scoped?: boolean
   /** The session ended: the head and the text fade to muted; images keep their own colours */
   ended?: boolean
+  /** The message has a recap line to quote: 답장 shows on hover or focus, disabled once the session ended */
+  replyable?: boolean
 }>()
 
-defineEmits<{ scope: [], mute: [], delete: [] }>()
+defineEmits<{ scope: [], mute: [], delete: [], reply: [] }>()
 </script>
 
 <template>
   <article class="message" :class="{ highlighted, ended }" data-floating-host>
-    <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
-    <FloatingActions variant="message" />
+    <!-- 답장 on hover or focus quotes the message in the composer -->
+    <FloatingActions v-if="replyable" variant="message" :reply="!ended" :reply-label="`${name} 메시지에 답장`" @reply="$emit('reply')" />
     <div class="message-head">
       <SessionMenuButton :name="name" :hint="hint" :scoped="scoped" :ended="ended" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
       <time>{{ clock(at) }}</time>

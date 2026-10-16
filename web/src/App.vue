@@ -211,7 +211,9 @@ watch([messages, sessions], ([list, known]) => {
   const ids = new Set(list.map(m => m.id))
   if (selected.value && !ids.has(Number.parseInt(selected.value)))
     selected.value = null
-  if (target.value && !list.some(m => m.images?.some(i => i.url === target.value!.imageUrl)))
+  // An image target lasts while a message holds the image; a quote-reply while its message is there
+  const picked = target.value
+  if (picked && !(picked.quote ? ids.has(picked.quote.messageId) : list.some(m => m.images?.some(i => i.url === picked.imageUrl))))
     clearTarget()
   const exists = (id: string) => known.some(s => s.id === id) || list.some(m => m.sessionId === id)
   if (scope.value && !exists(scope.value))

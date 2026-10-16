@@ -22,7 +22,7 @@ const replied = ref(0)
       </div>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="세션 메시지 · 머리줄 위로 · 767px 이하에서는 숨김 (답장은 꺼짐)">
+  <GalleryCase title="세션 메시지 · 머리줄 위로 · 767px 이하에서는 숨김">
     <GalleryStage :height="170">
       <article class="message">
         <div class="head">
@@ -33,7 +33,22 @@ const replied = ref(0)
         <div class="body">
           히어로 시안 세 장 올렸어.
         </div>
-        <FloatingActions variant="message" shown />
+        <FloatingActions variant="message" reply reply-label="od 메시지에 답장" shown />
+      </article>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="세션 메시지 · 끝난 세션 (답장 꺼짐)">
+    <GalleryStage :height="170">
+      <article class="message">
+        <div class="head">
+          <span class="avatar" aria-hidden="true">o</span>
+          <strong>od <span class="muted">· landing-hero</span></strong>
+          <time>14:34</time>
+        </div>
+        <div class="body">
+          히어로 시안 세 장 올렸어.
+        </div>
+        <FloatingActions variant="message" reply-label="od 메시지에 답장" shown />
       </article>
     </GalleryStage>
   </GalleryCase>
