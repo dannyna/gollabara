@@ -1,0 +1,19 @@
+AGENTS.md
+  s_b7f30c572db9a8::t_f9c7de1c1ef1bf 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d9b7b0e2898cc6716e2e23db27c2a1d0f3b0292",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
