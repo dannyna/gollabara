@@ -1,6 +1,7 @@
 // The never-block checklist for the Codex adapter (#72), run against the shipped bundle (`plugin/bin/hook.js
 // codex`; CI checks it matches the source) with the payloads recorded in the spike. Every run gets its own
-// env: a stub server, a scratch GOLLABARA_DATA for the health log, and no GOLLABARA_HOOK.
+// env: a stub server, a scratch GOLLABARA_DATA for the health log, and no GOLLABARA_HOOK. The SessionEnd budget
+// tests (#104) run the same bundle as Claude Code's `hook.js session-end` and as Codex's SessionEnd.
 import type { Server } from 'bun'
 import type { Feedback } from '../shared/types'
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'

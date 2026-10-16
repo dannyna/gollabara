@@ -16,7 +16,7 @@ import { ADAPTERS, feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo,
 import { fromTail, readHead, TRANSCRIPT_HEAD_BYTES, TRANSCRIPT_TAIL_WINDOWS } from './transcript'
 
 /**
- * A hard deadline for every mode but `wait`: past the 1.5 s request budget, whatever still runs (a slow
+ * A hard deadline for every mode except `wait` and `session-end`: past the 1.5 s request budget, whatever still runs (a slow
  * transcript read, a stalled stdin) is cut and the hook exits 0, before the harness's own timeout kills
  * it and reports a failure (Codex shows that in its TUI).
  */
