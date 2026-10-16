@@ -24,6 +24,20 @@ export const HARD_DEADLINE_MS = 2500
 const POST_TIMEOUT_MS = 1500
 
 /**
+ * SessionEnd runs on a shorter budget. Claude Code cancels SessionEnd hooks 1.5 s after it starts them
+ * (`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`; a plugin's own `timeout` does not raise it) and prints
+ * "Hook cancelled", and spawning bun eats about 50 ms of that. One small event is all SessionEnd sends,
+ * and the liveness sweep still ends the session if it is lost. The deadline counts from process start.
+ */
+export const SESSION_END_DEADLINE_MS = 1000
+const SESSION_END_POST_TIMEOUT_MS = 750
+
+/** Exits 0 once `ms` have passed since the process started, whatever is still running */
+export function exitAt(ms: number): void {
+  setTimeout(() => process.exit(0), Math.max(0, ms - performance.now())).unref()
+}
+
+/**
  * `adapter` comes from the hook command (`hook.js codex`), never from env. Codex differs in three ways:
  * no turn opener to read (every Stop posts its recap), turn starts from its rollout, and feedback at
  * Stop goes out as `decision: block`, never while the turn is already continuing.
@@ -37,6 +51,11 @@ export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
   try {
     const raw = await Bun.stdin.text()
     const input = JSON.parse(raw) as HookInput
+    // Codex's SessionEnd command carries no `session-end` argument (its definition is trust-pinned), so it gets the
+    // short deadline here, once the event is known
+    const ending = input.hook_event_name === 'SessionEnd'
+    if (ending)
+      exitAt(SESSION_END_DEADLINE_MS)
     // Pick only the keys we use: the rest of the env can hold tool tokens
     const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter)
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 }
@@ -48,7 +67,7 @@ export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
       event.pid = process.ppid
     const via = feedbackVia(input.hook_event_name, input, adapter)
     // Event and claim share one budget and run side by side; most tool calls only claim
-    const signal = AbortSignal.timeout(POST_TIMEOUT_MS)
+    const signal = AbortSignal.timeout(ending ? SESSION_END_POST_TIMEOUT_MS : POST_TIMEOUT_MS)
     // The version headers let the server flag an outdated plugin (`golla doctor`)
     const post = (path: string, body: unknown) => fetch(`${serverUrl()}${path}`, {
       method: 'POST',

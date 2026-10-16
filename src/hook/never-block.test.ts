@@ -58,10 +58,10 @@ const item: Feedback = { id: 1, sessionId: 's', text: 'make the header blue', cr
 
 interface Run { code: number, stdout: string, ms: number }
 
-/** One run of the bundled hook as Codex starts it: payload on stdin, codex's env (no login shell) */
-async function hook(stdin: string | null, { url = server.url.href.replace(/\/$/, ''), env = {} as Record<string, string> } = {}): Promise<Run> {
+/** One run of the bundled hook as Codex starts it (or Claude Code, with its `mode` argument): payload on stdin, codex's env (no login shell) */
+async function hook(stdin: string | null, { url = server.url.href.replace(/\/$/, ''), env = {} as Record<string, string>, mode = 'codex' } = {}): Promise<Run> {
   const started = performance.now()
-  const proc = Bun.spawn([process.execPath, BUNDLE, 'codex'], {
+  const proc = Bun.spawn([process.execPath, BUNDLE, mode], {
     stdin: stdin === null ? 'pipe' : new Blob([stdin]),
     stdout: 'pipe',
     stderr: 'ignore',
@@ -156,4 +156,33 @@ describe('Codex never-block checklist', () => {
     console.warn(`codex hook latency over ${ms.length} runs: p50 ${percentile(ms, 0.5).toFixed(0)} ms, p95 ${p95.toFixed(0)} ms, max ${ms.at(-1)!.toFixed(0)} ms`)
     expect(p95).toBeLessThan(300)
   }, 60_000)
+})
+
+// Claude Code cancels SessionEnd hooks 1.5 s after it starts them and prints "Hook cancelled" (#104). The bound
+// leaves room for a slow CI runner; locally a cut request ends at about 780 ms and a stalled stdin at 1000 ms.
+describe('SessionEnd budget', () => {
+  const SESSION_END_BOUND_MS = 1300
+  const claudeSessionEnd = JSON.stringify({ session_id: 's', transcript_path: '/nowhere.jsonl', cwd: '/tmp', hook_event_name: 'SessionEnd', reason: 'prompt_input_exit' })
+
+  test('a server that never answers: Claude Code\'s SessionEnd exits 0 within its budget and prints nothing', async () => {
+    reset('hang')
+    const run = await hook(claudeSessionEnd, { mode: 'session-end' })
+    expect({ code: run.code, stdout: run.stdout, requests: stub.requests }).toEqual({ code: 0, stdout: '', requests: ['/api/events'] })
+    expect(run.ms).toBeGreaterThan(700)
+    expect(run.ms).toBeLessThan(SESSION_END_BOUND_MS)
+  }, 10_000)
+
+  test('a stalled stdin: the session-end argument sets the short deadline before the event is read', async () => {
+    const run = await hook(null, { mode: 'session-end' })
+    expect({ code: run.code, stdout: run.stdout }).toEqual({ code: 0, stdout: '' })
+    expect(run.ms).toBeGreaterThan(900)
+    expect(run.ms).toBeLessThan(SESSION_END_BOUND_MS)
+  }, 10_000)
+
+  test('Codex\'s SessionEnd, which carries no argument, gets the same budget from its event', async () => {
+    reset('hang')
+    const run = await hook(fixtures['session-end.json']!)
+    expect({ code: run.code, stdout: run.stdout }).toEqual({ code: 0, stdout: '' })
+    expect(run.ms).toBeLessThan(SESSION_END_BOUND_MS)
+  }, 10_000)
 })

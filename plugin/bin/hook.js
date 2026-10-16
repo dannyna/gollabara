@@ -24,7 +24,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.3.2",
+  version: "0.3.3",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -431,6 +431,11 @@ function extractQuestions(toolInput) {
 // src/hook/core.ts
 var HARD_DEADLINE_MS = 2500;
 var POST_TIMEOUT_MS = 1500;
+var SESSION_END_DEADLINE_MS = 1000;
+var SESSION_END_POST_TIMEOUT_MS = 750;
+function exitAt(ms) {
+  setTimeout(() => process2.exit(0), Math.max(0, ms - performance.now())).unref();
+}
 async function runHook(adapter = "claude-code") {
   if (process2.env.GOLLABARA_HOOK === "off")
     return;
@@ -439,6 +444,9 @@ async function runHook(adapter = "claude-code") {
   try {
     const raw = await Bun.stdin.text();
     const input = JSON.parse(raw);
+    const ending = input.hook_event_name === "SessionEnd";
+    if (ending)
+      exitAt(SESSION_END_DEADLINE_MS);
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter);
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
     const opener = input.hook_event_name === "Stop" ? ADAPTERS[adapter].stopOpener(input.transcript_path) : "unknown";
@@ -446,7 +454,7 @@ async function runHook(adapter = "claude-code") {
     if (event?.kind === "session")
       event.pid = process2.ppid;
     const via = feedbackVia(input.hook_event_name, input, adapter);
-    const signal = AbortSignal.timeout(POST_TIMEOUT_MS);
+    const signal = AbortSignal.timeout(ending ? SESSION_END_POST_TIMEOUT_MS : POST_TIMEOUT_MS);
     const post = (path, body) => fetch(`${serverUrl()}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json", [HOOK_VERSION_HEADER]: PLUGIN_VERSION, [HOOK_HARNESS_HEADER]: session.harness },
@@ -585,5 +593,5 @@ async function runWait() {
 // src/hook/entry.ts
 var mode = process4.argv[2];
 if (mode !== "wait")
-  setTimeout(() => process4.exit(0), HARD_DEADLINE_MS).unref();
+  exitAt(mode === "session-end" ? SESSION_END_DEADLINE_MS : HARD_DEADLINE_MS);
 process4.exit(mode === "wait" ? await runWait() : (await runHook(mode === "codex" ? "codex" : "claude-code"), 0));

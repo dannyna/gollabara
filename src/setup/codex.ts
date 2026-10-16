@@ -22,8 +22,9 @@ export const codexStage = (ctx: Pick<Context, 'home'>) => join(ctx.home, 'codex'
 /**
  * Codex hooks.json for an absolute bun path. Every handler runs the shared bundle with the `codex`
  * argument, which is how the hook knows its harness. Timeouts are Codex's backstop only: the hook ends
- * itself within 2.5 s (its 1.5 s request budget plus a hard deadline). SessionEnd is clamped to 3 s by
- * Codex; it is registered now so lifecycle work (#76) changes only the script, never the definition.
+ * itself within 2.5 s (its 1.5 s request budget plus a hard deadline), and SessionEnd within 1 s once
+ * its input is read (a 750 ms request budget). Codex clamps SessionEnd to 3 s; it is registered now so
+ * lifecycle work (#76) changes only the script, never the definition.
  */
 export function codexHooks(bun: string): object {
   const command = `"${bun}" "\${PLUGIN_ROOT}/bin/hook.js" codex`
