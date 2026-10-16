@@ -39,11 +39,20 @@ function mute(id: string) {
       </AppBar>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="끝난 세션 · client-e2e는 흐려지고 ‘끝남’ (고를 수는 있다)">
-    <GalleryStage :height="760">
+  <GalleryCase title="끝난 세션 · 목록에는 없고, 이름으로 찾으면 흐려진 채 ‘끝남’ (고를 수는 있다)">
+    <GalleryStage :height="560">
       <AppBar sessions-open>
         <template #sessions>
-          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => s.id === 'client-e2e' ? { ...s, ended: true } : s)" :scope="null" preview @close="noop" />
+          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => s.id === 'client-e2e' ? { ...s, ended: true, live: false } : s)" :scope="null" query="e2e" preview @close="noop" />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
+  <GalleryCase title="실행 중인 세션 없음 · 찾기는 남아 끝난 세션을 찾을 수 있다">
+    <GalleryStage :height="420">
+      <AppBar sessions-open>
+        <template #sessions>
+          <SessionPopover :sessions="SAMPLE_SESSIONS.map(s => ({ ...s, ended: true, live: false }))" :scope="null" preview @close="noop" />
         </template>
       </AppBar>
     </GalleryStage>
@@ -72,8 +81,8 @@ function mute(id: string) {
         <template #sessions>
           <SessionPopover
             :sessions="[
-              { id: 'a', session: 'e2e-app', hint: 'repo/', lastSeenAt: SAMPLE_SESSIONS[0]!.lastSeenAt, muted: false, ended: false },
-              { id: 'b', session: 'e2e-app', hint: 'repo2/', lastSeenAt: SAMPLE_SESSIONS[1]!.lastSeenAt, muted: false, ended: false },
+              { id: 'a', session: 'e2e-app', hint: 'repo/', lastSeenAt: SAMPLE_SESSIONS[0]!.lastSeenAt, muted: false, ended: false, live: true },
+              { id: 'b', session: 'e2e-app', hint: 'repo2/', lastSeenAt: SAMPLE_SESSIONS[1]!.lastSeenAt, muted: false, ended: false, live: true },
               ...SAMPLE_SESSIONS.slice(0, 2),
             ]" scope="a" preview @close="noop"
           />

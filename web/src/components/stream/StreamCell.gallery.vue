@@ -49,7 +49,7 @@ const tryCell = one('hero-b')
       <StreamCell :artifact="one('hero-b')" selected pinned />
     </div>
   </GalleryCase>
-  <GalleryCase title="끝난 세션 · 이름만 muted + ‘끝남’, 이미지는 받은 그대로">
+  <GalleryCase title="끝난 세션 · 이름만 muted (‘끝남’은 화면 낭독기만), 이미지는 받은 그대로">
     <div class="solo">
       <StreamCell :artifact="{ ...one('hero-b'), runStart: true }" ended />
     </div>
