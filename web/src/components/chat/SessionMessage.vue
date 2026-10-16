@@ -9,6 +9,8 @@ import SessionMenuButton from './SessionMenuButton.vue'
 defineProps<{
   /** `<dir>` or `<dir> · <branch>` */
   name: string
+  /** Parent path when another session has the same name (names.ts) */
+  hint?: string
   at: number
   /** Paired with the artifact picked in the stream */
   highlighted?: boolean
@@ -26,7 +28,7 @@ defineEmits<{ scope: [], mute: [], delete: [] }>()
     <!-- 답장 on hover or focus; drawn disabled until intervention exists -->
     <FloatingActions variant="message" />
     <div class="message-head">
-      <SessionMenuButton :name="name" :scoped="scoped" :ended="ended" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
+      <SessionMenuButton :name="name" :hint="hint" :scoped="scoped" :ended="ended" @scope="$emit('scope')" @mute="$emit('mute')" @delete="$emit('delete')" />
       <time>{{ clock(at) }}</time>
     </div>
     <div class="message-body">

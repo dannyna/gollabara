@@ -2,6 +2,7 @@
 import type { StartRow } from './chat'
 import { computed, ref } from 'vue'
 import { clock } from '../../artifacts'
+import { useNameHints } from '../../names'
 import { STARTS_SHOWN } from './chat'
 import ChatIcon from './ChatIcon.vue'
 import SessionName from './SessionName.vue'
@@ -13,6 +14,7 @@ const props = defineProps<{
   /** The next item is one of these sessions' messages: an 8px gap instead of 20px */
   lead?: boolean
 }>()
+const { hintOf } = useNameHints()
 const expanded = ref(false)
 const folded = computed(() => !expanded.value && props.rows.length > STARTS_SHOWN)
 const shown = computed(() => folded.value ? props.rows.slice(0, STARTS_SHOWN) : props.rows)
@@ -22,7 +24,7 @@ const shown = computed(() => folded.value ? props.rows.slice(0, STARTS_SHOWN) : 
   <div class="starts" :class="{ lead }">
     <div v-for="row in shown" :key="row.key" class="start-row">
       <span class="start-icon"><ChatIcon name="start" /></span>
-      <SessionName :name="row.name" class="name" />
+      <SessionName :name="row.name" :hint="hintOf(row.sessionId)" class="name" />
       <span class="verb">시작</span>
       <time>{{ clock(row.at) }}</time>
     </div>

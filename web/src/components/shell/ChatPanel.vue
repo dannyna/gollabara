@@ -11,6 +11,7 @@ import type { MentionOption } from '../overlay/MentionList.vue'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { clock, splitSessionName } from '../../artifacts'
 import { discardFeedback, ENDED_NOTE, failureReason, mergeFeedback, postFeedback, queueNote, resolveTarget, sessionRouteNote, toMyEntries, toQueueGroups, VIA_LABEL, withoutRemoved } from '../../feedback'
+import { useNameHints } from '../../names'
 import { endedSessions, muteChanges, toSessionRows, useMutedSessions } from '../../sessions'
 import { shownKeys, triageView } from '../../triage'
 import NewPill from '../banner/NewPill.vue'
@@ -95,6 +96,8 @@ const emit = defineEmits<{
 const feed = ref<HTMLElement>()
 const nameOf = (id: string) => props.sessions?.find(s => s.id === id)?.name ?? props.messages.find(m => m.sessionId === id)?.sessionName ?? id
 const shortName = (id: string) => splitSessionName(nameOf(id)).session
+// Parent paths for names another session shares: whole names here, dirs alone where only the dir shows
+const { hintOf, shortHintOf } = useNameHints()
 // Ended sessions fade everywhere they appear, and take no feedback
 const ended = computed(() => endedSessions(props.sessions ?? []))
 
@@ -189,7 +192,7 @@ const queueTrayNote = computed(() => queueNote(
   props.sessions ?? [],
 ))
 // Queued on the server, not yet picked up: the tray, one group per session id
-const queue = computed<QueueGroup[]>(() => toQueueGroups(feedback.value, props.sessions ?? [], queueTrayNote.value.mixed, shortName))
+const queue = computed<QueueGroup[]>(() => toQueueGroups(feedback.value, props.sessions ?? [], queueTrayNote.value.mixed, shortName, shortHintOf))
 // An ended session's item can be dropped; the server's broadcast takes it off every view
 const { toast } = useToast()
 async function discard(sessionId: string, id: number) {
@@ -236,9 +239,11 @@ const mentionButton = ref(false)
 const mentionList = ref<InstanceType<typeof MentionList>>()
 const mentionOptions = computed<MentionOption[]>(() => {
   const q = mentionQuery.value?.toLowerCase() ?? ''
+  // The typed text matches the name with its hint, so `@repo2` picks one of two `e2e-app`s
   return toSessionRows(props.sessions ?? [], props.messages, muted.value)
-    .filter(r => !r.muted && !r.ended && r.session.toLowerCase().includes(q))
-    .map(r => ({ id: r.id, session: r.session, branch: r.branch }))
+    .filter(r => !r.muted && !r.ended)
+    .map(r => ({ id: r.id, session: r.session, branch: r.branch, hint: hintOf(r.id) }))
+    .filter(o => `${o.hint ?? ''}${o.session}`.toLowerCase().includes(q))
 })
 const mentionOpen = computed(() => (mentionButton.value || mentionQuery.value != null) && mentionOptions.value.length > 0)
 function closeMention() {
@@ -458,7 +463,7 @@ defineExpose({ reveal, daysButton })
             <!-- A muted session's messages are gone, so its menu opens from the mute line -->
             <template v-if="item.sessionId" #lead>
               <SessionMenuButton
-                small :name="nameOf(item.sessionId)" :muted="muted.has(item.sessionId)" :ended="ended.has(item.sessionId)"
+                small :name="nameOf(item.sessionId)" :hint="hintOf(item.sessionId)" :muted="muted.has(item.sessionId)" :ended="ended.has(item.sessionId)"
                 :scoped="scope === item.sessionId" @scope="toggleScope(item.sessionId)" @mute="emit('mute', item.sessionId)"
                 @delete="emit('delete', item.sessionId)"
               />
@@ -476,13 +481,13 @@ defineExpose({ reveal, daysButton })
             <ArtifactThumbs reference :thumbs="item.thumbs" @open-image="openImage" />
           </HiddenRow>
           <MyMessage
-            v-else-if="item.type === 'mine'" :target="shortName(item.entry.sessionId)" :text="item.entry.text"
+            v-else-if="item.type === 'mine'" :target="shortName(item.entry.sessionId)" :target-hint="shortHintOf(item.entry.sessionId)" :text="item.entry.text"
             :quote="item.entry.quote" :state="item.entry.state" :at="item.entry.deliveredAt"
             :via="item.entry.via && VIA_LABEL[item.entry.via]" :reason="item.entry.pending?.reason"
             @retry="item.entry.pending && retry(item.entry.pending)"
           />
           <SessionMessage
-            v-else :name="item.message.sessionName" :at="item.message.at"
+            v-else :name="item.message.sessionName" :hint="hintOf(item.message.sessionId)" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
             :scoped="scope === item.message.sessionId" :ended="ended.has(item.message.sessionId)"
             @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
@@ -524,7 +529,7 @@ defineExpose({ reveal, daysButton })
     </div>
     <ChatComposer
       ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :route="receiverRoute" :blocked="blocked"
-      :target="receiver && shortName(receiver)" :attachment="attachment" :mention-open="mentionOpen"
+      :target="receiver && shortName(receiver)" :target-hint="receiver ? shortHintOf(receiver) : undefined" :attachment="attachment" :mention-open="mentionOpen"
       @update:attachment="onAttachment" @send="send"
       @mention="mentionButton = !mentionButton" @mention-query="mentionQuery = $event"
       @mention-focus="mentionList?.focusFirst()" @mention-close="closeMention"

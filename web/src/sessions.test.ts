@@ -35,6 +35,13 @@ describe('toSessionRows', () => {
     expect(filterSessions(rows, '  ')).toBe(rows)
   })
 
+  it('carries the hint of a colliding name, and finds a row by it', () => {
+    const rows = toSessionRows([session('e2e-app', 2), session('e2e-app-2', 1)], [], new Set(), id => id === 'e2e-app' ? 'repo2/' : undefined)
+    expect(rows[0]).toMatchObject({ session: 'e2e-app', hint: 'repo2/' })
+    expect(rows[1]).not.toHaveProperty('hint')
+    expect(filterSessions(rows, 'repo2/e2e').map(r => r.id)).toEqual(['e2e-app'])
+  })
+
   it('collects the ended sessions', () => {
     expect([...endedSessions([session('a', 1), { ...session('b', 1), endedAt: 2 }])]).toEqual(['b'])
   })

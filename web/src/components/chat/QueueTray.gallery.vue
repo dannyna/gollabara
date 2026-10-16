@@ -79,14 +79,24 @@ import SystemLine from './SystemLine.vue'
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="02d · 이름이 같은 두 세션">
-    <ChatFrame note="디렉터리 이름이 같은 두 세션도 세션 id로 묶어서 따로 보인다.">
+    <ChatFrame note="디렉터리 이름이 같은 두 세션도 세션 id로 묶어서 따로 보인다. 이름 앞의 흐린 상위 경로(repo/, repo2/)로 어느 쪽인지 알 수 있다. 겹치지 않는 이름은 그대로.">
+      <SessionMessage name="web" hint="repo/" :at="time(14, 36)">
+        헤더 높이 64px로 맞췄어.
+      </SessionMessage>
+      <SessionMessage name="web" hint="repo2/" :at="time(14, 37)">
+        빌드 끝. 경고 두 개만 남았어.
+      </SessionMessage>
+      <SessionMessage :name="S.od" :at="time(14, 38)">
+        하단 여백 줄이는 중이야.
+      </SessionMessage>
+      <MyMessage target="web" target-hint="repo/" text="헤더 그림자도 빼 줘" :at="time(14, 39)" />
       <template #footer>
-        <ChatComposer can-send target="web" route="바로 전달돼요">
+        <ChatComposer can-send target="web" target-hint="repo/" route="바로 전달돼요">
           <template #tray>
             <QueueTray
               note="세션마다 전달 시점이 달라요" :actions="false" :groups="[
-                { id: 'a1', session: 'web', items: [{ id: 3, text: '헤더 높이 맞춰 줘' }], route: '바로 전달돼요' },
-                { id: 'b2', session: 'web', items: [{ id: 4, text: '빌드 로그만 정리해 줘' }], status: '끝나서 전달할 수 없어요', ended: true },
+                { id: 'a1', session: 'web', hint: 'repo/', items: [{ id: 3, text: '헤더 높이 맞춰 줘' }], route: '바로 전달돼요' },
+                { id: 'b2', session: 'web', hint: 'repo2/', items: [{ id: 4, text: '빌드 로그만 정리해 줘' }], status: '끝나서 전달할 수 없어요', ended: true },
               ]"
             />
           </template>

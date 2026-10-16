@@ -22,6 +22,7 @@ import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { firstRunGuide, useHealth } from './firstrun'
 import { dayLoaded, fetchDays } from './history'
+import { setKnownSessions, useNameHints } from './names'
 import { usePin } from './pin'
 import { usePush } from './push'
 import { deleteSessionData, endedSessions, goneMutes, inScope, toSessionRows, useMutedSessions } from './sessions'
@@ -36,7 +37,10 @@ const { toast } = useToast()
 
 // Session scope; muted sessions are hidden in every scope
 const scope = ref<string | null>(null)
-const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value))
+// Sessions whose names collide get a parent path on every surface (names.ts)
+watch(sessions, list => setKnownSessions(list), { immediate: true })
+const { hintOf } = useNameHints()
+const sessionRows = computed(() => toSessionRows(sessions.value, messages.value, muted.value, hintOf))
 const scopeLabel = computed(() => sessions.value.find(s => s.id === scope.value)?.name ?? '전체 세션')
 const visible = computed(() => inScope(messages.value, scope.value, muted.value))
 const ended = computed(() => endedSessions(sessions.value))
@@ -218,8 +222,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', unpinOnEscape))
 
 // 「이 세션 데이터 삭제」 from an avatar menu, after the app's own confirmation
 const deleting = ref<string | null>(null)
-const deletingName = computed(() => deleting.value && (sessions.value.find(s => s.id === deleting.value)?.name
-  ?? messages.value.find(m => m.sessionId === deleting.value)?.sessionName ?? deleting.value))
+const deletingName = computed(() => deleting.value && ((hintOf(deleting.value) ?? '') + (sessions.value.find(s => s.id === deleting.value)?.name
+  ?? messages.value.find(m => m.sessionId === deleting.value)?.sessionName ?? deleting.value)))
 async function deleteSession() {
   const id = deleting.value
   deleting.value = null
@@ -319,7 +323,7 @@ function onThumb(key: string) {
 <template>
   <div class="app">
     <AppBar
-      ref="appBar" :connection="notices.chip" :scope-label="scopeLabel" :show-session-button="!showEmpty"
+      ref="appBar" :connection="notices.chip" :scope-label="scopeLabel" :scope-hint="scope ? hintOf(scope) : undefined" :show-session-button="!showEmpty"
       :sessions-open="sessionsOpen" @sessions="sessionsOpen = !sessionsOpen" @theme="toggleTheme"
       @settings="settingsOpen = true"
     >

@@ -25,6 +25,8 @@ const props = withDefaults(defineProps<{
   canSend?: boolean
   /** Receiving session, shown as a chip; none in 「전체 세션」 until one is picked with @ */
   target?: string | null
+  /** Parent path before the target when another session has the same dir (names.ts) */
+  targetHint?: string
   /** Initial draft */
   text?: string
   placeholder?: string
@@ -118,7 +120,8 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
     </div>
     <div class="compose-box">
       <div v-if="target" class="target-chip">
-        <SessionAvatar :name="target" small />→ {{ target }}
+        <!-- One flex item, so the gap never splits the hint from the name -->
+        <SessionAvatar :name="target" small /><span>→ <span v-if="targetHint" class="target-hint">{{ targetHint }}</span>{{ target }}</span>
       </div>
       <textarea
         ref="input" v-model="draft" rows="1" aria-label="세션에 메시지 보내기" :aria-describedby="noteId" :placeholder="placeholder"
@@ -189,6 +192,10 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
   gap: 5px;
   margin: 0 0 6px 3px;
   font: 500 11px var(--mono);
+}
+.target-hint {
+  color: var(--muted);
+  font-weight: 400;
 }
 .target-chip .session-avatar {
   background: var(--surface);

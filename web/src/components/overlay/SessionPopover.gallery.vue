@@ -66,6 +66,21 @@ function mute(id: string) {
       </AppBar>
     </GalleryStage>
   </GalleryCase>
+  <GalleryCase title="이름이 같은 두 세션 · 흐린 상위 경로로 구분 (경로로도 찾을 수 있다)">
+    <GalleryStage :height="460">
+      <AppBar scope-label="e2e-app" scope-hint="repo/" sessions-open>
+        <template #sessions>
+          <SessionPopover
+            :sessions="[
+              { id: 'a', session: 'e2e-app', hint: 'repo/', lastSeenAt: SAMPLE_SESSIONS[0]!.lastSeenAt, muted: false, ended: false },
+              { id: 'b', session: 'e2e-app', hint: 'repo2/', lastSeenAt: SAMPLE_SESSIONS[1]!.lastSeenAt, muted: false, ended: false },
+              ...SAMPLE_SESSIONS.slice(0, 2),
+            ]" scope="a" preview @close="noop"
+          />
+        </template>
+      </AppBar>
+    </GalleryStage>
+  </GalleryCase>
   <GalleryCase title="이름으로 찾기 · 맞는 세션 없음">
     <GalleryStage :height="420">
       <AppBar sessions-open>

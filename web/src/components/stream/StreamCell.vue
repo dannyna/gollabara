@@ -15,6 +15,7 @@ import type { Artifact } from '../../artifacts'
 import { computed, ref, watch } from 'vue'
 import { middleTruncate } from '../../../../src/shared/stacks'
 import { artifactCaption, clock, day, sourceName, versionsHint } from '../../artifacts'
+import { useNameHints } from '../../names'
 import SessionName from '../chat/SessionName.vue'
 import FloatingActions from '../overlay/FloatingActions.vue'
 
@@ -50,6 +51,7 @@ const fileParts = computed(() => {
 const name = computed(() => `${a.value.session} ${clock(a.value.at)} ${file.value ?? caption.value}`)
 // Rejoined so the cell shares the chat's rule: the dir stays whole, only the branch gives way
 const sessionName = computed(() => a.value.branch ? `${a.value.session} · ${a.value.branch}` : a.value.session)
+const { hintOf } = useNameHints()
 
 // The size is stored with the image, so the cell holds its place before the pixels
 // arrive and the rail never shifts when they do
@@ -65,7 +67,7 @@ const state = computed(() => props.face ?? loaded.value)
     :style="{ '--ratio': a.width / a.height }" :data-key="a.key" data-floating-host
   >
     <div class="meta">
-      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" /><span v-if="ended" class="ended-tag">끝남</span></strong>
+      <strong :aria-hidden="!a.runStart" :class="{ continued: !a.runStart }"><SessionName :name="sessionName" :hint="hintOf(a.sessionId)" /><span v-if="ended" class="ended-tag">끝남</span></strong>
       <p class="meta-line mono">
         <time><span v-if="a.dayStart" class="day">{{ day(a.at) }} · </span>{{ clock(a.at) }}</time>
         <!-- Narrow cells shorten the stem and keep the extension, so the cut lands mid-name -->

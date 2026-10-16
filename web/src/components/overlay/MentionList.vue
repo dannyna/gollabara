@@ -9,6 +9,8 @@ export interface MentionOption {
   id: string
   session: string
   branch?: string
+  /** Parent path when another session has the same name (names.ts) */
+  hint?: string
 }
 
 defineProps<{ options: MentionOption[] }>()
@@ -48,7 +50,7 @@ defineExpose({ focusFirst })
       @click="emit('pick', o.id)"
     >
       <span class="avatar" aria-hidden="true">{{ initial(o.session) }}</span>
-      <strong>{{ o.session }}</strong>
+      <strong><span v-if="o.hint" class="name-hint">{{ o.hint }}</span>{{ o.session }}</strong>
       <span class="branch">{{ o.branch }}</span>
     </button>
   </div>
@@ -85,6 +87,10 @@ button {
 }
 strong {
   font-weight: 600;
+}
+.name-hint {
+  color: var(--muted);
+  font-weight: 400;
 }
 .avatar {
   width: 23px;
