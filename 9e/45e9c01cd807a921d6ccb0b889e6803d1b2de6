@@ -1,0 +1,69 @@
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_e6946e98f67fd5 3-5,8-9,28,37-41,316-317,334-336,443-449,622-674,676,678-679
+src/shared/types.ts
+  s_b7f30c572db9a8::t_1c2ea2dba9853c 13-16,111-135,212-213,216-217,270-271,280-281
+  s_b7f30c572db9a8::t_9d6acf919e293f 110
+src/server/store.ts
+  s_b7f30c572db9a8::t_ca8df80a4cdab3 3,16,103,107,291-296,327-340
+  s_b7f30c572db9a8::t_18a1636b8090e2 341-342
+src/server/holds.test.ts
+  s_b7f30c572db9a8::t_9c906fe089d553 1-45
+src/server/holds.ts
+  s_b7f30c572db9a8::t_c4a3ac497819d2 1-42,44-51,55-84
+  s_b7f30c572db9a8::t_9e1c46763d6f7d 43,52
+  s_b7f30c572db9a8::t_368f41b60d16a7 53-54
+src/hook/map.ts
+  s_b7f30c572db9a8::t_41f531a0db8c5d 18-19,140-141,162-164,309-321
+src/hook/ask.ts
+  s_b7f30c572db9a8::t_391ca5c13983bf 1-82
+package.json
+  s_b7f30c572db9a8::t_e6946e98f67fd5 4
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_e6946e98f67fd5 3
+README.ko.md
+  s_b7f30c572db9a8::t_521097b761d36d 26
+README.md
+  s_b7f30c572db9a8::t_521097b761d36d 26
+AGENTS.md
+  s_b7f30c572db9a8::t_f1f7562afab673 16-20,22-27
+  s_b7f30c572db9a8::t_232c3afc3668ea 236
+  s_b7f30c572db9a8::t_3a0a5b740973d3 7-8,21,101,135,138-139,195-204
+  s_b7f30c572db9a8::t_ff23d076587fba 205
+src/shared/answer.ts
+  s_b7f30c572db9a8::t_9d6acf919e293f 1-11
+src/server/index.ts
+  s_b7f30c572db9a8::t_60c73cc90abab5 329-330,332-337
+  s_b7f30c572db9a8::t_62c220ee9c9efa 4,16,22,77-80,145,149,240-278,380,450-451,464-468
+  s_b7f30c572db9a8::t_ec43af7152fa7e 469-470
+src/hook/codex.test.ts
+  s_b7f30c572db9a8::t_ee80b71c9abbdf 78-79
+src/hook/map.test.ts
+  s_b7f30c572db9a8::t_6f78bd9e45dbd7 360-373
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_8dc3e41d13d69d 331-354
+src/hook/entry.ts
+  s_b7f30c572db9a8::t_4b8bf14a9ce7e0 3,9,11,15,18
+src/hook/never-block.test.ts
+  s_b7f30c572db9a8::t_499672659316c5 190-248,250,253-258
+  s_b7f30c572db9a8::t_f421e22d4c4290 249,251-252
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_9977dbfb054069 164-247
+plugin/hooks/hooks.json
+  s_b7f30c572db9a8::t_25bd091af19f05 5-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e45e9c01cd807a921d6ccb0b889e6803d1b2de6",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
