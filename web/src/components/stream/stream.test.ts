@@ -2,7 +2,7 @@ import type { Artifact } from '../../artifacts'
 import type { Wheel } from './step'
 import { describe, expect, it } from 'bun:test'
 import { feedbackTargetOf } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, PINNED_TEXT, togglePin } from './follow'
+import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove, PINNED_TEXT } from './follow'
 import { alignTarget, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 
 function cell(seq: number, extra: Partial<Artifact> = {}): Artifact {
@@ -52,10 +52,15 @@ describe('pin', () => {
   const keys = new Set(['1-0', '2-0', '3-0'])
   const base = { scopeChanged: false, reshuffled: false, arrived: 0, follow: 'following' as const, pin: null, selected: null, keys }
 
-  it('pins a clicked cell, moves the pin to another, and lets go on the pinned one', () => {
-    expect(togglePin(null, '2-0')).toBe('2-0')
-    expect(togglePin('2-0', '3-0')).toBe('3-0')
-    expect(togglePin('2-0', '2-0')).toBeNull()
+  it('pins and selects a clicked cell, and moves the pin to another', () => {
+    expect(clickCell(null, null, '2-0')).toEqual({ pin: '2-0', selected: '2-0' })
+    expect(clickCell('2-0', '2-0', '3-0')).toEqual({ pin: '3-0', selected: '3-0' })
+  })
+
+  it('lets go of the selection outline with the pin when the pinned cell is clicked again', () => {
+    expect(clickCell('2-0', '2-0', '2-0')).toEqual({ pin: null, selected: null })
+    // A thumbnail picked another cell meanwhile: that selection stays
+    expect(clickCell('2-0', '4-0', '2-0')).toEqual({ pin: null, selected: '4-0' })
   })
 
   it('holds nothing while its cell is not on the rail', () => {

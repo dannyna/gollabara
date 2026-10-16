@@ -16,7 +16,7 @@ import { referenceFolds } from '../../artifacts'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, holdKey, lastArrival, latestLeft, listMove, togglePin } from '../stream/follow'
+import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 import HarnessGuide from './HarnessGuide.vue'
@@ -53,10 +53,20 @@ const track = computed(() => rail.value?.el)
 const keysOf = (list: Artifact[]) => new Set(list.map(a => a.key))
 const pin = computed(() => activePin(props.pinned, keysOf(props.artifacts)))
 
-/** A click on a cell selects it and pins it, or unpins it when it was the pinned one */
+/** A click on a cell selects it and pins it; on the pinned one it lets go of both, so no outline stays */
 function onSelect(key: string) {
-  emit('pin', togglePin(props.pinned ?? null, key))
+  const next = clickCell(props.pinned ?? null, props.selected ?? null, key)
+  emit('pin', next.pin)
+  if (next.selected && next.selected !== props.selected)
+    emit('select', next.selected)
+  else if (!next.selected && props.selected)
+    emit('unselect')
+}
+/** A double click opens the viewer and leaves the cell pinned, whatever its first click did */
+function onOpen(key: string) {
+  emit('pin', key)
   emit('select', key)
+  emit('open', key)
 }
 
 const follow = ref<Follow>('start')
@@ -73,13 +83,13 @@ function markUserIntent() {
 }
 /** How following resumes once a move lets go of the pin; the rail may still be on its way there */
 let unpinTo: Follow | undefined
-/** Moving the rail by hand lets go of the pin, and of the selection a click gave it: the reader has left the cell */
+/** Moving the rail by hand lets go of the pin and of the selection (a thumbnail's too): the reader has left the cell */
 function letGo(to: Follow) {
+  if (props.selected)
+    emit('unselect')
   if (!props.pinned)
     return
   unpinTo = to
-  if (props.selected === props.pinned)
-    emit('unselect')
   emit('pin', null)
 }
 /** A step pauses following up front unless it lands on the latest, so a cell arriving mid-step cannot pull the rail back */
@@ -146,9 +156,12 @@ function toLatest(behavior: ScrollBehavior) {
   el?.scrollTo({ left: latestLeft(el.scrollWidth - el.clientWidth, rail.value?.latestAlign()), behavior })
 }
 function jumpToLatest() {
-  // The way back to the latest also lets go of the pin, so following resumes
-  if (props.pinned)
+  // The way back to the latest also lets go of the pin and its outline, so following resumes
+  if (props.pinned) {
+    if (props.selected === props.pinned)
+      emit('unselect')
     emit('pin', null)
+  }
   toLatest('smooth')
   // The pill goes away, so focus lands on the track it led back to
   track.value?.focus({ preventScroll: true })
@@ -294,7 +307,7 @@ const { setTarget } = useFeedbackTarget()
     </StateView>
     <StreamRail
       v-else ref="rail" :artifacts="artifacts" :folds="folds" :selected="selected" :pinned="pin" :ended="ended"
-      @select="onSelect" @open="emit('open', $event)" @reply="setTarget(feedbackTargetOf($event))"
+      @select="onSelect" @open="emit('open', $event)" @zoom="onOpen" @reply="setTarget(feedbackTargetOf($event))"
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="onIntent" @pointerdown="markUserIntent"
       @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @keydown="onIntent"
     />

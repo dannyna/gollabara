@@ -179,6 +179,8 @@ function unpinOnEscape(e: KeyboardEvent) {
     return
   if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches('input, textarea, select')))
     return
+  if (selected.value === pinned.value)
+    selected.value = null
   setPin(null)
 }
 onMounted(() => window.addEventListener('keydown', unpinOnEscape))

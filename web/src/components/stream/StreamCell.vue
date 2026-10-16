@@ -35,7 +35,7 @@ const props = defineProps<{
   /** Gallery: freeze the image face state */
   face?: 'loading' | 'failed'
 }>()
-const emit = defineEmits<{ select: [], open: [], reply: [] }>()
+const emit = defineEmits<{ select: [], open: [], reply: [], zoom: [] }>()
 const reference = computed(() => props.artifact.role === 'reference')
 const a = computed(() => props.artifact)
 const caption = computed(() => artifactCaption(a.value))
@@ -82,7 +82,7 @@ const state = computed(() => props.face ?? loaded.value)
     </button>
     <button
       v-else class="hit" type="button" :aria-pressed="!!pinned" :aria-label="pinned ? `${name} 고정됨. 누르면 고정 해제` : `${name} 선택하고 고정`"
-      @click="emit('select')"
+      @click="$event.detail < 2 && emit('select')" @dblclick="emit('zoom')"
     >
       <slot name="face">
         <img
