@@ -46,8 +46,13 @@ export const arrivedSince = (seen: number, artifacts: Artifact[]) => artifacts.f
  */
 export const PINNED_TEXT = { lead: '고정한 산출물', key: 'Esc로 풀기', touch: '다시 눌러 풀기' } as const
 
-/** Clicking a cell pins it; clicking the pinned cell again unpins. One pin at a time. */
-export const togglePin = (pinned: string | null, key: string) => pinned === key ? null : key
+/**
+ * A click on a cell: it pins and selects that cell; on the pinned cell it lets go of the pin, and of the
+ * selection when it was that cell, so no outline stays. One pin at a time.
+ */
+export function clickCell(pinned: string | null, selected: string | null, key: string): { pin: string | null, selected: string | null } {
+  return pinned === key ? { pin: null, selected: selected === key ? null : selected } : { pin: key, selected: key }
+}
 
 /**
  * The pin while its cell is on the rail, else null. A pin whose cell left the rail (a new

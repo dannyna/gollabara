@@ -27,7 +27,7 @@ const props = defineProps<{
   bare?: boolean
 }>()
 
-const emit = defineEmits<{ select: [key: string], open: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
+const emit = defineEmits<{ select: [key: string], open: [key: string], zoom: [key: string], reply: [artifact: Artifact], step: [left: number] }>()
 const foldsAfter = computed(() => {
   const map = new Map<string | null, Fold[]>()
   for (const f of props.folds ?? []) map.set(f.after, [...map.get(f.after) ?? [], f])
@@ -164,7 +164,7 @@ defineExpose({ el, align, realign, latestAlign })
     <template v-for="a in artifacts" :key="a.key">
       <StreamCell
         :artifact="a" :selected="selected === a.key" :pinned="pinned === a.key" :ended="ended?.has(a.sessionId)"
-        @select="emit('select', a.key)" @open="emit('open', a.key)" @reply="emit('reply', a)"
+        @select="emit('select', a.key)" @open="emit('open', a.key)" @zoom="emit('zoom', a.key)" @reply="emit('reply', a)"
       />
       <ReferenceFold
         v-for="f in foldsAfter.get(a.key)" :key="f.key" :fold="f" :model-value="openFolds.has(f.key)"
