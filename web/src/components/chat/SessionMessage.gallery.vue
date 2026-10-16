@@ -45,7 +45,7 @@ const checkout = [{ key: '1', label: '1', ...IMG.c1 }, { key: '2', label: '2', .
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="답장 · hover · 키보드 포커스">
-    <ChatFrame :note="`리캡이 있는 메시지에만 답장. 누르면 컴포저에 인용 (${replied}번). 끝난 세션은 꺼짐. 767px 이하에서는 숨김.`">
+    <ChatFrame :note="`리캡이 있는 메시지에만 답장. 누르면 컴포저에 인용 (${replied}번). 끝난 세션은 꺼짐. 767px 이하에서는 막대 대신 터치로 오른쪽으로 밀어 답장.`">
       <SessionMessage :name="S.piuda" :at="time(14, 32)" replyable @reply="replied++">
         사이드바 접힘 상태 저장 구현 끝. 테스트 12개 통과.
       </SessionMessage>

@@ -97,7 +97,7 @@ const MENTION: MentionOption[] = [
   <GalleryCase title="app · canSend 꺼짐 (기본값)">
     <ChatFrame note="전달이 연결되기 전 앱이 그리는 상태. 모든 컨트롤이 꺼져 있다.">
       <template #footer>
-        <ChatComposer hint="@세션을 부르거나, 산출물에 답장해 보세요" note="보내기는 준비 중이에요" />
+        <ChatComposer hint="@세션을 부르거나, 산출물에 답장해 보세요" mobile-hint="메시지를 오른쪽으로 밀면 답장" note="보내기는 준비 중이에요" />
       </template>
     </ChatFrame>
   </GalleryCase>

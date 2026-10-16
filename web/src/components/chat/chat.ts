@@ -62,6 +62,29 @@ export function stepNav(questions: Question[], step: number): StepNav {
 }
 
 /** Mono line under a thumbnail strip. Turns carry no tool name, so it is shown only when known. */
+/** A touch drag on a session message past this many px to the right quotes it (mobile 답장) */
+export const SWIPE_REPLY_PX = 56
+/** The farthest the message follows the finger */
+export const SWIPE_MAX_PX = 72
+/** Travel before a drag picks its axis */
+const SWIPE_SLOP_PX = 10
+
+export type SwipeAxis = 'pending' | 'x' | 'y'
+
+/** A drag is a reply swipe only when it heads clearly right; anything else stays a scroll */
+export function swipeAxis(dx: number, dy: number): SwipeAxis {
+  if (Math.hypot(dx, dy) < SWIPE_SLOP_PX)
+    return 'pending'
+  return dx > 0 && dx > Math.abs(dy) * 1.5 ? 'x' : 'y'
+}
+
+/** Follows the finger up to the reply point, then resists, and never goes left */
+export function swipeOffset(dx: number): number {
+  if (dx <= SWIPE_REPLY_PX)
+    return Math.max(0, dx)
+  return Math.min(SWIPE_MAX_PX, SWIPE_REPLY_PX + (dx - SWIPE_REPLY_PX) * 0.3)
+}
+
 export function outputLabel(count: number, toolName?: string): string {
   const tool = toolName?.split('__').at(-1)
   return tool ? `${tool} · ${count}장` : `${count}장`

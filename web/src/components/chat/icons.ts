@@ -24,6 +24,8 @@ export const ICONS = {
   // The question stepper's indicator
   next: '<path d="m10 6 6 6-6 6"/>',
   previous: '<path d="m14 6-6 6 6 6"/>',
+  // A session message's swipe-to-reply cue
+  reply: '<path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
   // Avatar menu (OD session-chat-components.html 07)
   scope: '<circle cx="12" cy="12" r="3"/><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
