@@ -10,7 +10,10 @@ export type IncomingEvent
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
     | { kind: 'recap', session: SessionInfo, text: string, continuation?: boolean }
-    | { kind: 'question', session: SessionInfo, questions: Question[] }
+    // `id`: the harness's call id for the question (Claude Code's and Codex's tool_use_id), when it sends one
+    | { kind: 'question', session: SessionInfo, questions: Question[], id?: string }
+    // The user answered the session's question (in its terminal or in the app); `answers` is keyed by question text
+    | { kind: 'answer', session: SessionInfo, questionId: string, answers: Record<string, string> }
     // The session closed (the user quit, or its conversation was cleared): feedback to it is refused until it comes back
     | { kind: 'session-end', session: SessionInfo }
 
@@ -104,6 +107,32 @@ export interface StreamMessage {
   toolName?: string
   images?: StoredImage[]
   questions?: Question[]
+  /** The harness's call id for a question, which its answer and a hold name it by; missing on older rows and from hooks that send none */
+  questionId?: string
+  /** How the question was answered, once it was; the first answer recorded wins */
+  answer?: QuestionAnswer
+}
+
+/** Answers to a question message, keyed by question text; multiSelect labels are joined with ", " */
+export interface QuestionAnswer {
+  answers: Record<string, string>
+  /** Answered in the session's own terminal, or from the app while its `ask` hook held the question */
+  via: 'terminal' | 'app'
+  at: number
+}
+
+/** A question the session's `ask` hook holds open, so the app can answer it until `until` */
+export interface QuestionHold {
+  sessionId: string
+  questionId: string
+  until: number
+}
+
+/** POST /api/questions/answer: answers to a held question, keyed by question text */
+export interface AnswerRequest {
+  sessionId: string
+  questionId: string
+  answers: Record<string, string>
 }
 
 export interface StoredImage {
@@ -189,7 +218,11 @@ export interface ServerSettings {
   triage: TriageEngine
   /** Address to open on a phone; https only, empty when unset */
   phone?: string
+  /** 「앱에서 답하기」: whether a session's question may be held for the app to answer; absent reads as off */
+  answer?: AnswerSetting
 }
+
+export type AnswerSetting = 'on' | 'off'
 
 /** PUT /api/settings: any subset of the settings. `seed` writes only keys the server has no value for. */
 export type SettingsPatch = Partial<ServerSettings> & { seed?: boolean }
@@ -243,7 +276,8 @@ export interface HistoryPage {
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
   // `older`: messages exist before the first one sent (missing from servers before #77)
-  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings, older?: boolean }
+  // `holds`: questions the app can answer right now
+  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings, older?: boolean, holds?: QuestionHold[] }
     | { type: 'message', message: StreamMessage }
     // An existing message changed in place: same id, new content
     | { type: 'message-upsert', message: StreamMessage }
@@ -252,6 +286,8 @@ export type ServerFrame
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
     | { type: 'triage', triage: Triage }
     | { type: 'settings', settings: ServerSettings }
+    // A hold started (`until` is when it ends) or ended (`until: null`: answered, expired, or the hook went away)
+    | { type: 'hold', sessionId: string, questionId: string, until: number | null }
     // Rows expiry or 「이 세션 데이터 삭제」 removed; views drop them
     | { type: 'deleted', messageIds: number[], feedbackIds: number[], sessionIds: string[] }
 

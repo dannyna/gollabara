@@ -191,6 +191,90 @@ describe('quote-reply', () => {
   })
 })
 
+describe('answering a question from the app', () => {
+  const info = { id: 'ask', name: 'ask', harness: 'claude-code', cwd: '/a' }
+  const questions = [{ question: 'Which?', options: [{ label: 'A' }, { label: 'B' }] }]
+  const post = (path: string, body: unknown, signal?: AbortSignal) => fetch(`${url}${path}`, { method: 'POST', headers: json, body: JSON.stringify(body), signal })
+  const hold = (questionId: string, signal?: AbortSignal) => post('/api/questions/hold', { sessionId: 'ask', questionId, questions }, signal)
+  const setAnswer = (answer: string) => fetch(`${url}/api/settings`, { method: 'PUT', headers: json, body: JSON.stringify({ answer }) })
+  async function viewer() {
+    const ws = new WebSocket(`${url.replace('http', 'ws')}/ws`)
+    const frames: { type: string, [key: string]: unknown }[] = []
+    ws.onmessage = e => frames.push(JSON.parse(e.data as string))
+    await new Promise(resolve => ws.onopen = resolve)
+    const until = async (ok: () => boolean) => {
+      for (let i = 0; i < 100 && !ok(); i++)
+        await Bun.sleep(10)
+    }
+    return { ws, frames, until }
+  }
+
+  test('the setting is validated and rides on GET', async () => {
+    expect((await setAnswer('maybe')).status).toBe(400)
+    expect(await (await setAnswer('off')).json()).toMatchObject({ answer: 'off' })
+    expect(await (await fetch(`${url}/api/settings`)).json()).toMatchObject({ answer: 'off' })
+  })
+
+  test('no hold with the setting off or no view open', async () => {
+    await start('ask', 'claude-code')
+    await setAnswer('off')
+    const v = await viewer()
+    expect(await (await hold('q0')).json()).toEqual({ hold: false })
+    v.ws.close()
+    await setAnswer('on')
+    for (let i = 0; i < 50 && servers[0]!.subscriberCount('stream') > 0; i++)
+      await Bun.sleep(10)
+    expect(await (await hold('q0')).json()).toEqual({ hold: false })
+  })
+
+  test('a held question takes the app\'s answer once; the hook gets it and views see the hold and the answer', async () => {
+    await start('ask', 'claude-code')
+    await setAnswer('on')
+    await post('/api/events', { kind: 'question', session: info, questions, id: 'q1' })
+    const v = await viewer()
+    const held = hold('q1')
+    await v.until(() => v.frames.some(f => f.type === 'hold' && f.until))
+    // A view that opens now learns of the hold from its hello
+    const late = await viewer()
+    await late.until(() => late.frames.length > 0)
+    expect(late.frames[0]).toMatchObject({ type: 'hello', holds: [{ sessionId: 'ask', questionId: 'q1', until: expect.any(Number) }] })
+
+    expect((await post('/api/questions/answer', { sessionId: 'ask', questionId: 'q1', answers: { 'Which?': '' } })).status).toBe(400)
+    const answered = await post('/api/questions/answer', { sessionId: 'ask', questionId: 'q1', answers: { 'Which?': 'B' } })
+    expect(answered.status).toBe(200)
+    expect(await (await held).json()).toEqual({ answers: { 'Which?': 'B' } })
+    const again = await post('/api/questions/answer', { sessionId: 'ask', questionId: 'q1', answers: { 'Which?': 'A' } })
+    expect([again.status, await again.json()]).toEqual([409, { error: 'closed' }])
+
+    await v.until(() => v.frames.some(f => f.type === 'message-upsert'))
+    expect(v.frames.filter(f => f.type === 'hold').map(f => f.until === null)).toEqual([false, true])
+    expect(v.frames.find(f => f.type === 'message-upsert')).toMatchObject({ message: { questionId: 'q1', answer: { answers: { 'Which?': 'B' }, via: 'app' } } })
+    // The PostToolUse that follows reports the same answer; the app's record stays
+    await post('/api/events', { kind: 'answer', session: info, questionId: 'q1', answers: { 'Which?': 'B' } })
+    const stored = (await (await fetch(`${url}/api/messages`)).json() as { questionId?: string, answer?: { via: string } }[]).find(m => m.questionId === 'q1')
+    expect(stored?.answer?.via).toBe('app')
+    v.ws.close()
+    late.ws.close()
+  })
+
+  test('a hook that goes away (Esc) drops its hold', async () => {
+    await start('ask', 'claude-code')
+    await setAnswer('on')
+    const v = await viewer()
+    const abort = new AbortController()
+    const held = hold('q2', abort.signal).catch(() => null)
+    await v.until(() => v.frames.some(f => f.type === 'hold' && f.questionId === 'q2'))
+    abort.abort()
+    await held
+    await v.until(() => v.frames.some(f => f.type === 'hold' && f.questionId === 'q2' && f.until === null))
+    expect(v.frames.filter(f => f.type === 'hold' && f.questionId === 'q2').map(f => f.until === null)).toEqual([false, true])
+    const late = await post('/api/questions/answer', { sessionId: 'ask', questionId: 'q2', answers: { 'Which?': 'A' } })
+    expect(late.status).toBe(409)
+    v.ws.close()
+    await setAnswer('off')
+  })
+})
+
 describe('discarding queued feedback', () => {
   test('removes the items still queued for an ended session and tells every view', async () => {
     const post = (path: string, body: unknown) => fetch(`${url}${path}`, { method: 'POST', headers: json, body: JSON.stringify(body) })

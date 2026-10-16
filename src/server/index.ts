@@ -1,7 +1,7 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackQuote, FeedbackRequest, FeedbackVia, Harness, Health, HistoryPage, IncomingEvent, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
+import type { AnswerRequest, AnswerSetting, Feedback, FeedbackClaim, FeedbackQuote, FeedbackRequest, FeedbackVia, Harness, Health, HistoryPage, IncomingEvent, Question, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
 import type { Purged } from './store'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
@@ -14,12 +14,13 @@ import { routesFor } from '../shared/routes'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
 import { EXPIRE_EVERY_MS, expiryCutoffs } from './expiry'
+import { Holds } from './holds'
 import { allowRequest, listenHosts } from './listen'
 import { goneSessions, SWEEP_MS, systemProbe } from './liveness'
 import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
 import { loadVapidKeys, Pusher, sendPush, toSubscription } from './push'
-import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
+import { ANSWER_SETTINGS, FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
 
@@ -74,6 +75,10 @@ export function startServer() {
   let vapid: ReturnType<typeof loadVapidKeys> | null = null
   const vapidKeys = () => vapid ??= loadVapidKeys(dataDir())
   const pusher = new Pusher(store, async (sub, payload) => sendPush(sub, payload, await vapidKeys()))
+  // Views learn when a question can be answered from the app, and when it no longer can
+  const holds = new Holds((hold, live) => publish({ type: 'hold', sessionId: hold.sessionId, questionId: hold.questionId, until: live ? hold.until : null }))
+  /** Open views on every listener: a hold waits only when someone could answer it */
+  const viewers = () => servers.reduce((n, server) => n + server.subscriberCount(TOPIC), 0)
 
   /**
    * Records which hook version a harness runs. Hooks from before the handshake send no headers; their
@@ -138,11 +143,11 @@ export function startServer() {
           if (invalid)
             return new Response(invalid, { status: 400 })
           // A key from an older client (`retention`, #116) is ignored, never an error
-          const { triage: engine, phone, seed } = body!
+          const { triage: engine, phone, answer, seed } = body!
           const previous = store.settings().triage
           if (engine && engine !== 'off' && engine !== previous && !Bun.which(engine))
             return new Response(`${engine} is not installed`, { status: 409 })
-          const settings = store.saveSettings({ triage: engine, phone: phone?.trim() }, seed === true)
+          const settings = store.saveSettings({ triage: engine, phone: phone?.trim(), answer }, seed === true)
           if (settings.triage !== previous)
             triager.onSettings(settings.triage)
           publish({ type: 'settings', settings })
@@ -240,6 +245,45 @@ export function startServer() {
         }
       }
 
+      // The `ask` hook (PreToolUse on AskUserQuestion) holds the session's question for the app to answer.
+      // It waits only with 「앱에서 답하기」 on and a view open, and only for a live Claude Code session;
+      // otherwise `{ hold: false }` at once, and the terminal shows its dialog. Esc or the hook's timeout aborts
+      // the request, which drops the hold.
+      if (url.pathname === '/api/questions/hold' && req.method === 'POST') {
+        if (!isTrustedSource(srv.requestIP(req)?.address))
+          return new Response('forbidden', { status: 403 })
+        const body = await req.json().catch(() => null) as { sessionId?: unknown, questionId?: unknown, questions?: unknown } | null
+        const questions = heldQuestions(body?.questions)
+        if (typeof body?.sessionId !== 'string' || !body.sessionId || typeof body.questionId !== 'string' || !body.questionId || !questions)
+          return new Response('sessionId, questionId and questions are required', { status: 400 })
+        const session = store.session(body.sessionId)
+        seeHook(req, session?.harness)
+        if (store.settings().answer !== 'on' || viewers() === 0 || session?.endedAt || (session && session.harness !== 'claude-code'))
+          return Response.json({ hold: false })
+        srv.timeout(req, 0)
+        const answers = await holds.hold(body.sessionId, body.questionId, questions, req.signal)
+        return Response.json(answers ? { answers } : { hold: false })
+      }
+
+      // The app answers a held question. Only while the hold is live: an expired, answered or unknown one is 409
+      if (url.pathname === '/api/questions/answer' && req.method === 'POST') {
+        // Like feedback: the text reaches a running session
+        if (!isTrustedSource(srv.requestIP(req)?.address))
+          return new Response('forbidden', { status: 403 })
+        const body = await req.json().catch(() => null) as Partial<AnswerRequest> | null
+        if (typeof body?.sessionId !== 'string' || !body.sessionId || typeof body.questionId !== 'string' || !body.questionId)
+          return new Response('sessionId and questionId are required', { status: 400 })
+        const result = holds.answer(body.sessionId, body.questionId, body.answers)
+        if (result.status === 'closed')
+          return Response.json({ error: 'closed' }, { status: 409 })
+        if (result.status === 'invalid')
+          return new Response(result.error, { status: 400 })
+        const message = store.recordAnswer(body.sessionId, body.questionId, result.answers, 'app')
+        if (message)
+          publish({ type: 'message-upsert', message })
+        return Response.json({ ok: true, answers: result.answers })
+      }
+
       // A wake-up Stop hook long-polls for its session's feedback, keyed by the session id it was given.
       // Claims share the hook's atomic claim, so each item goes out once. It claims only while the session
       // is idle: mid-turn, the hook hands feedback over at the next tool call or Stop.
@@ -290,11 +334,15 @@ export function startServer() {
         }
         finally {
           channels.end(sessionId)
-          // Tell the views once the grace period runs out without another poll
+          // Tell the views once the grace period runs out without another poll. Late, so a store closed since
+          // (a stopped test server) only costs that frame; unref'd, so it never keeps the process alive
           setTimeout(() => {
-            if (!channels.isLive(sessionId))
-              publishSession(sessionId)
-          }, CHANNEL_GRACE_MS + 100)
+            try {
+              if (!channels.isLive(sessionId))
+                publishSession(sessionId)
+            }
+            catch {}
+          }, CHANNEL_GRACE_MS + 100).unref()
         }
       }
 
@@ -337,6 +385,7 @@ export function startServer() {
           feedback: store.recentFeedback(),
           triage: store.triageFor(messages.map(m => m.id)),
           settings: store.settings(),
+          holds: holds.active(),
         } satisfies ServerFrame))
       },
       message() {},
@@ -406,6 +455,8 @@ function settingsError(body: SettingsPatch | null): string | null {
     return 'a settings object is required'
   if (body.triage !== undefined && !TRIAGE_ENGINES.includes(body.triage as TriageEngine))
     return 'triage must be off, claude or codex'
+  if (body.answer !== undefined && !ANSWER_SETTINGS.includes(body.answer as AnswerSetting))
+    return 'answer must be on or off'
   if (body.phone !== undefined) {
     if (typeof body.phone !== 'string' || body.phone.length > PHONE_MAX)
       return 'phone must be a string'
@@ -416,6 +467,13 @@ function settingsError(body: SettingsPatch | null): string | null {
       return 'phone must be an https address'
   }
   return null
+}
+
+/** The questions a hold names (only their texts matter here), or null when they are not a list of questions */
+function heldQuestions(raw: unknown): Question[] | null {
+  if (!Array.isArray(raw) || !raw.length || !raw.every(q => typeof q?.question === 'string' && q.question))
+    return null
+  return raw as Question[]
 }
 
 function serveWeb(pathname: string): Response {

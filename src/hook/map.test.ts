@@ -357,6 +357,20 @@ describe('question mirroring', () => {
       tool_input: { questions: [{ question: '어느 시안으로 갈까요?', header: '시안', options: [{ label: 'A' }, { label: 'B', description: '추천' }] }] },
     }, session)
     expect(event).toMatchObject({ kind: 'question', questions: [{ question: '어느 시안으로 갈까요?', options: [{ label: 'A' }, { label: 'B' }] }] })
+    expect(event).not.toHaveProperty('id')
+  })
+
+  test('a question carries its call id, and the PostToolUse after it posts the answers keyed by question text', () => {
+    const base = { session_id: 's1', cwd: '/x', tool_name: 'AskUserQuestion', tool_use_id: 'toolu_1' }
+    const tool_input = { questions: [{ question: 'Which?', options: [{ label: 'A' }, { label: 'B' }], multiSelect: true }] }
+    expect(mapHook({ ...base, hook_event_name: 'PreToolUse', tool_input }, session)).toMatchObject({ kind: 'question', id: 'toolu_1' })
+    const answers = { 'Which?': 'A, B' }
+    expect(mapHook({ ...base, hook_event_name: 'PostToolUse', tool_input: { ...tool_input, answers }, tool_response: { questions: tool_input.questions, answers } }, session))
+      .toEqual({ kind: 'answer', session, questionId: 'toolu_1', answers })
+    // Older shapes put the answers only on the input; without an id or answers there is nothing to post
+    expect(mapHook({ ...base, hook_event_name: 'PostToolUse', tool_input: { ...tool_input, answers } }, session)).toMatchObject({ kind: 'answer', answers })
+    expect(mapHook({ ...base, hook_event_name: 'PostToolUse', tool_use_id: undefined, tool_response: { answers } }, session)).toBeNull()
+    expect(mapHook({ ...base, hook_event_name: 'PostToolUse', tool_response: {} }, session)).toBeNull()
   })
 })
 

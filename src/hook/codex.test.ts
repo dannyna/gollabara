@@ -75,6 +75,8 @@ describe('Codex mapping (payloads recorded in the spike)', () => {
           { label: 'Blue', description: 'Choose blue as your preferred color.' },
         ],
       }],
+      // Codex's call id rides along, though Codex questions stay read-only
+      id: 'call_pP4i9lTucZERxaPxpLPkGdry',
     })
     expect(JSON.parse(JSON.stringify(event)).questions[0]).not.toHaveProperty('multiSelect')
   })

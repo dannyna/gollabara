@@ -23,7 +23,7 @@ gollabara narrows what you watch from sessions to artifacts. It doesn't mirror f
 
 ### An observer, not a mediator
 
-gollabara never asks a session for approval and never invents questions. It mirrors a question only when the session's own workflow was going to ask it anyway. No alarm colors, no big buttons pushing you to decide.
+gollabara never asks a session for approval and never invents questions. It mirrors a question only when the session's own workflow was going to ask it anyway. If you opt in, you can answer that question from the app for a short while, and your answer reaches the session as if you had typed it; otherwise the question waits in the session as usual. gollabara never answers for you. No alarm colors, no big buttons pushing you to decide.
 
 ### Sessions don't know they're being watched
 

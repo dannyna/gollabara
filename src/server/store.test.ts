@@ -328,6 +328,30 @@ describe('settings', () => {
     expect(store.saveSettings({ phone: 'https://mac.ts.net' })).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
     expect(store.saveSettings({ triage: 'claude', phone: 'https://other.ts.net' }, true)).toEqual({ triage: 'claude', phone: 'https://mac.ts.net' })
     expect(store.saveSettings({ phone: '' })).toEqual({ triage: 'claude', phone: '' })
+    expect(store.saveSettings({ answer: 'on' })).toEqual({ triage: 'claude', phone: '', answer: 'on' })
+  })
+})
+
+describe('answers', () => {
+  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
+  const questions = [{ question: 'Which?', options: [{ label: 'A' }, { label: 'B' }] }]
+
+  test('a question keeps its call id, and the first answer recorded wins', () => {
+    const asked = store.ingest({ kind: 'question', session: cc, questions, id: 'toolu_1' }, 100).message!
+    expect(asked.questionId).toBe('toolu_1')
+    const app = store.recordAnswer('cc-1', 'toolu_1', { 'Which?': 'B' }, 'app', 200)
+    expect(app).toMatchObject({ id: asked.id, answer: { answers: { 'Which?': 'B' }, via: 'app', at: 200 } })
+    // The PostToolUse after the app's answer reports the same answer; the app's record stays
+    expect(store.ingest({ kind: 'answer', session: cc, questionId: 'toolu_1', answers: { 'Which?': 'B' } }, 300).message).toBeNull()
+    expect(store.get(asked.id)!.answer).toEqual({ answers: { 'Which?': 'B' }, via: 'app', at: 200 })
+  })
+
+  test('a terminal answer lands on its question; one for an unknown question changes nothing', () => {
+    const asked = store.ingest({ kind: 'question', session: cc, questions, id: 'toolu_2' }, 100).message!
+    const { message, created } = store.ingest({ kind: 'answer', session: cc, questionId: 'toolu_2', answers: { 'Which?': 'A' } }, 150)
+    expect({ id: message?.id, created, answer: message?.answer }).toEqual({ id: asked.id, created: false, answer: { answers: { 'Which?': 'A' }, via: 'terminal', at: 150 } })
+    expect(store.ingest({ kind: 'answer', session: cc, questionId: 'toolu_x', answers: { 'Which?': 'A' } }, 160).message).toBeNull()
+    expect(store.recent().find(m => m.id === asked.id)?.answer?.via).toBe('terminal')
   })
 })
 

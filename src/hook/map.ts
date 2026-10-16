@@ -15,6 +15,8 @@ export interface HookInput {
   tool_name?: string
   tool_input?: any
   tool_response?: any
+  /** The tool call's id (Claude Code and Codex): names a question so its answer and a hold can find it */
+  tool_use_id?: string
   last_assistant_message?: string
   stop_hook_active?: boolean
   transcript_path?: string
@@ -135,6 +137,8 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       return reason ? { kind: 'session', session, reason } : { kind: 'session', session }
     }
     case 'PostToolUse': {
+      if (input.tool_name === 'AskUserQuestion')
+        return answerEvent(input, session)
       const images = extractImages(input.tool_response)
       if (images.length === 0)
         return null
@@ -155,7 +159,9 @@ export function mapHook(input: HookInput, session: SessionInfo, opener: TurnOpen
       if (!QUESTION_TOOLS.has(input.tool_name ?? ''))
         return null
       const questions = extractQuestions(input.tool_input)
-      return questions.length ? { kind: 'question', session, questions } : null
+      if (!questions.length)
+        return null
+      return typeof input.tool_use_id === 'string' && input.tool_use_id ? { kind: 'question', session, questions, id: input.tool_use_id } : { kind: 'question', session, questions }
     }
     case 'Stop': {
       // A wake-up the user did not start (Monitor tick, task notification) is not worth a line.
@@ -300,7 +306,19 @@ export function imageSource(toolInput: any): string | undefined {
   return undefined
 }
 
-function extractQuestions(toolInput: any): Question[] {
+/**
+ * How the user answered AskUserQuestion, whether in the terminal or through the app's `ask` hold: Claude Code
+ * hands the answers, keyed by question text (multiSelect labels joined with ", "), to PostToolUse.
+ */
+function answerEvent(input: HookInput, session: SessionInfo): IncomingEvent | null {
+  const raw = input.tool_response?.answers ?? input.tool_input?.answers
+  if (typeof input.tool_use_id !== 'string' || !input.tool_use_id || !raw || typeof raw !== 'object' || Array.isArray(raw))
+    return null
+  const answers = Object.fromEntries(Object.entries(raw).filter((e): e is [string, string] => typeof e[1] === 'string'))
+  return Object.keys(answers).length ? { kind: 'answer', session, questionId: input.tool_use_id, answers } : null
+}
+
+export function extractQuestions(toolInput: any): Question[] {
   const list = Array.isArray(toolInput?.questions) ? toolInput.questions : []
   return list
     .filter((q: any) => typeof q?.question === 'string')
