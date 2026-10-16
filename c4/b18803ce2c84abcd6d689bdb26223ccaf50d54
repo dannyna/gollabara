@@ -1,0 +1,61 @@
+docs/E2E.md
+  s_b7f30c572db9a8::t_f4e958eac3291b 95-103,128
+web/src/components/chat/SessionMenu.gallery.vue
+  s_b7f30c572db9a8::t_a5f9d00aac947f 70
+AGENTS.md
+  s_b7f30c572db9a8::t_cf7b01d382c63d 80,169
+  s_b7f30c572db9a8::t_30c5824de59c7d 167
+web/src/components/stream/StreamCell.gallery.vue
+  s_b7f30c572db9a8::t_a5f9d00aac947f 52
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_30329c4f7a82b3 24-26,30-36,38-40
+  s_b7f30c572db9a8::t_3a1f36ce0f6085 3
+  s_b7f30c572db9a8::t_414ed76c1b6e47 37
+  s_b7f30c572db9a8::t_242e771d4ad8a6 41
+DESIGN.md
+  s_b7f30c572db9a8::t_7daa08e6dbaa36 303,327
+  s_b7f30c572db9a8::t_18f3ac013d94ac 301,305,325,329-330
+web/src/components/chat/SessionMenuButton.vue
+  s_b7f30c572db9a8::t_eb3cc6bae80b7a 130
+  s_b7f30c572db9a8::t_bd43de86e68069 22
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_44c1e8bc4d138d 74
+  s_b7f30c572db9a8::t_fe5dae91fac660 40-41,43-44
+  s_b7f30c572db9a8::t_ec0c8f93457688 229
+  s_b7f30c572db9a8::t_71f1e28dd72692 5
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_043e16af591e67 16,18-19
+  s_b7f30c572db9a8::t_215130752dfa20 30
+  s_b7f30c572db9a8::t_06b43d97e5e830 35
+  s_b7f30c572db9a8::t_efae9fac8eaf27 51-58
+web/src/components/overlay/gallery-samples.ts
+  s_b7f30c572db9a8::t_ec0c8f93457688 29-32
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_2b9b0310c649f6 169,174-179
+  s_b7f30c572db9a8::t_ed460d64a17d4b 27
+  s_b7f30c572db9a8::t_00e42d48bef0c3 70
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_058156c843e6c7 42-52,55
+  s_b7f30c572db9a8::t_ec0c8f93457688 84-85
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_f31755bb06d9c4 107-111
+src/server/migrations.test.ts
+  s_b7f30c572db9a8::t_a42e04d04c6693 84-97,101-105
+  s_b7f30c572db9a8::t_c6e21bbf30e317 98-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4b18803ce2c84abcd6d689bdb26223ccaf50d54",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
