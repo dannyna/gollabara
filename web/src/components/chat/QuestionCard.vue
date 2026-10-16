@@ -20,8 +20,8 @@ const props = withDefaults(defineProps<{
   typed?: string
   answeredAt?: number
   /**
-   * Answering is not built yet: every control is drawn but disabled, and a line
-   * points to the terminal. The live app always passes this.
+   * Answering is not built yet: every control is drawn but disabled.
+   * The live app always passes this.
    */
   inert?: boolean
 }>(), { state: 'open', picks: () => [] })
@@ -126,9 +126,6 @@ const picked = computed(() => answerLabel(options.value, chosen.value))
     <!-- Inert cards never promise an answer after reconnecting: the app cannot answer yet -->
     <div v-else-if="state === 'offline' && !inert" class="q-state">
       <ChatIcon name="plug" />다시 연결되면 답할 수 있어요
-    </div>
-    <div v-if="inert && (state === 'open' || state === 'offline')" class="q-state">
-      <ChatIcon name="term" />앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
     </div>
   </div>
 </template>
