@@ -32,6 +32,7 @@ web/src/components/overlay/SettingsSheet.gallery.vue
   s_b7f30c572db9a8::t_c2c8f726ae9080 81-83
 DESIGN.md
   s_b7f30c572db9a8::t_dac1e6ab45ca90 345,347-362,388
+  s_b7f30c572db9a8::t_ca719c0037269c 182,409-424,428
 web/src/components/overlay/SettingsSheet.vue
   s_b7f30c572db9a8::t_ad5bd82bf84858 2,17-18,40-41,169-182,316-365
 ---
