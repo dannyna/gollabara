@@ -1,0 +1,43 @@
+src/hook/never-block.test.ts
+  s_b7f30c572db9a8::t_fef72c42711009 160-188
+  s_b7f30c572db9a8::t_c25105f6b26d40 61-62,64
+package.json
+  s_b7f30c572db9a8::t_7320b19582034f 4
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_7320b19582034f 3
+plugin/hooks/hooks.json
+  s_b7f30c572db9a8::t_f5efe69f967842 13
+AGENTS.md
+  s_b7f30c572db9a8::t_deb01f33e3b183 185
+  s_b7f30c572db9a8::t_a805dd41a14ba4 125-133
+  s_b7f30c572db9a8::t_600fd2bdb00d40 8,177-180,207
+src/hook/entry.ts
+  s_b7f30c572db9a8::t_95f34885ee8590 3,7-8,10
+src/setup/codex.ts
+  s_b7f30c572db9a8::t_d3745878cf2b70 25-27
+REVIEW.md
+  s_b7f30c572db9a8::t_600fd2bdb00d40 13
+src/hook/core.ts
+  s_b7f30c572db9a8::t_5e4f02d1a08925 54-58
+  s_b7f30c572db9a8::t_a993aed94d82f2 70
+  s_b7f30c572db9a8::t_ba4eb8857f6714 27-39
+  s_b7f30c572db9a8::t_ce1513a6afffa8 26
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_7320b19582034f 27,434-438,447-449,457,596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1712d2e658bacc6e5585a017124771579a603b81",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
