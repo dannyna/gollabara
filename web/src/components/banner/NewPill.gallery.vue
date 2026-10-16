@@ -27,15 +27,15 @@ import NewPill from './NewPill.vue'
       </div>
     </div>
   </GalleryCase>
-  <GalleryCase title="stream · a day jumped to, nothing new yet: 최신으로">
+  <GalleryCase title="stream · far back in a long run, nothing new yet: 최신으로">
     <div class="stream">
       <NewPill kind="artifact" :count="0" />
       <div class="footer">
-        <span>이미지는 원래 비율 그대로</span><span class="mono">지난 기록 · 최신으로 가면 다시 따라가요</span>
+        <span>이미지는 원래 비율 그대로</span><span class="mono">이전 산출물 · 자동 따라가기 일시 정지</span>
       </div>
     </div>
   </GalleryCase>
-  <GalleryCase title="chat · a day jumped to, nothing new yet: 최신으로">
+  <GalleryCase title="chat · far back in a long run, nothing new yet: 최신으로">
     <div class="chat">
       <div class="feed">
         <NewPill kind="message" :count="0" />

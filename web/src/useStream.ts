@@ -1,10 +1,10 @@
 // Connects to the server WebSocket for stream messages and feedback. Reconnects when dropped.
 
-import type { Feedback, HistoryPage, ServerFrame, ServerSettings, Session, StreamMessage, Triage } from '../../src/shared/types'
+import type { Feedback, ServerFrame, ServerSettings, Session, StreamMessage, Triage } from '../../src/shared/types'
 import type { HistoryState } from './history'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { feedbackBySession, mergeFeedback, sortFeedback } from './feedback'
-import { behindCounts, fetchPage, helloRun, initialHistory, joinFeedback, joinPage, joinTriage, PAGE_SIZE, routeFrame, WINDOW_SIZE } from './history'
+import { fetchPage, helloRun, initialHistory, joinFeedback, joinPage, joinTriage, PAGE_SIZE } from './history'
 import { newLines, toTriageMap, triageKey } from './triage'
 
 // First retry, doubled per failed attempt up to the cap, so a restarted server is back on screen within 5 s
@@ -86,15 +86,9 @@ export function useStream() {
   const arrivals = shallowRef<Map<string, number>>(new Map())
   const connected = ref(false)
   const flag = connectionFlags()
-  /** The run of messages in view and how it stands against the latest (history.ts) */
+  /** The run of messages in view: whether more lie before it, and its pages (history.ts) */
   const history = shallowRef<HistoryState>(initialHistory())
-  /** Live messages past the end of a run that does not reach the latest, by id */
-  let buffer = new Map<number, StreamMessage>()
   const patchHistory = (patch: Partial<HistoryState>) => history.value = { ...history.value, ...patch }
-  function setBuffer(next: Map<number, StreamMessage>) {
-    buffer = next
-    patchHistory({ behind: behindCounts(buffer) })
-  }
   let ws: WebSocket | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let attempt = 0
@@ -117,10 +111,9 @@ export function useStream() {
     socket.onmessage = (e) => {
       const frame = JSON.parse(e.data) as ServerFrame
       if (frame.type === 'hello') {
-        // The server's snapshot replaces the latest messages, so a reconnect never doubles one. Pages of
-        // history stay: older ones a live run loaded, or a whole run the reader jumped to.
-        const { live, older } = history.value
-        const run = helloRun(messages.value, live, dedupe(frame.messages), frame.older ?? false, older)
+        // The server's snapshot replaces the latest messages, so a reconnect never doubles one. Older
+        // pages the run loaded stay.
+        const run = helloRun(messages.value, dedupe(frame.messages), frame.older ?? false, history.value.older)
         const kept = run.messages !== frame.messages && messages.value.length > 0
         messages.value = dedupe(run.messages)
         patchHistory({ older: run.older })
@@ -141,8 +134,6 @@ export function useStream() {
         const feedbackGone = new Set(frame.feedbackIds)
         const sessionsGone = new Set(frame.sessionIds)
         messages.value = messages.value.filter(m => !gone.has(m.id))
-        if ([...buffer.keys()].some(id => gone.has(id)))
-          setBuffer(new Map([...buffer].filter(([id]) => !gone.has(id))))
         feedback.value = feedback.value.filter(f => !feedbackGone.has(f.id))
         sessions.value = sessions.value.filter(s => !sessionsGone.has(s.id))
         triage.value = new Map([...triage.value].filter(([, t]) => !gone.has(t.messageId)))
@@ -151,11 +142,6 @@ export function useStream() {
         feedback.value = mergeFeedback(feedback.value, frame.feedback)
       }
       else if (frame.type === 'message' || frame.type === 'message-upsert') {
-        // A run the reader jumped to never grows a message from today at its end
-        if (routeFrame(messages.value, history.value.live, frame.message) === 'buffer') {
-          setBuffer(new Map(buffer).set(frame.message.id, frame.message))
-          return
-        }
         if (settings.value.triage !== 'off') {
           const fresh = newLines(messages.value.find(m => m.id === frame.message.id), frame.message)
           if (fresh.length) {
@@ -192,79 +178,22 @@ export function useStream() {
     connect()
   }
 
-  /** Joins a page's verdicts and feedback; its messages are the caller's */
-  function joinExtras(page: HistoryPage) {
-    triage.value = joinTriage(triage.value, page.triage)
-    feedback.value = joinFeedback(feedback.value, page.feedback)
-  }
-  /** The buffer joins a run that now reaches the latest */
-  function goLive(list: StreamMessage[]): StreamMessage[] {
-    const waiting = [...buffer.values()].sort((a, b) => a.id - b.id)
-    setBuffer(new Map())
-    return waiting.reduce(upsert, list)
-  }
-  async function page(kind: 'older' | 'newer', run: () => Promise<void>) {
-    if (history.value.loading)
-      return
-    patchHistory({ loading: kind })
-    try {
-      await run()
-    }
-    finally {
-      patchHistory({ loading: null })
-    }
-  }
   /** Extends the run back by one page */
-  const loadOlder = () => page('older', async () => {
+  async function loadOlder() {
     const first = messages.value[0]
-    if (!first || !history.value.older)
+    if (history.value.loading || !first || !history.value.older)
       return
-    const p = await fetchPage({ before: first.id }, PAGE_SIZE)
-    joinExtras(p)
-    messages.value = joinPage(messages.value, p.messages, 'older')
-    patchHistory({ older: p.older, pages: history.value.pages + 1 })
-  })
-  /** Extends a run that does not reach the latest by one page; once it does, it is live again */
-  const loadNewer = () => page('newer', async () => {
-    const last = messages.value.at(-1)
-    if (!last || history.value.live)
-      return
-    const p = await fetchPage({ after: last.id }, PAGE_SIZE)
-    joinExtras(p)
-    const list = joinPage(messages.value, p.messages, 'newer')
-    messages.value = p.newer ? list : goLive(list)
-    patchHistory({ live: !p.newer, pages: history.value.pages + 1 })
-  })
-  /** Replaces the run with one starting at `from`, or the latest when null, and lands the views there */
-  async function replaceRun(from: number | null) {
-    if (history.value.loading === 'jump')
-      return
-    patchHistory({ loading: 'jump' })
+    patchHistory({ loading: true })
     try {
-      const p = await fetchPage(from == null ? {} : { from }, WINDOW_SIZE)
-      joinExtras(p)
-      messages.value = p.newer ? p.messages : goLive(p.messages)
-      if (p.newer)
-        setBuffer(new Map())
-      patchHistory({ older: p.older, live: !p.newer, land: { epoch: history.value.land.epoch + 1, day: from } })
+      const p = await fetchPage(first.id, PAGE_SIZE)
+      triage.value = joinTriage(triage.value, p.triage)
+      feedback.value = joinFeedback(feedback.value, p.feedback)
+      messages.value = joinPage(messages.value, p.messages)
+      patchHistory({ older: p.older, pages: history.value.pages + 1 })
     }
     finally {
-      patchHistory({ loading: null })
+      patchHistory({ loading: false })
     }
-  }
-  /** Lands the views on a day: in the loaded run when it holds that day, else on a run fetched from it */
-  async function jumpTo(day: number, loaded: boolean) {
-    if (loaded)
-      patchHistory({ land: { epoch: history.value.land.epoch + 1, day } })
-    else
-      await replaceRun(day)
-  }
-  /** 「최신으로」: a live run just lands on its end; another is replaced by the latest messages */
-  async function toLatest() {
-    if (history.value.live)
-      patchHistory({ land: { epoch: history.value.land.epoch + 1, day: null } })
-    else
-      await replaceRun(null)
   }
 
   onMounted(() => {
@@ -286,5 +215,5 @@ export function useStream() {
     ws?.close()
   })
 
-  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, offline: flag.offline, restored: flag.restored, history, loadOlder, loadNewer, jumpTo, toLatest }
+  return { messages, sessions, feedback, feedbackBySession: computed(() => feedbackBySession(feedback.value)), triage, settings, arrivals, connected, offline: flag.offline, restored: flag.restored, history, loadOlder }
 }

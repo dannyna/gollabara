@@ -98,7 +98,7 @@ const muted = ref<ReadonlySet<string>>(readStored())
 /** Ids dropped because their session's data is gone; a mute change for them is not an unmute */
 const forgotten = new Set<string>()
 
-/** Muted ids whose session no longer exists (its data was deleted or pruned), once the server's snapshot is in */
+/** Muted ids whose session no longer exists (its data was deleted or expired), once the server's snapshot is in */
 export function goneMutes(muted: ReadonlySet<string>, sessions: Session[], messages: StreamMessage[]): string[] {
   const known = new Set([...sessions.map(s => s.id), ...messages.map(m => m.sessionId)])
   return [...muted].filter(id => !known.has(id))

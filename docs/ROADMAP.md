@@ -12,20 +12,20 @@ The MVP is done when one person can, on their own machines:
 4. **See every harness they use, at a stated level.** Each harness has a capability row (recap, question, images, feedback route) that the UI shows as it is:
    - **Claude Code**, including Open Design runs: everything, with idle wake.
    - **Codex CLI**: session, recap, and feedback at turn end and at the next tool call are required. Images and questions come as far as the spike proves.
-5. **Use it every day.** First-run and empty states, ended sessions, history beyond today, retention that really deletes, and settings shared across devices.
+5. **Use it every day.** First-run and empty states, ended sessions whose data expires an hour after they end, scrolling back within a live session, and settings shared across devices.
 6. **Trust it.** Hooks never block a session on any harness (checked per adapter). Requests from other origins, hosts or tailnet users are refused. Schema and plugin versions upgrade cleanly, and failures show up in `golla doctor`.
 
 The invariants in AGENTS.md hold throughout, with one approved amendment to invariant 5 for D1.
 
 ## Status (2026-10-16)
 
-| Milestone                 | Shipped                                                                                                                                                                 | Waiting on                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1 · Remote and trust     | Migrations (#88), PWA on desktop (#90), content-free push on desktop Chrome (#92)                                                                                       | Deferred by the owner (2026-10-16) until Tailscale is on: the serve spike (#61), owner-only remote writes (#62), then the iPhone checks for #63 and #64 |
-| M2 · Engineering baseline | Version handshake and health log (#89), setup/doctor/update/uninstall and the login service (#93), docs sync (#87)                                                      | Publishing to npm (#67), the owner's call                                                                                                               |
-| M3 · Harness spikes       | Codex spike (#91)                                                                                                                                                       | —                                                                                                                                                       |
-| M4 · Codex adapter        | Delivery routes and the Codex plugin (#94), shared hook core (#102)                                                                                                     | Codex's interactive hook-trust prompt and `request_user_input` are not yet checked live                                                                 |
-| M5 · Daily-use baseline   | Retention and shared settings (#95), ended sessions (#96), first run and tray follow-ups (#99), history (#101), headless runs no longer wait on the wake-up hook (#100) | The MVP release (#80)                                                                                                                                   |
+| Milestone                 | Shipped                                                                                                                                                                                                                                                    | Waiting on                                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 · Remote and trust     | Migrations (#88), PWA on desktop (#90), content-free push on desktop Chrome (#92)                                                                                                                                                                          | Deferred by the owner (2026-10-16) until Tailscale is on: the serve spike (#61), owner-only remote writes (#62), then the iPhone checks for #63 and #64 |
+| M2 · Engineering baseline | Version handshake and health log (#89), setup/doctor/update/uninstall and the login service (#93), docs sync (#87)                                                                                                                                         | Publishing to npm (#67), the owner's call                                                                                                               |
+| M3 · Harness spikes       | Codex spike (#91)                                                                                                                                                                                                                                          | —                                                                                                                                                       |
+| M4 · Codex adapter        | Delivery routes and the Codex plugin (#94), shared hook core (#102)                                                                                                                                                                                        | Codex's interactive hook-trust prompt and `request_user_input` are not yet checked live                                                                 |
+| M5 · Daily-use baseline   | Retention and shared settings (#95), ended sessions (#96), first run and tray follow-ups (#99), history (#101), headless runs no longer wait on the wake-up hook (#100), ended sessions expire after an hour in place of the day jump and retention (#116) | The MVP release (#80)                                                                                                                                   |
 
 ## Done: M0 foundation (Claude Code)
 
@@ -105,9 +105,9 @@ About a week, in parallel with M1 and M2. The output is a capability row and a n
 
 - **First run** (#75). _Done when_ an empty stream names the connected harnesses and what to run next.
 - **Session lifecycle** (#76). Ended sessions fade out, and feedback to an ended session is refused with a clear message. _Done when_ a session that ended is marked within a minute.
-- **History** (#77). _Done when_ a 30-day-old message can be reached through a day jump, and sessions can be filtered by name.
-- **Retention** (#78). A server-side setting replaces the current local one, which deletes nothing. There is also "delete this session's data".
-  - _Done when_ an image file used only by expired messages is gone from disk, while a file still shared with a newer message stays.
+- **History** (#77). _Done when_ a live session's older messages load as the reader scrolls up, and sessions can be filtered by name. The day jump shipped in #101 was removed in #116: gollabara is for watching, not for an archive.
+- **Expiry** (#78, #116). An ended session's data is deleted an hour after it ends, in place of the 「보관 기간」 setting #95 shipped. There is also "delete this session's data".
+  - _Done when_ an image file used only by an expired session is gone from disk, while a file still shared with a live session stays.
 - **Settings across devices** (#79). _Done when_ everything except theme and server URL is stored on the server.
 - **MVP release** (#80). A version tag, both READMEs updated.
 

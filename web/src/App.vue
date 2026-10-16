@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HistoryDay, TriageEngine } from '../../src/shared/types'
+import type { TriageEngine } from '../../src/shared/types'
 import type { Settings } from './settings'
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { cellKeys, toArtifacts } from './artifacts'
@@ -8,7 +8,6 @@ import { resolveNotices } from './components/banner/notices'
 import StateView from './components/banner/StateView.vue'
 import AppToast from './components/overlay/AppToast.vue'
 import ConfirmDialog from './components/overlay/ConfirmDialog.vue'
-import DayPopover from './components/overlay/DayPopover.vue'
 import ImageViewer from './components/overlay/ImageViewer.vue'
 import SessionPopover from './components/overlay/SessionPopover.vue'
 import SettingsSheet from './components/overlay/SettingsSheet.vue'
@@ -21,16 +20,15 @@ import EmptyState from './components/shell/EmptyState.vue'
 import StreamPanel from './components/shell/StreamPanel.vue'
 import { activePin } from './components/stream/follow'
 import { firstRunGuide, useHealth } from './firstrun'
-import { dayLoaded, fetchDays } from './history'
 import { setKnownSessions, useNameHints } from './names'
 import { usePin } from './pin'
 import { usePush } from './push'
 import { deleteSessionData, endedSessions, goneMutes, inScope, toSessionRows, useMutedSessions } from './sessions'
-import { forgetLegacyRetention, migrateLocalSettings, putServerSettings, sheetSettings, shortensRetention, useSettings } from './settings'
+import { migrateLocalSettings, putServerSettings, sheetSettings, useSettings } from './settings'
 import { useTheme } from './theme'
 import { useStream } from './useStream'
 
-const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored, history, loadOlder, loadNewer, jumpTo, toLatest } = useStream()
+const { messages, sessions, feedback, triage, settings: serverSettings, arrivals, connected, offline, restored, history, loadOlder } = useStream()
 const { preference, setTheme, toggleTheme } = useTheme()
 const { muted, toggleMute, forget } = useMutedSessions()
 const { toast } = useToast()
@@ -68,27 +66,12 @@ const settingsOpen = ref(false)
 // The server address stays in this browser; the rest comes from the server, so every device agrees
 const { server, saveServer } = useSettings()
 const settings = computed(() => sheetSettings(server.value, serverSettings.value))
-const RETENTION_LABEL = { 7: '7일', 30: '30일', forever: '계속 보관' } as const
-/** A save that shortens retention, waiting for 「줄이고 지우기」 */
-const shortening = ref<Settings | null>(null)
-function saveSettings(next: Settings) {
-  if (shortensRetention(settings.value.retention, next.retention))
-    shortening.value = next
-  else
-    commitSettings(next)
-}
-async function commitSettings(next: Settings) {
-  shortening.value = null
+async function saveSettings(next: Settings) {
   saveServer(next.server)
-  const prev = settings.value
-  // Only what changed, so this device's copy never overwrites another device's newer choice
-  const patch = {
-    ...(next.phone !== prev.phone ? { phone: next.phone } : {}),
-    ...(next.retention !== prev.retention ? { retention: next.retention } : {}),
-  }
   try {
-    if (Object.keys(patch).length)
-      serverSettings.value = await putServerSettings(patch)
+    // Only what changed, so this device's copy never overwrites another device's newer choice
+    if (next.phone !== settings.value.phone)
+      serverSettings.value = await putServerSettings({ phone: next.phone })
     settingsOpen.value = false
     toast('설정을 저장했어요')
   }
@@ -127,27 +110,8 @@ async function setPush(on: boolean) {
 // First-connection guide once the server's hello says there is nothing yet
 const ready = ref(false)
 watch(messages, () => ready.value = true, { once: true })
-// Settings this browser kept from before the server stored them seed it once, after the first hello.
-// A kept window that deletes (7 or 30 days) asks first, like any shorter window.
-const legacyRetention = ref<'7' | '30' | null>(null)
-watch(ready, async () => {
-  legacyRetention.value = await migrateLocalSettings(serverSettings.value).catch(() => null)
-}, { once: true })
-async function seedRetention(ok: boolean) {
-  const retention = legacyRetention.value
-  legacyRetention.value = null
-  if (ok && retention) {
-    try {
-      serverSettings.value = await putServerSettings({ retention, seed: true })
-    }
-    catch (error) {
-      // Kept locally, so it asks again on the next load
-      toast((error as Error).message)
-      return
-    }
-  }
-  forgetLegacyRetention()
-}
+// The phone address this browser kept from before the server stored settings seeds it once, after the first hello
+watch(ready, () => migrateLocalSettings().catch(() => {}), { once: true })
 // The first-run page only before anything is known; once a session exists the panels say what comes next
 const showEmpty = computed(() => ready.value && !messages.value.length && !sessions.value.length)
 // No hello yet and the server does not answer (the installed app opened offline): the shell
@@ -238,7 +202,7 @@ async function deleteSession() {
     toast((error as Error).message)
   }
 }
-// Rows deleted anywhere (retention, another device) leave nothing pointing at them. The viewer
+// Rows deleted anywhere (expiry, another device) leave nothing pointing at them. The viewer
 // closes and the pin lets go on their own once their cell is gone.
 const { target, clearTarget } = useFeedbackTarget()
 watch([messages, sessions], ([list, known]) => {
@@ -255,55 +219,18 @@ watch([messages, sessions], ([list, known]) => {
     forget(goneMutes(muted.value, known, list))
 })
 
-// History (#77): pages load as a view reaches either end of the run. A failed page says so once
-// and pauses paging for a while, since a view at its end asks again as soon as a load settles.
+// History (#77): a page loads as a view reaches the start of the run. A failed page says so once
+// and pauses paging for a while, since a view at its start asks again as soon as a load settles.
 const PAGE_RETRY_MS = 10_000
 let pagingFrom = 0
-async function loadPage(end: 'older' | 'newer') {
+async function loadPage() {
   if (!connected.value || Date.now() < pagingFrom)
     return
   try {
-    await (end === 'older' ? loadOlder() : loadNewer())
+    await loadOlder()
   }
   catch (error) {
     pagingFrom = Date.now() + PAGE_RETRY_MS
-    toast((error as Error).message)
-  }
-}
-// The day jump lists the days that hold messages, of the session in view when scoped
-const daysOpen = ref(false)
-const days = ref<HistoryDay[] | null>(null)
-const daysError = ref(false)
-async function openDays() {
-  daysOpen.value = !daysOpen.value
-  if (!daysOpen.value)
-    return
-  days.value = null
-  daysError.value = false
-  try {
-    days.value = await fetchDays(scope.value)
-  }
-  catch {
-    daysError.value = true
-  }
-}
-async function pickDay(start: number) {
-  daysOpen.value = false
-  // A jump moves the rail on purpose, so the pin lets go as it does on 「새 산출물 n →」
-  setPin(null)
-  try {
-    await jumpTo(start, dayLoaded(messages.value, history.value.older, start))
-  }
-  catch (error) {
-    toast((error as Error).message)
-  }
-}
-async function backToLatest() {
-  setPin(null)
-  try {
-    await toLatest()
-  }
-  catch (error) {
     toast((error as Error).message)
   }
 }
@@ -340,40 +267,21 @@ function onThumb(key: string) {
       <StreamPanel
         ref="stream" :artifacts="artifacts" :references="references" :selected="selected" :pinned="pinned" :scope="scope" :all-muted="allMuted"
         :ended="ended" :guide="guide" :history="history" @select="select" @pin="setPin" @open="openCell" @sessions="sessionsOpen = true"
-        @older="loadPage('older')" @newer="loadPage('newer')" @latest="backToLatest"
+        @older="loadPage"
       />
       <ChatPanel
         ref="chat" :messages="visible" :sessions="sessions" :offline="notices.chatNote" :selected="selected" :selected-message="selectedMessage"
         :feedback="feedback" :scoped="scope != null" :scope="scope" :scope-muted="scope != null && muted.has(scope)" :all-muted="allMuted"
-        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide" :history="history" :days-open="daysOpen"
+        :engine="serverSettings.triage" :triage="triage" :arrivals="arrivals" :guide="guide" :history="history"
         @thumb="onThumb" @sessions="sessionsOpen = true" @scope="pickScope" @mute="mute" @delete="deleting = $event"
-        @older="loadPage('older')" @newer="loadPage('newer')" @latest="backToLatest" @days="openDays"
-      >
-        <template #days>
-          <DayPopover
-            v-if="daysOpen" :days="days" :error="daysError" :scoped="scope != null" :anchor="() => chat?.daysButton"
-            @close="daysOpen = false" @pick="pickDay"
-          />
-        </template>
-      </ChatPanel>
+        @older="loadPage"
+      />
     </main>
     <SettingsSheet
       v-if="settingsOpen" :settings="settings" :theme="preference" :engine="serverSettings.triage"
       :push="pushState" :push-busy="pushBusy"
       @close="settingsOpen = false" @save="saveSettings" @update:theme="setTheme" @update:engine="setEngine" @update:push="setPush"
     />
-    <ConfirmDialog
-      v-if="shortening" :title="`보관 기간을 ${RETENTION_LABEL[shortening.retention]}로 줄일까요?`" confirm-label="줄이고 지우기" over-sheet
-      @cancel="shortening = null" @confirm="commitSettings(shortening)"
-    >
-      <b>{{ RETENTION_LABEL[shortening.retention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
-    </ConfirmDialog>
-    <ConfirmDialog
-      v-else-if="legacyRetention" :title="`보관 기간을 ${RETENTION_LABEL[legacyRetention]}로 줄일까요?`" confirm-label="줄이고 지우기"
-      @cancel="seedRetention(false)" @confirm="seedRetention(true)"
-    >
-      이 브라우저에 저장해 둔 보관 기간이에요. 이제 서버가 정말 지워요. <b>{{ RETENTION_LABEL[legacyRetention] }}보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요. 취소하면 계속 보관해요.
-    </ConfirmDialog>
     <ConfirmDialog
       v-if="deleting" :title="`${deletingName} 세션의 데이터를 지울까요?`" confirm-label="지우기"
       @cancel="deleting = null" @confirm="deleteSession"

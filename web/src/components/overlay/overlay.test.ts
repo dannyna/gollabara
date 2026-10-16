@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { legacySettings, sheetSettings, shortensRetention, validateSettings } from '../../settings'
+import { legacySettings, sheetSettings, validateSettings } from '../../settings'
 import { clampPan, setZoom, wheelZoom, zoomAt, zoomLabel } from './zoom'
 
 describe('setZoom', () => {
@@ -17,8 +17,8 @@ describe('setZoom', () => {
 
 describe('validateSettings', () => {
   it('asks for https on the phone address and a URL for the server', () => {
-    expect(validateSettings({ server: 'http://127.0.0.1:4747', phone: '', retention: '30' })).toEqual({})
-    expect(validateSettings({ server: 'nope', phone: 'http://my-mac.ts.net', retention: '7' })).toEqual({
+    expect(validateSettings({ server: 'http://127.0.0.1:4747', phone: '' })).toEqual({})
+    expect(validateSettings({ server: 'nope', phone: 'http://my-mac.ts.net' })).toEqual({
       server: 'http:// 또는 https://로 시작하는 주소를 입력하세요',
       phone: '폰용 주소는 https://로 시작해야 해요',
     })
@@ -26,21 +26,15 @@ describe('validateSettings', () => {
 })
 
 describe('server settings', () => {
-  it('reads an unset retention as 「계속 보관」, which is what the server does with it', () => {
-    expect(sheetSettings('http://127.0.0.1:4747', { triage: 'off' })).toEqual({ server: 'http://127.0.0.1:4747', phone: '', retention: 'forever' })
+  it('reads an unset phone address as empty', () => {
+    expect(sheetSettings('http://127.0.0.1:4747', { triage: 'off' })).toEqual({ server: 'http://127.0.0.1:4747', phone: '' })
   })
 
-  it('asks before a shorter window only', () => {
-    expect(shortensRetention('forever', '30')).toBe(true)
-    expect(shortensRetention('30', '7')).toBe(true)
-    expect(shortensRetention('7', 'forever')).toBe(false)
-    expect(shortensRetention('30', '30')).toBe(false)
-  })
-
-  it('seeds the server with what this browser kept; a window that deletes waits for a confirm', () => {
-    expect(legacySettings({ server: 'http://a', phone: 'https://mac.ts.net', retention: '7' })).toEqual({ seed: { phone: 'https://mac.ts.net', seed: true }, confirm: '7' })
-    expect(legacySettings({ retention: 'forever' })).toEqual({ seed: { retention: 'forever', seed: true }, confirm: null })
-    expect(legacySettings({ server: 'http://a' })).toEqual({ seed: null, confirm: null })
+  it('seeds the server with the phone address this browser kept, and drops a kept 「보관 기간」', () => {
+    const kept = { server: 'http://a', phone: 'https://mac.ts.net', retention: '7' } as Parameters<typeof legacySettings>[0]
+    expect(legacySettings(kept)).toEqual({ phone: 'https://mac.ts.net', seed: true })
+    expect(legacySettings({ retention: 'forever' } as Parameters<typeof legacySettings>[0])).toBeNull()
+    expect(legacySettings({ server: 'http://a' })).toBeNull()
   })
 })
 

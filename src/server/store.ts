@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, Harness, HistoryDay, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, Retention, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackVia, Harness, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -13,9 +13,8 @@ import { migrate } from './migrations'
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 export const TRIAGE_ENGINES: TriageEngine[] = ['off', 'claude', 'codex']
-export const RETENTIONS: Retention[] = ['7', '30', 'forever']
 
-/** What a prune or a session delete removed: the rows for the views to drop, and the image files */
+/** What an expiry or a session delete removed: the rows for the views to drop, and the image files */
 export interface Purged {
   messageIds: number[]
   feedbackIds: number[]
@@ -75,13 +74,6 @@ export interface PidLink {
   at: number | null
 }
 
-/** Where a history page starts: past one end of a loaded run, at a time, or (none) at the latest */
-export interface HistoryCursor {
-  before?: number
-  after?: number
-  from?: number
-}
-
 /** Why feedback could not be queued */
 export class FeedbackError extends Error {
   constructor(readonly status: 400 | 404 | 409, message: string) {
@@ -106,11 +98,9 @@ export class Store {
     const rows = this.db.query('SELECT key, value FROM settings').all() as { key: string, value: string }[]
     const stored = new Map(rows.map(r => [r.key, r.value]))
     const triage = stored.get('triage')
-    const retention = stored.get('retention')
     const phone = stored.get('phone')
     return {
       triage: triage && (TRIAGE_ENGINES as string[]).includes(triage) ? triage as TriageEngine : 'off',
-      ...(retention && (RETENTIONS as string[]).includes(retention) ? { retention: retention as Retention } : {}),
       ...(phone !== undefined ? { phone } : {}),
     }
   }
@@ -143,7 +133,7 @@ export class Store {
     return rows.filter(r => ids.has(r.message_id)).map(r => ({ messageId: r.message_id, index: r.idx, verdict: r.verdict, ...(r.tone ? { tone: r.tone } : {}) }))
   }
 
-  /** A hit counts as use, so a line that keeps recurring stays cached past the retention window */
+  /** A hit counts as use, so a line that keeps recurring stays cached past its expiry */
   cachedVerdict(key: string, now = Date.now()): Verdict | null {
     const row = this.db.query('UPDATE triage_cache SET seen_at = ? WHERE key = ? RETURNING verdict').get(now, key) as { verdict: Verdict } | null
     return row?.verdict ?? null
@@ -182,11 +172,20 @@ export class Store {
   }
 
   /**
-   * Retention: deletes messages and feedback from before `before`, their triage, sessions not seen
-   * since, and cached hide verdicts not written or used since, then the image files nothing left references.
+   * Expiry (#116): sessions that ended before `endedBefore` go with their messages, feedback and triage.
+   * Messages and feedback of sessions with no record left (rows from before expiry) go once older than
+   * that too. Cached hide verdicts not written or used since `cacheBefore` go, then the image files
+   * nothing left references. A running session has no `ended_at`, so it never matches.
    */
-  prune(before: number): Purged {
-    return this.purge({ messages: 'at < $key', feedback: 'created_at < $key', sessions: 'last_seen_at < $key', cache: 'seen_at < $key' }, { $key: before })
+  expire(endedBefore: number, cacheBefore: number): Purged {
+    // Sessions are deleted last, so every subquery here sees the same set
+    const ended = 'SELECT id FROM sessions WHERE ended_at < $ended'
+    return this.purge({
+      messages: `json_extract(body, '$.sessionId') IN (${ended}) OR (at < $ended AND json_extract(body, '$.sessionId') NOT IN (SELECT id FROM sessions))`,
+      feedback: `session_id IN (${ended}) OR (created_at < $ended AND session_id NOT IN (SELECT id FROM sessions))`,
+      sessions: 'ended_at < $ended',
+      cache: 'seen_at < $cache',
+    }, { $ended: endedBefore, $cache: cacheBefore })
   }
 
   /** 「이 세션 데이터 삭제」: the session, its messages, feedback and triage, and images no other row references */
@@ -206,7 +205,7 @@ export class Store {
   /**
    * Images are shared by hash, so a file goes only when no remaining message or feedback names it.
    * Synchronous throughout: ingest writes a file and then inserts its message without yielding, so no
-   * prune can fall between the two and take a file a new message is about to use.
+   * expiry can fall between the two and take a file a new message is about to use.
    */
   private purge(where: Record<'messages' | 'feedback' | 'sessions', string> & { cache?: string }, params: Record<string, string | number>): Purged {
     const { purged, orphans } = this.db.transaction(() => {
@@ -327,36 +326,20 @@ export class Store {
   }
 
   /**
-   * A page of history (#77), oldest first. Ids grow with `at`, so paging by id is paging in time:
-   * `before` and `after` extend a loaded run at either end, `from` (ms) starts a run at the first
-   * message stored then or later, and no cursor gives the latest messages. The page's feedback is
-   * what was sent between its first message and the message after its last one, so pages laid end
-   * to end hold each bubble once.
+   * A page of history (#77), oldest first: the messages just before `before`, or the latest with
+   * none. Ids grow with `at`, so paging by id is paging in time. The page's feedback is what was
+   * sent between its first message and the message after its last one, so pages laid end to end
+   * hold each bubble once.
    */
-  history(cursor: HistoryCursor, limit: number): HistoryPage {
-    let rows: { id: number, at: number, body: string }[]
-    if (cursor.before !== undefined) {
-      rows = (this.db.query('SELECT id, at, body FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?').all(cursor.before, limit) as typeof rows).reverse()
-    }
-    else if (cursor.after !== undefined) {
-      rows = this.db.query('SELECT id, at, body FROM messages WHERE id > ? ORDER BY id LIMIT ?').all(cursor.after, limit) as typeof rows
-    }
-    else if (cursor.from !== undefined) {
-      // messages_at finds the first one; the run then follows the ids
-      const first = this.db.query('SELECT id FROM messages WHERE at >= ? ORDER BY at, id LIMIT 1').get(cursor.from) as { id: number } | null
-      rows = first ? this.db.query('SELECT id, at, body FROM messages WHERE id >= ? ORDER BY id LIMIT ?').all(first.id, limit) as typeof rows : []
-    }
-    else {
-      rows = (this.db.query('SELECT id, at, body FROM messages ORDER BY id DESC LIMIT ?').all(limit) as typeof rows).reverse()
-    }
+  history(before: number | undefined, limit: number): HistoryPage {
+    const rows = ((before !== undefined
+      ? this.db.query('SELECT id, at, body FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?').all(before, limit)
+      : this.db.query('SELECT id, at, body FROM messages ORDER BY id DESC LIMIT ?').all(limit)) as { id: number, at: number, body: string }[]).reverse()
     const messages: StreamMessage[] = rows.map(r => ({ id: r.id, ...JSON.parse(r.body) }))
     const first = rows[0]
     const last = rows.at(-1)
-    if (!first || !last) {
-      // Nothing past the cursor: what lies before it, for a jump past the last message
-      const older = cursor.after !== undefined ? this.hasOlder(cursor.after + 1) : cursor.from !== undefined && this.hasOlder(Number.MAX_SAFE_INTEGER)
-      return { messages, triage: [], feedback: [], older, newer: false }
-    }
+    if (!first || !last)
+      return { messages, triage: [], feedback: [], older: false }
     const older = this.hasOlder(first.id)
     const next = this.db.query('SELECT at FROM messages WHERE id > ? ORDER BY id LIMIT 1').get(last.id) as { at: number } | null
     const feedback = this.db.query('SELECT * FROM feedback WHERE created_at >= ? AND created_at < ? ORDER BY id')
@@ -366,20 +349,7 @@ export class Store {
       triage: this.triageFor(messages.map(m => m.id)),
       feedback: feedback.map(r => this.toFeedback(r)),
       older,
-      newer: next !== null,
     }
-  }
-
-  /**
-   * Local days that hold messages, newest first, for the day jump. `offset` is the view's UTC offset
-   * in minutes (east positive); grouping reads only messages_at, or messages_session for one session.
-   */
-  days(offset: number, sessionId?: string): HistoryDay[] {
-    const shift = offset * 60_000
-    const where = sessionId ? `WHERE json_extract(body, '$.sessionId') = $session` : ''
-    const rows = this.db.query(`SELECT CAST((at + $shift) / 86400000 AS INTEGER) AS day, count(*) AS n FROM messages ${where} GROUP BY day ORDER BY day DESC`)
-      .all({ $shift: shift, ...(sessionId ? { $session: sessionId } : {}) }) as { day: number, n: number }[]
-    return rows.map(r => ({ start: r.day * 86_400_000 - shift, count: r.n }))
   }
 
   sessions(): Session[] {

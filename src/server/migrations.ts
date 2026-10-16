@@ -109,6 +109,10 @@ export const MIGRATIONS: Migration[] = [
   (db) => {
     db.run('UPDATE sessions SET ended_at = last_seen_at WHERE ended_at IS NULL AND pid IS NULL')
   },
+  // 8: 「보관 기간」 is gone (#116): ended sessions expire an hour after they end, so the stored window goes too
+  (db) => {
+    db.run(`DELETE FROM settings WHERE key = 'retention'`)
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

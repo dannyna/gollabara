@@ -7,8 +7,8 @@
 // changes are not announced, since the screen stays open all day. After the click the
 // parent scrolls to the latest and moves focus to the track or the feed.
 //
-// With no count it reads 「최신으로」: the way back from a day the reader jumped to, or from
-// far back in a long history, when nothing new has arrived (#77).
+// With no count it reads 「최신으로」: the way back from far back in a long history, when
+// nothing new has arrived (#77).
 defineProps<{
   count: number
   /** `artifact` sits on the stream (→), `message` on the chat (↓) */

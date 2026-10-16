@@ -164,17 +164,12 @@ export interface Feedback {
 /** CLI the server runs to triage chat text. Off unless the user opts in. */
 export type TriageEngine = 'off' | 'claude' | 'codex'
 
-/** How long the server keeps messages, feedback and images: days, or `forever` */
-export type Retention = '7' | '30' | 'forever'
-
 /**
  * Settings stored on the server (GET/PUT /api/settings), so every device agrees. Only theme and the
  * server address stay in each browser. A key never saved is absent, so the first client can seed it.
  */
 export interface ServerSettings {
   triage: TriageEngine
-  /** Absent until chosen; nothing is pruned until then */
-  retention?: Retention
   /** Address to open on a phone; https only, empty when unset */
   phone?: string
 }
@@ -219,22 +214,13 @@ export interface PushPayload {
 
 /**
  * `GET /api/history`: a run of messages with no gap, oldest first, with the verdicts on them and the
- * feedback sent in the time they span. `older` and `newer` say whether more messages lie past either end.
+ * feedback sent in the time they span. `older` says whether more messages lie before it.
  */
 export interface HistoryPage {
   messages: StreamMessage[]
   triage: Triage[]
   feedback: Feedback[]
   older: boolean
-  newer: boolean
-}
-
-/** `GET /api/history/days`: one local day that holds messages */
-export interface HistoryDay {
-  /** Local midnight in ms, in the UTC offset the view asked with */
-  start: number
-  /** Messages stored that day */
-  count: number
 }
 
 /** Frame sent to the UI over WebSocket */
@@ -249,7 +235,7 @@ export type ServerFrame
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
     | { type: 'triage', triage: Triage }
     | { type: 'settings', settings: ServerSettings }
-    // Rows retention or 「이 세션 데이터 삭제」 removed; views drop them
+    // Rows expiry or 「이 세션 데이터 삭제」 removed; views drop them
     | { type: 'deleted', messageIds: number[], feedbackIds: number[], sessionIds: string[] }
 
 /** The latest hook seen from one harness; `version` is null for a hook from before the version handshake */

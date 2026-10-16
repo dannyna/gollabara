@@ -135,22 +135,6 @@ async function save() {
           내 Mac의 Tailscale HTTPS 주소를 입력하세요.
         </p>
 
-        <label :for="`${id}-retention`">보관 기간</label>
-        <select :id="`${id}-retention`" v-model="form.retention" :aria-describedby="`${id}-retention-note`">
-          <option value="7">
-            7일
-          </option>
-          <option value="30">
-            30일
-          </option>
-          <option value="forever">
-            계속 보관
-          </option>
-        </select>
-        <p :id="`${id}-retention-note`" class="description">
-          기간이 지난 메시지와 이미지, 피드백을 이 Mac에서 지워요. 모든 기기에 함께 적용돼요.
-        </p>
-
         <p :id="`${id}-theme`" class="label">
           테마
         </p>
@@ -258,8 +242,7 @@ label,
   margin: 25px 0 9px;
   font-size: 12px;
 }
-input,
-select {
+input {
   width: 100%;
   height: 44px;
   padding: 0 12px;
@@ -345,8 +328,7 @@ input[aria-invalid='true'] {
     --px: 20px;
   }
   /* 16px keeps iOS from zooming into the field */
-  input,
-  select {
+  input {
     font-size: 16px;
   }
   .sheet-foot {
