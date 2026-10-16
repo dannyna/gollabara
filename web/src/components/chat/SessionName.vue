@@ -4,12 +4,13 @@ import { splitSessionName } from '../../artifacts'
 
 // `<dir> · <branch>` on one line. A long branch ends in 「…」 first; the dir is cut only when
 // it alone is wider than the box (a narrow stream cell). The full name is in the tooltip.
-const props = defineProps<{ name: string }>()
+// `hint` (names.ts) is a muted parent path before the dir, only when another session shares the name.
+const props = defineProps<{ name: string, hint?: string }>()
 const parts = computed(() => splitSessionName(props.name))
 </script>
 
 <template>
-  <span class="session-name" :title="name"><span class="dir">{{ parts.session }}</span><span v-if="parts.branch" class="branch">&nbsp;· {{ parts.branch }}</span></span>
+  <span class="session-name" :title="(hint ?? '') + name"><span v-if="hint" class="name-hint">{{ hint }}</span><span class="dir">{{ parts.session }}</span><span v-if="parts.branch" class="branch">&nbsp;· {{ parts.branch }}</span></span>
 </template>
 
 <style scoped>
@@ -25,7 +26,16 @@ const parts = computed(() => splitSessionName(props.name))
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The hint gives way after the branch: it is what tells the session apart */
+.name-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-weight: 400;
+}
 .branch {
+  flex-shrink: 1000;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

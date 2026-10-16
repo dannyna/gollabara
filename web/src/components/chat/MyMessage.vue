@@ -10,6 +10,8 @@ export type DeliveryState = 'queued' | 'delivered' | 'failed' | 'none'
 withDefaults(defineProps<{
   /** Receiving session */
   target: string
+  /** Parent path before the target when another session has the same dir (names.ts) */
+  targetHint?: string
   text: string
   /** Quoted artifact (thumbnail + label) or session message (first line) */
   quote?: { text: string, image?: string }
@@ -28,7 +30,7 @@ defineEmits<{ retry: [] }>()
 <template>
   <article class="mine">
     <div class="target">
-      → {{ target }}
+      → {{ targetHint }}{{ target }}
     </div>
     <div class="my-bubble">
       <div v-if="quote" class="quote">

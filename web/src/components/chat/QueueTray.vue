@@ -16,6 +16,8 @@ export interface QueueGroup {
   id: string
   /** Short name shown */
   session: string
+  /** Parent path before the name when another session has the same short name (names.ts) */
+  hint?: string
   /** 작업 중 · 멈춤 · 끝남; left out when the state is unknown */
   status?: string
   items: QueueItem[]
@@ -44,7 +46,7 @@ const total = computed(() => props.groups.reduce((n, g) => n + g.items.length, 0
     </div>
     <div v-for="g in groups" :key="g.id" class="qt-group" :class="{ ended: g.ended }">
       <div class="qt-who">
-        <SessionAvatar :name="g.session" small :ended="g.ended" />{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
+        <SessionAvatar :name="g.session" small :ended="g.ended" />{{ g.hint }}{{ g.session }}<span v-if="g.status || g.route" class="st">{{ [g.status, g.route].filter(Boolean).join(' · ') }}</span>
       </div>
       <div v-for="(item, i) in g.items" :key="item.id ?? i" class="qi" :class="{ next: g.next && i === 0 }">
         <p>{{ item.text }}</p>

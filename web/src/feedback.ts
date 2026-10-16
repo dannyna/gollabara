@@ -188,10 +188,11 @@ export function queueNote(sessionIds: string[], sessions: Session[]): { note: st
 
 /**
  * The queue tray: one group per waiting session, keyed by its id, so two sessions with the same
- * short name never share a group. With `mixed` routes each group names its own. Items queued before
- * the session ended stay (a resume still gets them) but are said to be undeliverable, and can be discarded.
+ * short name never share a group, and `hintOf` (names.ts) tells their labels apart. With `mixed` routes each
+ * group names its own. Items queued before the session ended stay (a resume still gets them) but are said
+ * to be undeliverable, and can be discarded.
  */
-export function toQueueGroups(feedback: Feedback[], sessions: Session[], mixed: boolean, nameOf: (id: string) => string): QueueGroup[] {
+export function toQueueGroups(feedback: Feedback[], sessions: Session[], mixed: boolean, nameOf: (id: string) => string, hintOf: (id: string) => string | undefined = () => undefined): QueueGroup[] {
   const groups = new Map<string, QueueGroup>()
   for (const f of feedback) {
     if (f.deliveredAt != null)
@@ -200,7 +201,8 @@ export function toQueueGroups(feedback: Feedback[], sessions: Session[], mixed: 
     if (!group) {
       const gone = sessions.some(s => s.id === f.sessionId && s.endedAt != null)
       const route = mixed && !gone ? sessionRouteNote(f.sessionId, sessions) : undefined
-      groups.set(f.sessionId, group = { id: f.sessionId, session: nameOf(f.sessionId), items: [], ...(route ? { route } : {}), ...(gone ? { status: ENDED_STATUS, ended: true } : {}) })
+      const hint = hintOf(f.sessionId)
+      groups.set(f.sessionId, group = { id: f.sessionId, session: nameOf(f.sessionId), ...(hint ? { hint } : {}), items: [], ...(route ? { route } : {}), ...(gone ? { status: ENDED_STATUS, ended: true } : {}) })
     }
     group.items.push({ id: f.id, text: f.image ? `↪ 이미지 · ${f.text}` : f.text })
   }

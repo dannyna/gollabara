@@ -10,6 +10,8 @@ const props = withDefaults(defineProps<{
   offline?: boolean
   /** 「전체 세션」 or the selected session's name */
   scopeLabel?: string
+  /** Parent path before the selected session's name when another session shares it (names.ts) */
+  scopeHint?: string
   /** Hidden on the first-connection setup guide */
   showSessionButton?: boolean
   sessionsOpen?: boolean
@@ -40,7 +42,7 @@ defineExpose({ sessionButton })
           aria-haspopup="dialog" :aria-expanded="sessionsOpen" @click="$emit('sessions')"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="13" rx="3" /><path d="M8 20h10a3 3 0 0 0 3-3V8" /></svg>
-          <span class="session-text">{{ scopeLabel }}</span>
+          <span class="session-text"><span v-if="scopeHint" class="name-hint">{{ scopeHint }}</span>{{ scopeLabel }}</span>
           <span class="chevron" aria-hidden="true">⌄</span>
         </button>
         <slot name="sessions" />
@@ -143,7 +145,8 @@ defineExpose({ sessionButton })
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chevron {
+.chevron,
+.name-hint {
   color: var(--muted);
 }
 .icon-button {

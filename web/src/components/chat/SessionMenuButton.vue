@@ -14,6 +14,8 @@ import SessionName from './SessionName.vue'
 const props = defineProps<{
   /** `<dir>` or `<dir> · <branch>` */
   name: string
+  /** Parent path that tells the session apart from another with the same name (names.ts) */
+  hint?: string
   /** The view is scoped to this session */
   scoped?: boolean
   muted?: boolean
@@ -38,6 +40,8 @@ const trigger = ref<HTMLButtonElement>()
 const menu = ref<InstanceType<typeof SessionMenu>>()
 const menuId = useId()
 const items = computed(() => sessionMenuItems(props.scoped, props.muted))
+// The menu's header and the screen reader say the hint too, or two such sessions sound alike
+const label = computed(() => (props.hint ?? '') + props.name)
 
 function toggle(e: MouseEvent) {
   if (open.value) {
@@ -83,17 +87,17 @@ function onKeydown(e: KeyboardEvent) {
   <span class="menu-anchor" :class="{ small }">
     <button
       ref="trigger" class="head-hit" type="button" aria-haspopup="menu" :aria-expanded="open"
-      :aria-controls="open ? menuId : undefined" :aria-label="`${name}${ended ? ' · 끝남' : ''} 세션 메뉴 열기`"
+      :aria-controls="open ? menuId : undefined" :aria-label="`${label}${ended ? ' · 끝남' : ''} 세션 메뉴 열기`"
       @click="toggle" @keydown="onKeydown"
     >
       <SessionAvatar :name="name" :small="small" :ended="ended" />
-      <span v-if="small">{{ name }}</span>
-      <strong v-else :class="{ ended }"><SessionName :name="name" /></strong>
+      <span v-if="small">{{ label }}</span>
+      <strong v-else :class="{ ended }"><SessionName :name="name" :hint="hint" /></strong>
       <span v-if="ended && !small" class="ended-tag">끝남</span>
       <ChatIcon v-if="!small" class="caret" name="chev" />
     </button>
     <SessionMenu
-      v-if="open" :id="menuId" ref="menu" :name="name" :ended="ended" :items="items" :trigger="trigger"
+      v-if="open" :id="menuId" ref="menu" :name="label" :ended="ended" :items="items" :trigger="trigger"
       :from-keys="fromKeys" @close="close" @choose="choose"
     />
   </span>

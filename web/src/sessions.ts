@@ -9,6 +9,8 @@ export interface SessionRow {
   id: string
   session: string
   branch?: string
+  /** Parent path when another session has the same name (names.ts) */
+  hint?: string
   lastSeenAt: number
   muted: boolean
   /** The session ended (its process is gone); it fades but stays listed */
@@ -17,12 +19,14 @@ export interface SessionRow {
 
 /**
  * One row per session, most recent first. Sessions that only appear in messages
- * (stored before session records existed) are listed too.
+ * (stored before session records existed) are listed too; they have no path, so no hint.
  */
-export function toSessionRows(sessions: Session[], messages: StreamMessage[], muted: ReadonlySet<string>): SessionRow[] {
+export function toSessionRows(sessions: Session[], messages: StreamMessage[], muted: ReadonlySet<string>, hintOf: (id: string) => string | undefined = () => undefined): SessionRow[] {
   const rows = new Map<string, SessionRow>()
-  for (const s of sessions)
-    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null })
+  for (const s of sessions) {
+    const hint = hintOf(s.id)
+    rows.set(s.id, { id: s.id, ...splitSessionName(s.name), ...(hint ? { hint } : {}), lastSeenAt: s.lastSeenAt, muted: muted.has(s.id), ended: s.endedAt != null })
+  }
   for (const m of messages) {
     const row = rows.get(m.sessionId)
     if (!row)
@@ -33,10 +37,13 @@ export function toSessionRows(sessions: Session[], messages: StreamMessage[], mu
   return [...rows.values()].sort((a, b) => b.lastSeenAt - a.lastSeenAt)
 }
 
-/** Rows whose name or branch holds `query`, ignoring case and the spaces around it; every row for an empty one */
-export function filterSessions(rows: SessionRow[], query: string): SessionRow[] {
+/**
+ * Rows whose name (with its hint, so `repo2/e2e` finds it), or branch, holds `query`, ignoring case
+ * and the spaces around it; every row for an empty one
+ */
+export function filterSessions<T extends Pick<SessionRow, 'session' | 'branch' | 'hint'>>(rows: T[], query: string): T[] {
   const q = query.trim().toLowerCase()
-  return q ? rows.filter(r => r.session.toLowerCase().includes(q) || !!r.branch?.toLowerCase().includes(q)) : rows
+  return q ? rows.filter(r => `${r.hint ?? ''}${r.session}`.toLowerCase().includes(q) || !!r.branch?.toLowerCase().includes(q)) : rows
 }
 
 /** Ids of the sessions that ended, so every surface can fade them */

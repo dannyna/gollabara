@@ -80,7 +80,7 @@ const shown = computed(() => filterSessions(props.sessions, filter.value))
           @click="emit('select', s.id)"
         >
           <span class="scope-check" aria-hidden="true">{{ scope === s.id ? '✓' : '' }}</span>
-          <span class="scope-name"><strong>{{ s.session }}</strong><small v-if="s.branch">{{ s.branch }}</small></span>
+          <span class="scope-name"><strong><span v-if="s.hint" class="name-hint">{{ s.hint }}</span>{{ s.session }}</strong><small v-if="s.branch">{{ s.branch }}</small></span>
           <span v-if="s.muted || s.ended" class="session-state">{{ [s.muted && '음소거', s.ended && '끝남'].filter(Boolean).join(' · ') }}</span>
         </button>
         <div class="session-ops">
@@ -219,6 +219,11 @@ const shown = computed(() => filterSessions(props.sessions, filter.value))
 .scope-name strong,
 .scope-name small {
   overflow-wrap: anywhere;
+}
+/* The parent path that tells two sessions with one name apart */
+.scope-name .name-hint {
+  color: var(--muted);
+  font-weight: 400;
 }
 /* An ended session stays listed and selectable; its name fades to muted */
 .session-row.ended .scope-name strong {
