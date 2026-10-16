@@ -1,0 +1,25 @@
+docs/ROADMAP.md
+  s_b7f30c572db9a8::t_72ddf59537828e 3,22-28
+AGENTS.md
+  s_b7f30c572db9a8::t_384a04f246c2cc 26
+docs/E2E.md
+  s_b7f30c572db9a8::t_72ddf59537828e 27-37,43-56,62-71,77-88,93-102,108-116,122-128,134-141,147-152,158-165
+  s_b7f30c572db9a8::t_64d80de3dc1fc7 25,41,60,75,92,106,120,132,145,156
+  s_b7f30c572db9a8::t_769907c1ff2079 1-24,26,38-40,42,57-59,61,72-74,76,89-91,103-105,107,117-119,121,129-131,133,142-144,146,153-155,157,166-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3df8aca4daa37caa5d0a9908742c4e0963f34634",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
