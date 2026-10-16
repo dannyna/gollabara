@@ -1,0 +1,23 @@
+src/server/expiry.test.ts
+  s_b7f30c572db9a8::t_bf66016ce27b55 1-9
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_eae5ce978eef93 263-264,267
+src/server/store.ts
+  s_b7f30c572db9a8::t_eae5ce978eef93 184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ad1d8423d9af3165db278a0e0e22f7a8d94039f",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
