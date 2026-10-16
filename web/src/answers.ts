@@ -8,18 +8,26 @@ import { answerLabel, toChoice } from './components/chat/chat'
 /** Open holds by questionId */
 export type Holds = ReadonlyMap<string, QuestionHold>
 
-/** The holds a hello frame carries; older servers send none */
-export function holdsFrom(list: QuestionHold[] = []): Map<string, QuestionHold> {
-  return new Map(list.map(h => [h.questionId, h]))
+/**
+ * A server `until` on this device's clock: the time left when the frame was sent, from now. A phone whose
+ * clock is off still counts down the server's hold. Older servers send no `serverNow`, so it stays as sent.
+ */
+function localUntil(until: number, serverNow: number | undefined, localNow: number): number {
+  return serverNow == null ? until : localNow + (until - serverNow)
+}
+
+/** The holds a hello frame carries (older servers send none), on this device's clock */
+export function holdsFrom(list: QuestionHold[] = [], serverNow?: number, localNow = Date.now()): Map<string, QuestionHold> {
+  return new Map(list.map(h => [h.questionId, { ...h, until: localUntil(h.until, serverNow, localNow) }]))
 }
 
 /** A hold frame starts a hold (`until`) or ends it (`until: null`); a hold may start before its question arrives */
-export function applyHold(holds: Holds, frame: Extract<ServerFrame, { type: 'hold' }>): Map<string, QuestionHold> {
+export function applyHold(holds: Holds, frame: Extract<ServerFrame, { type: 'hold' }>, localNow = Date.now()): Map<string, QuestionHold> {
   const next = new Map(holds)
   if (frame.until == null)
     next.delete(frame.questionId)
   else
-    next.set(frame.questionId, { sessionId: frame.sessionId, questionId: frame.questionId, until: frame.until })
+    next.set(frame.questionId, { sessionId: frame.sessionId, questionId: frame.questionId, until: localUntil(frame.until, frame.now, localNow) })
   return next
 }
 

@@ -276,8 +276,8 @@ export interface HistoryPage {
 /** Frame sent to the UI over WebSocket */
 export type ServerFrame
   // `older`: messages exist before the first one sent (missing from servers before #77)
-  // `holds`: questions the app can answer right now
-  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings, older?: boolean, holds?: QuestionHold[] }
+  // `holds`: questions the app can answer right now; `now`: the server's clock their `until` reads
+  = | { type: 'hello', messages: StreamMessage[], sessions: Session[], feedback: Feedback[], triage?: Triage[], settings?: ServerSettings, older?: boolean, holds?: QuestionHold[], now?: number }
     | { type: 'message', message: StreamMessage }
     // An existing message changed in place: same id, new content
     | { type: 'message-upsert', message: StreamMessage }
@@ -286,8 +286,9 @@ export type ServerFrame
     | { type: 'feedback', status: 'queued' | 'delivered', feedback: Feedback }
     | { type: 'triage', triage: Triage }
     | { type: 'settings', settings: ServerSettings }
-    // A hold started (`until` is when it ends) or ended (`until: null`: answered, expired, or the hook went away)
-    | { type: 'hold', sessionId: string, questionId: string, until: number | null }
+    // A hold started (`until` is when it ends) or ended (`until: null`: answered, expired, or the hook went away).
+    // `now` is the server's clock when it was sent, so a view whose clock is off counts down the time left
+    | { type: 'hold', sessionId: string, questionId: string, until: number | null, now?: number }
     // Rows expiry or 「이 세션 데이터 삭제」 removed; views drop them
     | { type: 'deleted', messageIds: number[], feedbackIds: number[], sessionIds: string[] }
 

@@ -78,7 +78,7 @@ export function startServer() {
   const vapidKeys = () => vapid ??= loadVapidKeys(dataDir())
   const pusher = new Pusher(store, async (sub, payload) => sendPush(sub, payload, await vapidKeys()))
   // Views learn when a question can be answered from the app, and when it no longer can
-  const holds = new Holds((hold, live) => publish({ type: 'hold', sessionId: hold.sessionId, questionId: hold.questionId, until: live ? hold.until : null }))
+  const holds = new Holds((hold, live) => publish({ type: 'hold', sessionId: hold.sessionId, questionId: hold.questionId, until: live ? hold.until : null, now: Date.now() }))
   /**
    * Open views on every listener that could answer: a hold waits only for one. With GOLLABARA_HOST a LAN view
    * may watch, but /api/questions/answer refuses it, so it does not count
@@ -398,6 +398,7 @@ export function startServer() {
           triage: store.triageFor(messages.map(m => m.id)),
           settings: store.settings(),
           holds: holds.active(),
+          now: Date.now(),
         } satisfies ServerFrame))
       },
       message() {},

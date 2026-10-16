@@ -38,6 +38,16 @@ describe('holds', () => {
     expect(holdsFrom().size).toBe(0)
   })
 
+  it('counts down the server\'s time left, whatever this device\'s clock says', () => {
+    // The device runs 90 s ahead of the server, with 40 s left on the hold
+    const ahead = NOW + 90_000
+    const started = applyHold(new Map(), { type: 'hold', sessionId: 's1', questionId: 'toolu_9', until: NOW + 40_000, now: NOW }, ahead)
+    expect(started.get('toolu_9')?.until).toBe(ahead + 40_000)
+    expect(holdsFrom([{ sessionId: 's1', questionId: 'toolu_9', until: NOW + 40_000 }], NOW, ahead).get('toolu_9')?.until).toBe(ahead + 40_000)
+    // Older servers send no clock: `until` stays as sent
+    expect(holdsFrom([{ sessionId: 's1', questionId: 'toolu_9', until: NOW }], undefined, ahead).get('toolu_9')?.until).toBe(NOW)
+  })
+
   it('answers only a held, unanswered question of a live Claude Code session while connected', () => {
     expect(canAnswer(message(), session(), held, true, NOW)).toBe(true)
     expect(canAnswer(message(), session(), held, false, NOW)).toBe(false)

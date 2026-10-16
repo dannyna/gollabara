@@ -126,7 +126,7 @@ export function useStream() {
         feedback.value = kept ? joinFeedback(feedback.value, frame.feedback ?? []) : sortFeedback(frame.feedback ?? [])
         triage.value = kept ? joinTriage(triage.value, frame.triage ?? []) : toTriageMap(frame.triage ?? [])
         settings.value = frame.settings ?? { triage: 'off' }
-        holds.value = holdsFrom(frame.holds)
+        holds.value = holdsFrom(frame.holds, frame.now)
       }
       else if (frame.type === 'hold') {
         holds.value = applyHold(holds.value, frame)
