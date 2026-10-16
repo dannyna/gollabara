@@ -1,0 +1,37 @@
+web/src/components/stream/StreamCell.vue
+  s_b7f30c572db9a8::t_6c594ea7e67ab7 38,85
+web/src/components/stream/StreamRail.vue
+  s_b7f30c572db9a8::t_6c594ea7e67ab7 30,167
+web/src/App.vue
+  s_b7f30c572db9a8::t_6eb1fedf4410a3 182-183
+web/src/components/stream/follow.ts
+  s_b7f30c572db9a8::t_f528486a076ed5 49-55
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_08317cd08bf954 86,88-89
+  s_b7f30c572db9a8::t_acbe07bcc486e4 60,62
+  s_b7f30c572db9a8::t_f528486a076ed5 19,58-59,61
+  s_b7f30c572db9a8::t_71cce9eef4659b 159-162,164
+  s_b7f30c572db9a8::t_3d590201e69335 56,63-67,69
+  s_b7f30c572db9a8::t_6c594ea7e67ab7 310
+web/src/components/stream/stream.test.ts
+  s_b7f30c572db9a8::t_f528486a076ed5 5,56-63
+  s_b7f30c572db9a8::t_acbe07bcc486e4 55
+DESIGN.md
+  s_b7f30c572db9a8::t_c970a7c9cba713 260,314,394-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ceb953d9efc5285e59b2007a6707461d410bc26c",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
