@@ -48,26 +48,23 @@ describe('question steps', () => {
     { question: 'c', options: [] },
   ]
 
-  it('names the next question in the peek: its mono number and header', () => {
-    expect(stepNav(set, 0).next).toEqual({ step: 1, number: '02', label: '질문 2 · 대화 표시' })
-    expect(stepNav(set, 1).next).toEqual({ step: 2, number: '03', label: '질문 3' })
-  })
-
-  it('has no peek on the last question', () => {
+  it('names the question › leads to, and has none on the last', () => {
+    expect(stepNav(set, 0).next).toEqual({ step: 1, label: '질문 2 · 대화 표시' })
+    expect(stepNav(set, 1).next).toEqual({ step: 2, label: '질문 3' })
     expect(stepNav(set, 2).next).toBeUndefined()
     expect(stepNav(set, 9).next).toBeUndefined()
   })
 
-  it('has no 앞 문항 target on the first question, and steps back one otherwise', () => {
+  it('names the question ‹ leads to, and has none on the first', () => {
     expect(stepNav(set, 0).previous).toBeUndefined()
-    expect(stepNav(set, 2).previous).toBe(1)
+    expect(stepNav(set, 2).previous).toEqual({ step: 1, label: '질문 2 · 대화 표시' })
   })
 
-  it('lands on the question the peek and 앞 문항 point to', () => {
+  it('lands on the question ‹ and › point to', () => {
     const second = stepNav(set, stepNav(set, 0).next!.step)
     expect(second.step).toBe(1)
     expect(stepNav(set, second.next!.step).step).toBe(2)
-    expect(stepNav(set, stepNav(set, 2).previous!).step).toBe(1)
+    expect(stepNav(set, stepNav(set, 2).previous!.step).step).toBe(1)
   })
 })
 
