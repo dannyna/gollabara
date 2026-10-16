@@ -1,7 +1,7 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, clampStep, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, stepName, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
+import { answerLabel, choiceLayout, clampStep, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, stepName, stepNav, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
@@ -40,6 +40,35 @@ describe('question steps', () => {
   it('names each step by its number and header', () => {
     expect(stepName(1, { question: 'q', header: '대화 표시', options: [] })).toBe('질문 2 · 대화 표시')
     expect(stepName(0, { question: 'q', options: [] })).toBe('질문 1')
+  })
+
+  const set = [
+    { question: 'a', header: '끝난 세션', options: [] },
+    { question: 'b', header: '대화 표시', options: [] },
+    { question: 'c', options: [] },
+  ]
+
+  it('labels the next-question row with the next header, or its number without one', () => {
+    expect(stepNav(set, 0).next).toEqual({ step: 1, header: '대화 표시' })
+    expect(stepNav(set, 1).next).toEqual({ step: 2, header: '질문 3' })
+  })
+
+  it('has no next row on the last question, where the card reads 마지막 질문이에요', () => {
+    expect(stepNav(set, 2).next).toBeUndefined()
+    expect(stepNav(set, 9).next).toBeUndefined()
+  })
+
+  it('has no 이전 질문 on the first question, and steps back one otherwise', () => {
+    expect(stepNav(set, 0).previous).toBeUndefined()
+    expect(stepNav(set, 2).previous).toBe(1)
+  })
+
+  it('gives one dot per question that jumps to it, the current one marked', () => {
+    const { dots } = stepNav(set, 1)
+    expect(dots.map(d => d.step)).toEqual([0, 1, 2])
+    expect(dots.map(d => d.label)).toEqual(['질문 1 · 끝난 세션', '질문 2 · 대화 표시', '질문 3'])
+    expect(dots.map(d => d.current)).toEqual([false, true, false])
+    expect(stepNav(set, dots[2]!.step).step).toBe(2)
   })
 })
 
