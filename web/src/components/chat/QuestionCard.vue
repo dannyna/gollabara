@@ -58,6 +58,13 @@ watch(() => props.picks.join(), () => chosen.value = [...props.picks])
 const text = ref(props.typed ?? '')
 watch(() => props.typed, t => text.value = t ?? '')
 const field = ref<HTMLTextAreaElement>()
+// A hold that runs out mid-answer leaves the read-only card, not a disabled draft
+watch(() => props.inert, (inert) => {
+  if (inert && props.state === 'open') {
+    typing.value = false
+    chosen.value = [...props.picks]
+  }
+})
 
 function toggle(i: number) {
   if (locked.value)

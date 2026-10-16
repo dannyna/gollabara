@@ -329,8 +329,7 @@ input[aria-invalid='true'] {
   flex: none;
   min-width: 44px;
   min-height: 44px;
-  margin-right: -6px;
-  padding: 0 6px;
+  padding: 0 0 0 6px;
   border-radius: 8px;
   color: var(--muted);
   font-size: 11px;
