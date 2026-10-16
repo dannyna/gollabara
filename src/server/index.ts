@@ -27,6 +27,8 @@ import { isTrustedSource } from './trusted'
 // src/server in a checkout, dist/ in the bundle that npm and `golla setup` ship
 const WEB_DIST = join(packageRoot(import.meta.dir) ?? resolve(import.meta.dir, '../..'), 'web/dist')
 const TOPIC = 'stream'
+/** Views from this machine or the tailnet, which may answer a held question; nothing is published to it */
+const ANSWERING_TOPIC = 'answering'
 const VIAS: FeedbackVia[] = ['post-tool-use', 'stop', 'user-prompt-submit']
 /** How long a wake-up poll waits for feedback before it returns empty and the waiting hook asks again */
 const CHANNEL_WAIT_MS = 25_000
@@ -77,8 +79,11 @@ export function startServer() {
   const pusher = new Pusher(store, async (sub, payload) => sendPush(sub, payload, await vapidKeys()))
   // Views learn when a question can be answered from the app, and when it no longer can
   const holds = new Holds((hold, live) => publish({ type: 'hold', sessionId: hold.sessionId, questionId: hold.questionId, until: live ? hold.until : null }))
-  /** Open views on every listener: a hold waits only when someone could answer it */
-  const viewers = () => servers.reduce((n, server) => n + server.subscriberCount(TOPIC), 0)
+  /**
+   * Open views on every listener that could answer: a hold waits only for one. With GOLLABARA_HOST a LAN view
+   * may watch, but /api/questions/answer refuses it, so it does not count
+   */
+  const viewers = () => servers.reduce((n, server) => n + server.subscriberCount(ANSWERING_TOPIC), 0)
 
   /**
    * Records which hook version a harness runs. Hooks from before the handshake send no headers; their
@@ -381,6 +386,8 @@ export function startServer() {
     websocket: {
       open(ws: ServerWebSocket<undefined>) {
         ws.subscribe(TOPIC)
+        if (isTrustedSource(ws.remoteAddress))
+          ws.subscribe(ANSWERING_TOPIC)
         const messages = store.recent()
         ws.send(JSON.stringify({
           type: 'hello',

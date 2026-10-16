@@ -222,7 +222,7 @@ describe('answering a question from the app', () => {
     expect(await (await hold('q0')).json()).toEqual({ hold: false })
     v.ws.close()
     await setAnswer('on')
-    for (let i = 0; i < 50 && servers[0]!.subscriberCount('stream') > 0; i++)
+    for (let i = 0; i < 50 && servers[0]!.subscriberCount('answering') > 0; i++)
       await Bun.sleep(10)
     expect(await (await hold('q0')).json()).toEqual({ hold: false })
   })
