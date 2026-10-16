@@ -2,16 +2,17 @@
 import type { Question } from '../../../../src/shared/types'
 import type { QuestionState } from './QuestionCard.vue'
 import { computed, nextTick, ref } from 'vue'
-import { answerLabel, choiceLayout, clampStep, stepNav, toChoice } from './chat'
+import { answerLabel, clampStep, stepNav, toChoice } from './chat'
 import ChatIcon from './ChatIcon.vue'
 import QuestionCard from './QuestionCard.vue'
 
 // A session's AskUserQuestion set in one card, one question at a time (OD guide:
-// question-stepper-v2.html, E). The options are read-only rows: answering is not built, so only
-// stepping can be pressed. Progress dots and 「이전 질문」 sit under the eyebrow, and 「다음 · header」
-// right under the options. Stepping is view state only, never sent or stored. ←/→ belong to the
-// stream rail and the viewer, so the card handles no keys: Tab reaches the buttons, Enter or Space
-// presses them. One question is today's card, without steps.
+// question-card-v3.html, 5). The current question is a page in front; the next one peeks out on
+// its right edge as one button that brings it forward, and 「앞 문항」 under the options steps
+// back. The options are read-only rows: answering is not built, so only stepping can be pressed.
+// Stepping is view state only, never sent or stored. ←/→ belong to the stream rail and the
+// viewer, so the card handles no keys: Tab reaches the buttons, Enter or Space presses them.
+// One question is today's card, without steps.
 
 const props = withDefaults(defineProps<{
   questions: Question[]
@@ -27,20 +28,20 @@ const step = ref(clampStep(props.start, props.questions.length))
 const nav = computed(() => stepNav(props.questions, step.value))
 const current = computed(() => props.questions[nav.value.step]!)
 
-const panes = computed(() => props.questions.map((q, i) => {
-  const options = q.options.map(toChoice)
-  return { question: q, options, short: choiceLayout(options) === 'short', next: stepNav(props.questions, i).next }
-}))
+const panes = computed(() => props.questions.map(q => ({ question: q, options: q.options.map(toChoice) })))
 
 const root = ref<HTMLElement>()
-/** A pressed button that the step hides or removes hands focus to the current dot */
+/**
+ * A pressed button that goes away (the peek on the last question) or turns disabled (앞 문항 on
+ * the first) hands focus to the other control, but only if it had focus
+ */
 async function go(to: number, event: MouseEvent) {
-  const pressed = event.currentTarget as HTMLElement
+  const pressed = event.currentTarget as HTMLButtonElement
   const focused = document.activeElement === pressed
   step.value = clampStep(to, props.questions.length)
   await nextTick()
-  if (focused && (!pressed.isConnected || pressed.closest('[inert]')))
-    root.value?.querySelector<HTMLElement>('.dot[aria-current]')?.focus()
+  if (focused && (!pressed.isConnected || pressed.disabled))
+    root.value?.querySelector<HTMLElement>('.peek, .back:not(:disabled)')?.focus()
 }
 
 // Answered in the terminal: each header with the picked answer, or the card's own copy when unknown
@@ -65,129 +66,102 @@ const summary = computed(() => props.questions.map((q, i) => ({
       </template>
     </dl>
   </div>
-  <div v-else ref="root" class="stepper" role="group" :aria-label="`질문 ${questions.length}개`">
-    <div class="eyebrow">
-      <ChatIcon name="question" /><b>{{ current.header || '세션에서 물었어요' }}</b>
-      <span v-if="current.multiSelect" class="multi">· 여러 개 고르기</span>
-      <span class="count">{{ nav.step + 1 }} / {{ questions.length }}</span>
-    </div>
-    <div class="dots">
-      <button
-        v-for="d in nav.dots" :key="d.step" class="dot" type="button" :aria-label="d.label"
-        :aria-current="d.current ? 'step' : undefined" @click="go(d.step, $event)"
-      >
-        <span aria-hidden="true" />
-      </button>
-      <button v-if="nav.previous !== undefined" class="back" type="button" @click="go(nav.previous, $event)">
-        이전 질문
-      </button>
-      <span v-else class="first">첫 질문</span>
-    </div>
-    <!-- Every question sits in one cell, so the card keeps the height of the tallest -->
-    <div class="stage">
-      <div
-        v-for="(p, i) in panes" :key="i" class="pane" :class="{ active: i === nav.step }"
-        :inert="i !== nav.step || undefined" :aria-hidden="i !== nav.step || undefined"
-      >
-        <p>{{ p.question.question }}</p>
-        <ul class="options" :class="{ short: p.short }" :aria-label="`${p.question.header || `질문 ${i + 1}`} 선택지, 읽기 전용`">
-          <li v-for="(o, j) in p.options" :key="j">
-            <div>
-              <span class="label">{{ o.label }}</span><span v-if="o.recommended" class="rec">추천</span>
-              <span v-if="o.description" class="description">{{ o.description }}</span>
-            </div>
-          </li>
-        </ul>
-        <button v-if="p.next" class="next" type="button" @click="go(p.next.step, $event)">
-          <span><small>다음 ·</small><b>{{ p.next.header }}</b></span>
-          <ChatIcon name="next" />
-        </button>
-        <div v-else class="last">
-          마지막 질문이에요
+  <div v-else ref="root" class="pages" role="group" :aria-label="`질문 ${questions.length}개`">
+    <div class="page">
+      <div class="head">
+        <ChatIcon name="question" /><b>{{ current.header || '세션에서 물었어요' }}</b>
+        <span v-if="current.multiSelect" class="multi">· 여러 개 고르기</span>
+      </div>
+      <!-- Every question sits in one cell, so the card keeps the height of the tallest -->
+      <div class="stage">
+        <div
+          v-for="(p, i) in panes" :key="i" class="pane" :class="{ active: i === nav.step }"
+          :inert="i !== nav.step || undefined" :aria-hidden="i !== nav.step || undefined"
+        >
+          <p>{{ p.question.question }}</p>
+          <ul class="options" :aria-label="`${p.question.header || `질문 ${i + 1}`} 선택지, 읽기 전용`">
+            <li v-for="(o, j) in p.options" :key="j">
+              <span class="number" aria-hidden="true">{{ j + 1 }}</span>
+              <div>
+                <span class="label">{{ o.label }}</span><span v-if="o.recommended" class="rec">추천</span>
+                <span v-if="o.description" class="description">{{ o.description }}</span>
+              </div>
+            </li>
+          </ul>
         </div>
       </div>
+      <button
+        class="back" type="button" :disabled="nav.previous === undefined"
+        @click="nav.previous !== undefined && go(nav.previous, $event)"
+      >
+        <ChatIcon name="previous" />앞 문항
+      </button>
+      <p class="notice">
+        앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
+      </p>
+      <span class="sr-only" role="status" aria-live="polite">{{ nav.step + 1 }}번째 질문 · {{ current.header || '세션에서 물었어요' }}</span>
     </div>
-    <p class="notice">
-      앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
-    </p>
-    <span class="sr-only" role="status" aria-live="polite">{{ nav.step + 1 }}번째 질문 · {{ current.header || '세션에서 물었어요' }}</span>
+    <button
+      v-if="nav.next" class="peek" type="button" :aria-label="`다음 질문 보기 · ${nav.next.label}`"
+      @click="go(nav.next.step, $event)"
+    >
+      <span class="number">{{ nav.next.number }}</span>
+      <span class="title">다음 질문</span>
+      <ChatIcon name="next" />
+    </button>
   </div>
 </template>
 
 <style scoped>
-.stepper {
+.stepper,
+.pages {
   margin-top: 9px;
+}
+.stepper {
   padding: 16px;
   border-radius: 16px;
   background: var(--bg);
 }
-.eyebrow {
+
+/* The current page in front; the right gutter stays on every step, so the page's width (and so
+   its height) never changes, even on the last question where nothing peeks */
+.pages {
+  position: relative;
+  isolation: isolate;
+  padding-right: 45px;
+}
+.page {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 5px 0 10px var(--shade);
+  line-height: 1.65;
+}
+.head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 20px;
-  margin-bottom: 10px;
-  font-size: 10px;
-  color: var(--muted);
+  gap: 7px;
+  min-height: 28px;
+  margin-bottom: 8px;
+  font-size: 11px;
   white-space: nowrap;
 }
-.eyebrow .chat-icon {
-  width: 13px;
-  height: 13px;
+.head .chat-icon {
+  width: 16px;
+  height: 16px;
 }
-.eyebrow b {
+/* One line, so a long header never changes the card's height */
+.head b {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--fg);
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
-.eyebrow .count {
-  margin-left: auto;
-  font-family: var(--mono);
-}
-
-/* Quiet progress: a 4px dot per question, the current one a short bar, each in a 44px target */
-.dots {
-  display: flex;
-  align-items: center;
-  margin: -10px -6px -2px 0;
-}
-.dot {
-  width: 44px;
-  min-height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 7px;
-}
-.dot span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-.dot[aria-current] span {
-  width: 16px;
-  height: 3px;
-  border-radius: 4px;
-  background: var(--fg);
-}
-.dot:hover:not(:disabled) {
-  background: none;
-}
-.dot:hover span {
-  box-shadow: 0 0 0 2px var(--border);
-}
-.back {
-  margin-left: auto;
-  min-height: 44px;
-  padding: 0 6px;
-  border-radius: 7px;
-  font-size: 11px;
-}
-.first {
-  margin-left: auto;
-  padding-right: 6px;
+.head .multi {
   font-size: 10px;
   color: var(--muted);
 }
@@ -206,101 +180,83 @@ const summary = computed(() => props.questions.map((q, i) => ({
   visibility: visible;
 }
 .pane p {
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.75;
 }
 
-/* Read-only rows: a dash, the label, the description under it. Nothing here looks pressable. */
+/* Read-only rows: a boxed number, the label, the description under it. Nothing looks pressable. */
 .options {
   display: grid;
-  gap: 9px;
-  margin: 12px 0 0;
+  gap: 11px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 .options li {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr);
-  gap: 7px;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
 }
-.options li::before {
-  content: '–';
-  font-size: 11px;
+.options .number {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 10px var(--mono);
   color: var(--muted);
 }
-.options.short {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px 24px;
-}
 .label {
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--muted);
 }
 .rec {
-  margin-left: 7px;
+  margin-left: 6px;
   font-size: 10px;
   color: var(--muted);
 }
 .description {
   display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 1.6;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
   color: var(--muted);
 }
 
-/* 「다음 · header」 right under the options, so a short question never pushes it down */
-.next {
-  width: 100%;
+.back {
   min-height: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  margin-top: 6px;
+  margin: 5px 0 -5px;
+  padding: 0 7px 0 0;
   border-radius: 7px;
   font-size: 11px;
-  text-align: left;
 }
-.next span {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
+.back .chat-icon {
+  width: 16px;
+  height: 16px;
 }
-.next small {
-  font-size: 10px;
-  color: var(--muted);
+.back:disabled {
+  opacity: 0.3;
 }
-.next b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-.next .chat-icon {
-  width: 13px;
-  height: 13px;
-}
-.back:hover:not(:disabled),
-.next:hover:not(:disabled) {
+.back:hover:not(:disabled) {
   background: none;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.last {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--muted);
-}
 .notice {
-  margin-top: 12px;
-  font-size: 11px;
-  line-height: 1.6;
+  margin-top: 14px;
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
   color: var(--muted);
 }
 .sr-only {
@@ -311,6 +267,41 @@ const summary = computed(() => props.questions.map((q, i) => ({
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* The next question's page behind the current one: its edge is one button */
+.peek {
+  position: absolute;
+  top: 18px;
+  right: 0;
+  bottom: 18px;
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 0 12px 12px 0;
+  background: var(--bg);
+}
+.peek:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--muted);
+}
+.peek .number {
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+.peek .title {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.peek .chat-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* Answered in the terminal: headers and picks, all muted */
