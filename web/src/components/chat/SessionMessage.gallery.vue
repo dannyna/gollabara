@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import ChatFrame from '../../gallery/ChatFrame.vue'
 import { IMG, S, time } from '../../gallery/fixtures'
 import GalleryCase from '../../gallery/GalleryCase.vue'
@@ -6,6 +7,7 @@ import ArtifactThumbs from './ArtifactThumbs.vue'
 import SessionMessage from './SessionMessage.vue'
 
 const hero = [{ key: 'a', label: 'A', ...IMG.hero }, { key: 'b', label: 'B', ...IMG.heroB }]
+const replied = ref(0)
 const checkout = [{ key: '1', label: '1', ...IMG.c1 }, { key: '2', label: '2', ...IMG.c2 }]
 </script>
 
@@ -39,6 +41,16 @@ const checkout = [{ key: '1', label: '1', ...IMG.c1 }, { key: '2', label: '2', .
         <p>히어로 시안 두 장 찍었어.</p>
         <p>하단 여백도 같이 줄였어.</p>
         <ArtifactThumbs :thumbs="hero" />
+      </SessionMessage>
+    </ChatFrame>
+  </GalleryCase>
+  <GalleryCase title="답장 · hover · 키보드 포커스">
+    <ChatFrame :note="`리캡이 있는 메시지에만 답장. 누르면 컴포저에 인용 (${replied}번). 끝난 세션은 꺼짐. 767px 이하에서는 숨김.`">
+      <SessionMessage :name="S.piuda" :at="time(14, 32)" replyable @reply="replied++">
+        사이드바 접힘 상태 저장 구현 끝. 테스트 12개 통과.
+      </SessionMessage>
+      <SessionMessage :name="S.e2e" :at="time(14, 40)" replyable ended>
+        결제 버튼 잘림 고쳤어.
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Floating action bar on an artifact cell or a session message. It shows while the
 // pointer or keyboard focus is inside the host, which carries `data-floating-host`.
-// Cell: 답장 · 확대 ↗. Message: 답장.
+// Cell: 답장 · 확대 ↗. Message: 답장, which quotes the message in the composer.
 
 withDefaults(defineProps<{
   variant?: 'cell' | 'message'
@@ -9,7 +9,7 @@ withDefaults(defineProps<{
   viewLabel?: string
   /** Visible text of the third action; 「열기 ↗」 for artifacts that are not images */
   viewText?: string
-  /** Cell only: 답장 picks the image as the feedback target (emits `reply`) */
+  /** 답장 picks the image, or quotes the message, as the feedback target (emits `reply`); off draws it disabled */
   reply?: boolean
   /** Accessible name, e.g. 「히어로 B에 답장」 */
   replyLabel?: string
@@ -22,11 +22,8 @@ defineEmits<{ view: [], reply: [] }>()
 
 <template>
   <div class="floating-actions" :class="[`on-${variant}`, { shown }]">
-    <button v-if="reply && variant === 'cell'" type="button" :aria-label="replyLabel" @click="$emit('reply')">
-      답장
-    </button>
-    <!-- Replying from a message is a later track: drawn, never sent -->
-    <button v-else type="button" disabled>
+    <!-- Off for a message of an ended session, which takes no feedback -->
+    <button type="button" :aria-label="replyLabel" :disabled="!reply" @click="$emit('reply')">
       답장
     </button>
     <button v-if="variant === 'cell'" type="button" :aria-label="viewLabel" @click="$emit('view')">

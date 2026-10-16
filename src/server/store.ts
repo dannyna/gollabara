@@ -1,6 +1,6 @@
 // Messages and sessions go to SQLite, images to files named by content hash. No third-party storage.
 
-import type { Feedback, FeedbackImage, FeedbackVia, Harness, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
+import type { Feedback, FeedbackImage, FeedbackQuote, FeedbackVia, Harness, HistoryPage, HookSeen, IncomingEvent, IncomingImage, PushSubscriptionKeys, ServerSettings, Session, SessionInfo, StoredImage, StreamMessage, Tone, Triage, TriageEngine, Verdict } from '../shared/types'
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -62,6 +62,8 @@ interface FeedbackRow {
   image: string | null
   image_at: number | null
   image_session: string | null
+  quote_text: string | null
+  quote_at: number | null
   created_at: number
   delivered_at: number | null
   delivered_via: FeedbackVia | null
@@ -383,8 +385,11 @@ export class Store {
     return row?.id ?? null
   }
 
-  /** Queues the user's feedback for a session. Throws FeedbackError for an unknown or ended session, or an unknown image. */
-  queueFeedback(sessionId: string, text: string, image?: string, now = Date.now()): Feedback {
+  /**
+   * Queues the user's feedback for a session, with the image it is about and the message it replies to.
+   * Throws FeedbackError for an unknown or ended session, or an unknown image.
+   */
+  queueFeedback(sessionId: string, text: string, image?: string, now = Date.now(), quote?: FeedbackQuote): Feedback {
     const session = this.db.query('SELECT ended_at FROM sessions WHERE id = ?').get(sessionId) as { ended_at: number | null } | null
     if (!session)
       throw new FeedbackError(404, 'unknown session')
@@ -401,8 +406,8 @@ export class Store {
       const capture = this.imageCapture(name)
       ref = { name, at: capture?.at ?? Math.round(statSync(path).mtimeMs), sessionName: capture?.sessionName ?? null }
     }
-    const row = this.db.query(`INSERT INTO feedback (session_id, text, image, image_at, image_session, created_at)
-      VALUES (?, ?, ?, ?, ?, ?) RETURNING *`).get(sessionId, text, ref?.name ?? null, ref?.at ?? null, ref?.sessionName ?? null, now) as FeedbackRow
+    const row = this.db.query(`INSERT INTO feedback (session_id, text, image, image_at, image_session, quote_text, quote_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`).get(sessionId, text, ref?.name ?? null, ref?.at ?? null, ref?.sessionName ?? null, quote?.text ?? null, quote?.at ?? null, now) as FeedbackRow
     return this.toFeedback(row)
   }
 
@@ -453,6 +458,7 @@ export class Store {
       sessionId: row.session_id,
       text: row.text,
       ...(image ? { image } : {}),
+      ...(row.quote_text !== null ? { quote: { text: row.quote_text, at: row.quote_at ?? row.created_at } } : {}),
       createdAt: row.created_at,
       ...(row.delivered_at !== null ? { deliveredAt: row.delivered_at, deliveredVia: row.delivered_via! } : {}),
     }

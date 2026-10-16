@@ -83,6 +83,12 @@ defineEmits<{ retry: [] }>()
   font-size: 10px;
   color: var(--muted);
 }
+.quote span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .quote img {
   width: 18px;
   height: 28px;

@@ -31,7 +31,7 @@ import SessionMessage from '../chat/SessionMessage.vue'
 import SessionStarts from '../chat/SessionStarts.vue'
 import SystemLine from '../chat/SystemLine.vue'
 import MentionList from '../overlay/MentionList.vue'
-import { useFeedbackTarget } from '../overlay/useFeedbackTarget'
+import { messageTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
 import { useImageViewer } from '../overlay/useImageViewer'
 import { useToast } from '../overlay/useToast'
 import HarnessGuide from './HarnessGuide.vue'
@@ -201,13 +201,19 @@ function openImage(image: Thumb) {
   emit('openImage', image)
 }
 
-// The viewer's 「이 이미지에 피드백 ↗」 sets the target; the composer shows it as its chip
-const { target, clearTarget } = useFeedbackTarget()
+// The viewer's 「이 이미지에 피드백 ↗」, a cell's or a message's 답장 set the target; the composer
+// shows it as its chip: the image with its caption, or the quoted recap line
+const { target, setTarget, clearTarget } = useFeedbackTarget()
 const attachment = computed<ComposerAttachment | null>(() => target.value && {
-  url: target.value.imageUrl,
+  ...(target.value.imageUrl ? { url: target.value.imageUrl } : {}),
   session: nameOf(target.value.sessionId),
-  caption: target.value.caption ?? clock(target.value.at),
+  caption: target.value.quote?.text ?? target.value.caption ?? clock(target.value.at),
 })
+// Messages with a line to quote, by id
+const replyTargets = computed(() => new Map(view.value.items.flatMap((v) => {
+  const t = messageTargetOf(v)
+  return t ? [[v.message.id, t] as const] : []
+})))
 function onAttachment(next: ComposerAttachment | null) {
   if (!next)
     clearTarget()
@@ -269,12 +275,16 @@ function send({ text }: ComposerSend) {
   const sessionId = receiver.value
   if (sessionId == null)
     return
-  const image = target.value
+  const picked = target.value
+  const image = picked?.imageUrl
+  const quote = picked?.quote && { text: picked.quote.text, at: picked.at }
   // Captured now, so a retry goes where the first try went
   const p: PendingSend = {
     key: `p-${++sendSeq}`,
-    request: { sessionId, text, ...(image ? { image: image.imageUrl } : {}) },
-    quote: image ? { text: `${shortName(image.sessionId)} · ${image.caption ?? clock(image.at)}`, image: image.imageUrl } : undefined,
+    request: { sessionId, text, ...(image ? { image } : {}), ...(quote ? { quote } : {}) },
+    quote: image
+      ? { text: `${shortName(picked.sessionId)} · ${picked.caption ?? clock(picked.at)}`, image }
+      : quote && { text: quote.text },
     at: Date.now(),
     state: 'queued',
   }
@@ -428,8 +438,9 @@ defineExpose({ reveal })
             v-else :name="item.message.sessionName" :hint="hintOf(item.message.sessionId)" :at="item.message.at"
             :highlighted="selectedMessage === item.message.id" :data-msg="item.message.id"
             :scoped="scope === item.message.sessionId" :ended="ended.has(item.message.sessionId)"
+            :replyable="replyTargets.has(item.message.id)"
             @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
-            @delete="emit('delete', item.message.sessionId)"
+            @delete="emit('delete', item.message.sessionId)" @reply="setTarget({ ...replyTargets.get(item.message.id)! })"
           >
             <template v-for="part in viewOf.get(item.message.id)?.parts" :key="part.type === 'line' ? part.line.index : part.key">
               <RecapLine

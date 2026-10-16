@@ -9,6 +9,7 @@ import MentionList from '../overlay/MentionList.vue'
 import ChatComposer from './ChatComposer.vue'
 
 const HERO_A: ComposerAttachment = { url: IMG.hero.url, session: 'od', caption: '히어로 A · 14:34' }
+const RECAP: ComposerAttachment = { session: 'piuda · desktop-shell', caption: '사이드바 접힘 상태 저장 구현 끝. 테스트 12개 통과했고, 새로고침해도 접힌 상태가 그대로 남는 것까지 확인했어.' }
 
 // Live case: type, Enter, and the emitted payload shows below; nothing is sent anywhere
 const attachment = ref<ComposerAttachment | null>(HERO_A)
@@ -42,6 +43,13 @@ const MENTION: MentionOption[] = [
     <ChatFrame note="스트림에서 ‘답장’을 누르면 인용 줄이 붙는다. ×로 취소.">
       <template #footer>
         <ChatComposer can-send target="od" text="여기 카피 한 줄로" :attachment="HERO_A" />
+      </template>
+    </ChatFrame>
+  </GalleryCase>
+  <GalleryCase title="02b · 메시지 인용">
+    <ChatFrame note="세션 메시지의 ‘답장’은 썸네일 없이 리캡 한 줄. 길면 말줄임.">
+      <template #footer>
+        <ChatComposer can-send target="piuda" text="e2e도 돌려줘" :attachment="RECAP" />
       </template>
     </ChatFrame>
   </GalleryCase>

@@ -16,6 +16,11 @@ import MyMessage from './MyMessage.vue'
       <MyMessage target="od" text="하단 버튼 여백만 줄여 줘" :quote="{ text: '히어로 B', image: IMG.heroB.url }" :at="time(14, 41)" />
     </ChatFrame>
   </GalleryCase>
+  <GalleryCase title="02b · 메시지에 답장 · 긴 인용">
+    <ChatFrame note="세션 메시지 인용은 한 줄로 자르고 말줄임.">
+      <MyMessage target="piuda" text="e2e도 돌려줘" :quote="{ text: '사이드바 접힘 상태 저장 구현 끝. 테스트 12개 통과했고, 새로고침해도 접힌 상태가 그대로 남는 것까지 확인했어.' }" :at="time(14, 44)" />
+    </ChatFrame>
+  </GalleryCase>
   <GalleryCase title="03 · 전달 못 함 (failed)">
     <ChatFrame note="다시 보내기는 텍스트 링크. 말풍선 색은 그대로 둔다.">
       <MyMessage target="client-e2e" text="결제 버튼 잘림 다시 확인해 줘" state="failed" />

@@ -67,8 +67,8 @@ export function resolveTarget(input: {
 export interface PendingSend {
   key: string
   request: FeedbackRequest
-  /** For the quote line; the request carries only the url */
-  quote?: { text: string, image: string }
+  /** For the quote line; for an image the request carries only the url */
+  quote?: { text: string, image?: string }
   at: number
   state: 'queued' | 'failed'
   /** Why it failed, when there is more to say than 「전달하지 못했어요」 */
@@ -112,7 +112,7 @@ export function toMyEntries(feedback: Feedback[], pending: PendingSend[]): MyEnt
     at: f.deliveredAt!,
     sessionId: f.sessionId,
     text: f.text,
-    quote: f.image && imageQuote(f.image),
+    quote: f.image ? imageQuote(f.image) : f.quote && { text: f.quote.text },
     state: latest.get(f.sessionId) === f.id ? 'delivered' : 'none',
     deliveredAt: f.deliveredAt,
     via: f.deliveredVia,

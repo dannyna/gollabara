@@ -13,7 +13,17 @@ export function feedbackLine(item: Feedback): string {
   const about = item.image
     ? `, about the image ${item.image.path} captured ${clock(item.image.at)}${item.image.sessionName ? ` in ${item.image.sessionName}` : ''}`
     : ''
-  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}): ${item.text}`
+  // JSON quoting keeps the recap on one line and escapes its own quotes
+  const reply = item.quote ? `, replying to your message from ${clock(item.quote.at)}: ${JSON.stringify(item.quote.text)}` : ''
+  return `${FEEDBACK_PREFIX} while you work (sent ${clock(item.createdAt)}${about}${reply}): ${item.text}`
+}
+
+/** Longest quoted recap line, in characters */
+export const QUOTE_MAX = 300
+
+/** A recap line as feedback quotes it: one line, trimmed, at most QUOTE_MAX characters (code points, so no emoji splits) */
+export function quoteText(text: string): string {
+  return Array.from(text.replace(/\s+/g, ' ').trim()).slice(0, QUOTE_MAX).join('').trimEnd()
 }
 
 /** Claimed items, one line each, oldest first */

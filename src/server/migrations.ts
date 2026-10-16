@@ -113,6 +113,11 @@ export const MIGRATIONS: Migration[] = [
   (db) => {
     db.run(`DELETE FROM settings WHERE key = 'retention'`)
   },
+  // 9: quote-reply on a chat message: the recap line the feedback answers and when that message was posted
+  (db) => {
+    db.run('ALTER TABLE feedback ADD COLUMN quote_text TEXT')
+    db.run('ALTER TABLE feedback ADD COLUMN quote_at INTEGER')
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

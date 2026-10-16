@@ -8,11 +8,11 @@ import SessionAvatar from './SessionAvatar.vue'
 // Always shows who a message goes to. It only emits `send`; delivery to sessions
 // lives elsewhere (ChatPanel). With `canSend` off every control is drawn disabled.
 export interface ComposerAttachment {
-  /** Image URL for the thumbnail */
-  url: string
-  /** Session that made the image */
+  /** Image URL for the thumbnail; none when a chat message is quoted */
+  url?: string
+  /** Session that made the image or wrote the message */
   session: string
-  /** e.g. 「히어로 A · 14:34」 */
+  /** e.g. 「히어로 A · 14:34」, or the quoted recap line */
   caption: string
 }
 export interface ComposerSend {
@@ -40,7 +40,7 @@ const props = withDefaults(defineProps<{
   blocked?: { text: string, icon: BannerIconName }
   /** Turns off only the send button; the draft stays */
   sendDisabled?: boolean
-  /** Quoted artifact above the input, removable with × (v-model:attachment) */
+  /** Quoted artifact or chat message above the input, removable with × (v-model:attachment) */
   attachment?: ComposerAttachment | null
   /** The @세션 list in the popover slot is open: ↓ moves into it, Escape closes it */
   mentionOpen?: boolean
@@ -113,7 +113,7 @@ defineExpose({ focus: () => input.value?.focus(), pickedMention })
     <!-- Anchored lists (the @세션 picker) open here, above the box -->
     <slot name="popover" />
     <div v-if="attachment" class="reply-context">
-      <img :src="attachment.url" alt=""><span>↪ <b>{{ attachment.session }}</b> · {{ attachment.caption }}</span>
+      <img v-if="attachment.url" :src="attachment.url" alt=""><span>↪ <b>{{ attachment.session }}</b> · {{ attachment.caption }}</span>
       <button class="icon-button" type="button" aria-label="인용 취소" @click="emit('update:attachment', null)">
         <ChatIcon name="close" />
       </button>

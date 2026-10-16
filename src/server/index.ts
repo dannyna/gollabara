@@ -1,13 +1,14 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, HistoryPage, IncomingEvent, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
+import type { Feedback, FeedbackClaim, FeedbackQuote, FeedbackRequest, FeedbackVia, Harness, Health, HistoryPage, IncomingEvent, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
 import type { Purged } from './store'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { dataDir, serverPort } from '../shared/config'
+import { quoteText } from '../shared/feedback'
 import { packageRoot } from '../shared/package-root'
 import { routesFor } from '../shared/routes'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
@@ -196,8 +197,15 @@ export function startServer() {
             return new Response('text is required', { status: 400 })
           if (body.image !== undefined && typeof body.image !== 'string')
             return new Response('image must be a string', { status: 400 })
+          let quote: FeedbackQuote | undefined
+          if (body.quote !== undefined) {
+            const { text, at } = (body.quote ?? {}) as Partial<FeedbackQuote>
+            quote = typeof text === 'string' && Number.isFinite(at) ? { text: quoteText(text), at: at! } : undefined
+            if (!quote?.text)
+              return new Response('quote needs text and at', { status: 400 })
+          }
           try {
-            const feedback = store.queueFeedback(body.sessionId, body.text, body.image || undefined)
+            const feedback = store.queueFeedback(body.sessionId, body.text, body.image || undefined, Date.now(), quote)
             publishFeedback('queued', feedback)
             channels.wake(feedback.sessionId)
             return Response.json(feedback)
