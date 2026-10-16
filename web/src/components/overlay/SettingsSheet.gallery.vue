@@ -10,7 +10,7 @@ import AppToast from './AppToast.vue'
 import SettingsSheet from './SettingsSheet.vue'
 import { useToast } from './useToast'
 
-const saved: Settings = { server: 'http://127.0.0.1:4747', phone: 'https://my-mac.ts.net', retention: '30' }
+const saved: Settings = { server: 'http://127.0.0.1:4747', phone: 'https://my-mac.ts.net' }
 // Gallery theme picks stay local; they never touch the app's stored theme
 const theme = ref<ThemePreference>('dark')
 const engine = ref<TriageEngine>('off')

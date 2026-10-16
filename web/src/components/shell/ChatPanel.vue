@@ -20,7 +20,6 @@ import StateView from '../banner/StateView.vue'
 import ArtifactThumbs from '../chat/ArtifactThumbs.vue'
 import { toFeed, toTimeline, turnThumbs } from '../chat/chat'
 import ChatComposer from '../chat/ChatComposer.vue'
-import ChatIcon from '../chat/ChatIcon.vue'
 import DateLabel from '../chat/DateLabel.vue'
 import HiddenRow from '../chat/HiddenRow.vue'
 import MyMessage from '../chat/MyMessage.vue'
@@ -65,10 +64,8 @@ const props = defineProps<{
   arrivals?: ReadonlyMap<string, number>
   /** Connected harnesses and the next step, for an empty chat; null until the server's health answered */
   guide?: Guide | null
-  /** The run of messages in view (useStream); without it the feed is live with nothing older */
+  /** The run of messages in view (useStream); without it the feed has nothing older */
   history?: HistoryState
-  /** The day jump's popover (the `days` slot) is open */
-  daysOpen?: boolean
 }>()
 const emit = defineEmits<{
   thumb: [key: string]
@@ -82,13 +79,8 @@ const emit = defineEmits<{
   mute: [id: string]
   /** From a session's avatar menu: 「이 세션 데이터 삭제」, which App confirms first */
   delete: [id: string]
-  /** The reader reached the start of the run, or the end of one that stops short of the latest */
+  /** The reader reached the start of the run */
   older: []
-  newer: []
-  /** 「최신으로」 from a run the reader jumped to: App loads the latest */
-  latest: []
-  /** Open or close the day jump */
-  days: []
 }>()
 
 // Answering questions is not built yet: question cards are drawn inert.
@@ -167,13 +159,10 @@ function refsOnly(item: (typeof view.value.items)[number]) {
 const shown = computed(() => view.value.items.filter(i => !i.folded && !refsOnly(i)).map(i => i.message))
 const viewOf = computed(() => new Map(view.value.items.map(i => [i.message.id, i])))
 // Folded messages keep their place in the timeline so their rows land where the lines were
-// Lines and bubbles outside a run of history wait for the messages around them
-const range = computed(() => ({
-  ...(props.history?.older && props.messages.length ? { since: props.messages[0]!.at } : {}),
-  ...(props.history && !props.history.live && props.messages.length ? { until: props.messages.at(-1)!.at } : {}),
-}))
+// Lines and bubbles before the loaded run wait for the messages around them
+const since = computed(() => props.history?.older && props.messages.length ? props.messages[0]!.at : undefined)
 const timeline = computed(() => toFeed(
-  toTimeline(view.value.items.map(i => i.message), props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value, range.value),
+  toTimeline(view.value.items.map(i => i.message), props.sessions, props.scoped ? [] : muteEvents.value, Date.now(), mine.value, since.value),
   (m) => {
     const v = viewOf.value.get(m.id)
     return v?.folded ? v.parts.flatMap(p => p.type === 'hidden' ? p.lines : []) : null
@@ -303,37 +292,28 @@ function retry(p: PendingSend) {
 // arrives and raise 「새 메시지 n ↓」 instead of moving the reader.
 const unseen = ref(0)
 const isAtEnd = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop < 70
-const live = computed(() => props.history?.live ?? true)
 let first = true
 // Server ids only grow and upserts keep theirs, so only ids past the highest seen are new.
 // Scope changes and unmuting show older messages; those are not counted. Watching what is
 // shown means a held line counts when it appears, and a folded message never does.
 let lastId = -Infinity
-// History (#77): a page joins the run above or below the reader, who stays where they were;
-// a jump or 「최신으로」 lands the feed (the watch on `land` below)
-let firstId = props.messages[0]?.id
+// History (#77): a page joins the run above the reader, who stays where they were
 let pagesSeen = props.history?.pages ?? 0
-let landSeen = props.history?.land.epoch ?? 0
 watch(shown, async (list) => {
   const arrived = list.filter(m => m.id > lastId).length
   lastId = Math.max(lastId, ...list.map(m => m.id))
   const el = feed.value
   const atEnd = !el || isAtEnd(el)
-  const landing = (props.history?.land.epoch ?? 0) !== landSeen
   const paged = (props.history?.pages ?? 0) !== pagesSeen
   pagesSeen = props.history?.pages ?? 0
-  const prepended = paged && props.messages[0] != null && firstId != null && props.messages[0].id < firstId
-  firstId = props.messages[0]?.id
   const keep = el && { top: el.scrollTop, height: el.scrollHeight }
   await nextTick()
-  if (landing || (paged && !prepended)) {
-    // Landed by the watch on `land`, or a newer page joined below the reader
-  }
-  else if (prepended) {
+  if (paged) {
+    // A page that brought nothing new leaves the height as it was, so this holds either way
     if (feed.value && keep)
       feed.value.scrollTop = keep.top + feed.value.scrollHeight - keep.height
   }
-  else if (first || (atEnd && live.value)) {
+  else if (first || atEnd) {
     feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: first ? 'instant' : 'smooth' })
   }
   else {
@@ -345,13 +325,13 @@ watch(shown, async (list) => {
 }, { immediate: true })
 // A bubble turning delivered moves to the session's receive time; follow it when at the end
 watch(() => mine.value.length, async () => {
-  if (!feed.value || !live.value || !isAtEnd(feed.value))
+  if (!feed.value || !isAtEnd(feed.value))
     return
   await nextTick()
   feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: 'smooth' })
 })
 
-/** How close to either end of the feed a page starts loading, in px */
+/** How close to the top of the feed a page starts loading, in px */
 const PAGE_EDGE = 300
 /** More than two heights above the latest: 「최신으로 ↓」 shows even with nothing new */
 const far = ref(false)
@@ -363,33 +343,8 @@ function maybeLoad() {
   // A feed too short to scroll keeps loading, so a sparse scope still reaches its messages
   if (h.older && el.scrollTop < PAGE_EDGE)
     emit('older')
-  else if (!h.live && el.scrollHeight - el.clientHeight - el.scrollTop < PAGE_EDGE)
-    emit('newer')
 }
-watch(() => props.history?.loading, loading => loading == null && nextTick(maybeLoad))
-
-/** Puts the day's date line at the top of the feed, or the last one before it when that day is not drawn */
-function revealDay(day: number) {
-  const el = feed.value
-  if (!el)
-    return
-  const lines = [...el.querySelectorAll<HTMLElement>('[data-day]')]
-  const line = lines.find(l => Number(l.dataset.day) >= day) ?? lines.at(-1)
-  if (line)
-    el.scrollTop += line.getBoundingClientRect().top - el.getBoundingClientRect().top
-}
-watch(() => props.history?.land, (next) => {
-  if (!next || next.epoch === landSeen)
-    return
-  landSeen = next.epoch
-  unseen.value = 0
-  if (next.day == null)
-    feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: 'instant' })
-  else
-    revealDay(next.day)
-  // A landing need not fire a scroll event, so the pill would keep the old run's distance
-  requestAnimationFrame(measureFar)
-}, { flush: 'post' })
+watch(() => props.history?.loading, loading => loading === false && nextTick(maybeLoad))
 
 function measureFar() {
   const el = feed.value
@@ -406,23 +361,16 @@ function onScroll() {
   maybeLoad()
 }
 function jumpToLatest() {
-  feed.value?.focus({ preventScroll: true })
-  // A run the reader jumped to is replaced by the latest one, and lands at its end
-  if (!live.value) {
-    emit('latest')
-    return
-  }
   feed.value?.scrollTo({ top: feed.value.scrollHeight, behavior: 'smooth' })
+  feed.value?.focus({ preventScroll: true })
   unseen.value = 0
 }
-const pillCount = computed(() => live.value ? unseen.value : props.history?.behind.messages ?? 0)
 
 /** Scrolls the message linked to the selected artifact into view */
 function reveal(messageId: number) {
   feed.value?.querySelector(`[data-msg="${messageId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
-const daysButton = ref<HTMLButtonElement>()
-defineExpose({ reveal, daysButton })
+defineExpose({ reveal })
 </script>
 
 <template>
@@ -431,16 +379,6 @@ defineExpose({ reveal, daysButton })
       <h2>세션 대화</h2>
       <div class="heading-end">
         <span>질문에 답하고, 피드백을 남겨요</span>
-        <!-- The day jump (#77): App puts its popover in the slot, under this button -->
-        <div class="days-anchor">
-          <button
-            ref="daysButton" class="days-button" type="button" aria-haspopup="dialog" :aria-expanded="!!daysOpen"
-            @click="emit('days')"
-          >
-            <ChatIcon name="calendar" />날짜
-          </button>
-          <slot name="days" />
-        </div>
       </div>
     </div>
     <NoticeLine v-if="offline">
@@ -458,7 +396,7 @@ defineExpose({ reveal, daysButton })
     <div v-else class="feed-box">
       <div ref="feed" class="feed" role="log" aria-label="세션 메시지" tabindex="-1" @scroll.passive="onScroll">
         <template v-for="item in timeline" :key="item.key">
-          <DateLabel v-if="item.type === 'date'" :label="item.label" :data-day="item.day" />
+          <DateLabel v-if="item.type === 'date'" :label="item.label" />
           <SystemLine v-else-if="item.type === 'system'" :icon="item.icon" :text="item.text">
             <!-- A muted session's messages are gone, so its menu opens from the mute line -->
             <template v-if="item.sessionId" #lead>
@@ -523,8 +461,8 @@ defineExpose({ reveal, daysButton })
         </template>
       </div>
       <!-- Nothing arrives while offline, so no pill then (OD banner guide 08) -->
-      <!-- Arrivals, a run the reader jumped to, or far back in a long one: each way back is the pill -->
-      <NewPill v-if="(unseen || !live || far) && !offline" kind="message" :count="pillCount" @click="jumpToLatest" />
+      <!-- Arrivals, or far back in a long run: either way back is the pill -->
+      <NewPill v-if="(unseen || far) && !offline" kind="message" :count="unseen" @click="jumpToLatest" />
     </div>
     <ChatComposer
       ref="composer" can-send hint="@세션을 부르거나, 산출물에 답장해 보세요" :route="receiverRoute" :blocked="blocked"
@@ -578,36 +516,6 @@ defineExpose({ reveal, daysButton })
 .heading span {
   font-size: 10px;
   color: var(--muted);
-}
-.days-anchor {
-  position: relative;
-  flex: none;
-}
-/* A quiet text button: muted until hovered or open; the hover fill is --bg on the --surface heading */
-.days-button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  margin-right: -7px;
-  padding: 0 9px 0 7px;
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.days-button .chat-icon {
-  width: 15px;
-  height: 15px;
-}
-.days-button:hover,
-.days-button[aria-expanded='true'] {
-  background: var(--bg);
-  color: var(--fg);
-}
-@media (pointer: coarse) {
-  .days-button {
-    min-height: 44px;
-  }
 }
 .feed-box {
   position: relative;

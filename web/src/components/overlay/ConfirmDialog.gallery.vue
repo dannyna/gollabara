@@ -3,57 +3,40 @@ import { ref } from 'vue'
 import GalleryCase from '../../gallery/GalleryCase.vue'
 import GalleryStage from '../../gallery/GalleryStage.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
-import SettingsSheet from './SettingsSheet.vue'
 
-// The app asks this before a shorter 보관 기간 deletes (over the sheet), and before
-// 「이 세션 데이터 삭제」 (on its own scrim)
-const saved = { server: 'http://127.0.0.1:4747', phone: '', retention: '30' as const }
-function noop() {}
-
-const sheetOpen = ref(false)
+// The app asks this before 「이 세션 데이터 삭제」 (on its own scrim)
 const confirmOpen = ref(false)
 const result = ref('')
 function decide(ok: boolean) {
   confirmOpen.value = false
-  result.value = ok ? '줄이고 지우기를 골랐어요' : '취소했어요'
+  result.value = ok ? '지우기를 골랐어요' : '취소했어요'
 }
 </script>
 
 <template>
-  <GalleryCase title="설정 시트 위 · 시트의 스크림을 그대로 씀 · 첫 포커스는 취소">
-    <GalleryStage :height="600">
-      <SettingsSheet :settings="saved" theme="dark" preview @close="noop" />
-      <ConfirmDialog title="보관 기간을 7일로 줄일까요?" confirm-label="줄이고 지우기" over-sheet preview>
-        <b>7일보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
-      </ConfirmDialog>
-    </GalleryStage>
-  </GalleryCase>
   <GalleryCase title="단독 · 스크림 (≤767px에서는 아래에 붙고 버튼이 세로로) · 아바타 메뉴의 세션 데이터 삭제">
     <GalleryStage :height="420">
-      <ConfirmDialog title="gollabara · feat/retention 세션의 데이터를 지울까요?" confirm-label="지우기" preview>
+      <ConfirmDialog title="gollabara · feat/expiry 세션의 데이터를 지울까요?" confirm-label="지우기" preview>
         이 세션의 메시지와 피드백, 다른 세션과 같이 쓰지 않는 이미지가 이 Mac에서 지워지고, 되돌릴 수 없어요.
       </ConfirmDialog>
     </GalleryStage>
   </GalleryCase>
-  <GalleryCase title="직접 열어 보기 · Esc와 스크림은 취소 · 시트는 열린 채">
-    <GalleryStage :height="640">
+  <GalleryCase title="직접 열어 보기 · Esc와 스크림은 취소">
+    <GalleryStage :height="420">
       <div class="demo">
-        <button class="secondary" type="button" @click="sheetOpen = true">
-          설정 열기
+        <button class="secondary" type="button" @click="confirmOpen = true">
+          세션 데이터 삭제
         </button>
         <p class="mono">
           {{ result || '결과 없음' }}
         </p>
       </div>
-      <template v-if="sheetOpen">
-        <SettingsSheet :settings="saved" theme="dark" @close="sheetOpen = false" @save="confirmOpen = true" />
-        <ConfirmDialog
-          v-if="confirmOpen" title="보관 기간을 7일로 줄일까요?" confirm-label="줄이고 지우기" over-sheet
-          @cancel="decide(false)" @confirm="decide(true)"
-        >
-          <b>7일보다 오래된</b> 메시지, 이미지, 피드백이 이 Mac에서 지워지고, 되돌릴 수 없어요.
-        </ConfirmDialog>
-      </template>
+      <ConfirmDialog
+        v-if="confirmOpen" title="gollabara · feat/expiry 세션의 데이터를 지울까요?" confirm-label="지우기"
+        @cancel="decide(false)" @confirm="decide(true)"
+      >
+        이 세션의 메시지와 피드백, 다른 세션과 같이 쓰지 않는 이미지가 이 Mac에서 지워지고, 되돌릴 수 없어요.
+      </ConfirmDialog>
     </GalleryStage>
   </GalleryCase>
 </template>

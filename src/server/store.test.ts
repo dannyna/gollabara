@@ -217,30 +217,63 @@ describe('deleting', () => {
     return message!
   }
 
-  test('a prune removes old messages, feedback and triage, and only the files nothing newer uses', () => {
+  /** Ends a session at `at`, as its SessionEnd hook would */
+  const end = (session: SessionInfo, at: number) => store.ingest({ kind: 'session-end', session }, at)
+
+  test('expiry removes a session that ended before the cutoff with its messages, feedback, triage and unshared images', () => {
     const lone = capture(od, PNG, 1000)
     const shared = capture(od, FULL_PNG, 1000)
     store.saveTriage({ messageId: lone.id, index: 0, verdict: 'hide' })
     const oldFeedback = store.queueFeedback('od-1', 'old', undefined, 1000)
-    const newer = capture(cc, FULL_PNG, 5000)
-    const newFeedback = store.queueFeedback('cc-1', 'new', undefined, 5000)
+    end(od, 2000)
+    // A running session shares the image; it stays however old its rows are
+    const running = capture(cc, FULL_PNG, 500)
+    const runningFeedback = store.queueFeedback('cc-1', 'kept', undefined, 500)
 
-    const purged = store.prune(3000)
+    const purged = store.expire(3000, 0)
     expect(purged).toEqual({ messageIds: [lone.id, shared.id], feedbackIds: [oldFeedback.id], sessionIds: ['od-1'], files: [lone.images![0]!.url.slice('/img/'.length)] })
     expect(existsSync(file(lone.images![0]!.url))).toBe(false)
-    expect(existsSync(file(newer.images![0]!.url))).toBe(true)
-    expect(store.recent().map(m => m.id)).toEqual([newer.id])
-    expect(store.recentFeedback().map(f => f.id)).toEqual([newFeedback.id])
+    expect(existsSync(file(running.images![0]!.url))).toBe(true)
+    expect(store.recent().map(m => m.id)).toEqual([running.id])
+    expect(store.recentFeedback().map(f => f.id)).toEqual([runningFeedback.id])
     expect(store.triageFor([lone.id])).toEqual([])
     expect(store.sessions().map(s => s.id)).toEqual(['cc-1'])
   })
 
-  test('a prune drops cached hide verdicts not written or used since the cutoff', () => {
+  test('expiry keeps a session that ended after the cutoff, or ended and came back', () => {
+    const recent = capture(od, PNG, 1000)
+    end(od, 4000)
+    const back = capture(cc, FULL_PNG, 1000)
+    end(cc, 1500)
+    // Any later event clears ended_at
+    const resumed = store.ingest({ kind: 'recap', session: cc, text: 'resumed' }, 1600).message!
+    expect(store.expire(3000, 0)).toEqual({ messageIds: [], feedbackIds: [], sessionIds: [], files: [] })
+    expect(store.recent().map(m => m.id)).toEqual([recent.id, back.id, resumed.id])
+    expect(store.sessions().map(s => s.id).sort()).toEqual(['cc-1', 'od-1'])
+  })
+
+  test('expiry removes rows older than the cutoff whose session has no record left', () => {
+    const old = capture(od, PNG, 1000)
+    const newer = capture(od, FULL_PNG, 5000)
+    const oldFeedback = store.queueFeedback('od-1', 'old', undefined, 1000)
+    store.queueFeedback('od-1', 'newer', undefined, 5000)
+    // Rows from before expiry outlived their session record
+    const db = new Database(join(dir, 'stream.db'))
+    db.run(`DELETE FROM sessions WHERE id = 'od-1'`)
+    // An early body named its session only as an object
+    const early = db.query('INSERT INTO messages (at, body) VALUES (1000, ?) RETURNING id').get(JSON.stringify({ session: { id: 'gone' }, recaps: ['done'] })) as { id: number }
+    db.close()
+    const purged = store.expire(3000, 0)
+    expect(purged).toMatchObject({ messageIds: [old.id, early.id], feedbackIds: [oldFeedback.id], sessionIds: [] })
+    expect(store.recent().map(m => m.id)).toEqual([newer.id])
+  })
+
+  test('expiry drops cached hide verdicts not written or used since the cache cutoff', () => {
     store.cacheVerdict('old', 'hide', 1000)
     store.cacheVerdict('reused', 'hide', 1000)
     store.cachedVerdict('reused', 4000)
     store.cacheVerdict('new', 'hide', 5000)
-    store.prune(3000)
+    store.expire(0, 3000)
     expect(['old', 'reused', 'new'].map(k => store.cachedVerdict(k))).toEqual([null, 'hide', 'hide'])
   })
 
@@ -263,9 +296,10 @@ describe('deleting', () => {
 
   test('a file that remaining feedback quotes stays', () => {
     const old = capture(od, PNG, 1000)
+    end(od, 1000)
     store.ingest({ kind: 'session', session: cc }, 5000)
     store.queueFeedback('cc-1', 'look at this', old.images![0]!.url, 5000)
-    expect(store.prune(3000).files).toEqual([])
+    expect(store.expire(3000, 0).files).toEqual([])
     expect(existsSync(file(old.images![0]!.url))).toBe(true)
   })
 
@@ -291,9 +325,9 @@ describe('deleting', () => {
 describe('settings', () => {
   test('a patch changes only its keys; a seed writes only keys never saved', () => {
     expect(store.settings()).toEqual({ triage: 'off' })
-    expect(store.saveSettings({ retention: '7' })).toEqual({ triage: 'off', retention: '7' })
-    expect(store.saveSettings({ retention: '30', phone: 'https://mac.ts.net' }, true)).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
-    expect(store.saveSettings({ phone: '' })).toEqual({ triage: 'off', retention: '7', phone: '' })
+    expect(store.saveSettings({ phone: 'https://mac.ts.net' })).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
+    expect(store.saveSettings({ triage: 'claude', phone: 'https://other.ts.net' }, true)).toEqual({ triage: 'claude', phone: 'https://mac.ts.net' })
+    expect(store.saveSettings({ phone: '' })).toEqual({ triage: 'claude', phone: '' })
   })
 })
 
@@ -359,35 +393,19 @@ describe('ended sessions', () => {
 })
 
 describe('history', () => {
-  const cc: SessionInfo = { id: 'cc-1', name: 'piuda', harness: 'claude-code', cwd: '/a/piuda' }
-  const DAY = 86_400_000
   /** One recap per call, each its own message, oldest first as the hook would store them */
   const say = (session: SessionInfo, text: string, at: number) => store.ingest({ kind: 'recap', session, text }, at).message!
 
-  test('pages extend a run at either end with no gap, and say what lies past it', () => {
+  test('pages extend a run back with no gap, and say whether more lies before it', () => {
     const ids = [1, 2, 3, 4, 5].map(n => say(od, `line ${n}`, n * 1000).id)
-    const latest = store.history({}, 2)
+    const latest = store.history(undefined, 2)
     expect(latest.messages.map(m => m.id)).toEqual(ids.slice(3))
-    expect([latest.older, latest.newer]).toEqual([true, false])
-    const older = store.history({ before: ids[3]! }, 2)
+    expect(latest.older).toBe(true)
+    const older = store.history(ids[3]!, 2)
     expect(older.messages.map(m => m.id)).toEqual(ids.slice(1, 3))
-    expect([older.older, older.newer]).toEqual([true, true])
-    expect(store.history({ before: ids[1]! }, 2)).toMatchObject({ older: false, newer: true })
-    const newer = store.history({ after: ids[0]! }, 3)
-    expect(newer.messages.map(m => m.id)).toEqual(ids.slice(1, 4))
-    expect(newer.newer).toBe(true)
-  })
-
-  test('a jump starts at the first message of that time, and past the last one finds nothing newer', () => {
-    say(od, 'a month ago', 1000)
-    const day = say(od, 'that day', 30 * DAY)
-    say(od, 'same day', 30 * DAY + 5000)
-    say(od, 'today', 60 * DAY)
-    const page = store.history({ from: 30 * DAY - 1000 }, 2)
-    expect(page.messages.map(m => m.text)).toEqual(['that day', 'same day'])
-    expect(page.messages[0]!.id).toBe(day.id)
-    expect([page.older, page.newer]).toEqual([true, true])
-    expect(store.history({ from: 61 * DAY }, 2)).toMatchObject({ messages: [], older: true, newer: false })
+    expect(older.older).toBe(true)
+    expect(store.history(ids[1]!, 2)).toMatchObject({ older: false })
+    expect(store.history(ids[0]!, 2)).toEqual({ messages: [], triage: [], feedback: [], older: false })
   })
 
   test('a page carries its verdicts and the feedback sent in its span, so pages laid end to end hold each once', () => {
@@ -396,29 +414,15 @@ describe('history', () => {
     const second = say(od, 'second', 2000)
     store.queueFeedback('od-1', 'after the second', undefined, 2500)
     store.saveTriage({ messageId: first.id, index: 0, verdict: 'hide' })
-    const older = store.history({ before: second.id }, 10)
+    const older = store.history(second.id, 10)
     expect(older.triage).toEqual([{ messageId: first.id, index: 0, verdict: 'hide' }])
     expect(older.feedback.map(f => f.text)).toEqual(['before the second'])
-    expect(store.history({}, 1).feedback.map(f => f.text)).toEqual(['after the second'])
+    expect(store.history(undefined, 1).feedback.map(f => f.text)).toEqual(['after the second'])
   })
 
-  test('days group by the view\'s local day, newest first, for every session or one', () => {
-    // 23:30 and 00:30 the next day in UTC+9 fall on different days there, the same day in UTC
-    const kst = 9 * 60
-    say(od, 'late', 2 * DAY - 9 * 3_600_000 - 30 * 60_000)
-    say(cc, 'early', 2 * DAY - 9 * 3_600_000 + 30 * 60_000)
-    say(cc, 'later', 3 * DAY)
-    const local = (day: number) => day * DAY - kst * 60_000
-    expect(store.days(kst)).toEqual([{ start: local(3), count: 1 }, { start: local(2), count: 1 }, { start: local(1), count: 1 }])
-    expect(store.days(0)).toEqual([{ start: 3 * DAY, count: 1 }, { start: 1 * DAY, count: 2 }])
-    expect(store.days(kst, 'cc-1').map(d => d.count)).toEqual([1, 1])
-  })
-
-  test('the day list and jumps read only the indexes', () => {
+  test('a session\'s messages are found through the expression index', () => {
     const db = new Database(join(dir, 'stream.db'))
     const plan = (sql: string) => (db.query(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[]).map(r => r.detail).join('; ')
-    expect(plan('SELECT CAST((at + 0) / 86400000 AS INTEGER) AS day, count(*) FROM messages GROUP BY day')).toContain('COVERING INDEX messages_at')
-    expect(plan('SELECT id FROM messages WHERE at >= 5 ORDER BY at, id LIMIT 1')).toContain('INDEX messages_at')
     expect(plan(`SELECT at FROM messages WHERE json_extract(body, '$.sessionId') = 'x'`)).toContain('INDEX messages_session')
     db.close()
   })

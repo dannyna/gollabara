@@ -2,17 +2,14 @@
 // agree; only the server address (and the theme, theme.ts) stays in this browser. Values from before
 // that move up once: the first device to connect seeds the server, and its local copy is dropped.
 
-import type { Retention, ServerSettings, SettingsPatch, TriageEngine } from '../../src/shared/types'
+import type { ServerSettings, SettingsPatch, TriageEngine } from '../../src/shared/types'
 import { ref } from 'vue'
-
-export type { Retention }
 
 /** The sheet's form: the server address from this browser, the rest from the server */
 export interface Settings {
   server: string
   /** Address to open on a phone; https only */
   phone: string
-  retention: Retention
 }
 
 export type SettingsErrors = Partial<Record<'server' | 'phone', string>>
@@ -20,19 +17,12 @@ export type SettingsErrors = Partial<Record<'server' | 'phone', string>>
 const STORAGE_KEY = 'gollabara-settings'
 
 export function defaultSettings(): Settings {
-  return { server: typeof location === 'undefined' ? '' : location.origin, phone: '', retention: 'forever' }
+  return { server: typeof location === 'undefined' ? '' : location.origin, phone: '' }
 }
 
-/** The sheet's values: an unset retention reads as 「계속 보관」, which is what the server does with it */
+/** The sheet's values */
 export function sheetSettings(server: string, stored: ServerSettings): Settings {
-  return { server, phone: stored.phone ?? '', retention: stored.retention ?? 'forever' }
-}
-
-const DAYS: Record<Retention, number> = { 7: 7, 30: 30, forever: Infinity }
-
-/** A shorter window deletes on save, so the sheet asks first */
-export function shortensRetention(from: Retention, to: Retention): boolean {
-  return DAYS[to] < DAYS[from]
+  return { server, phone: stored.phone ?? '' }
 }
 
 function isUrl(value: string, protocols: string[]) {
@@ -77,34 +67,19 @@ export function useSettings() {
   return { server, saveServer }
 }
 
-export interface LegacySettings {
-  /** Sent at once: the phone address, and a retention that deletes nothing */
-  seed: SettingsPatch | null
-  /**
-   * A window that deletes. It was saved while the sheet said nothing is deleted, so it seeds only
-   * after this device confirms, like any shorter window.
-   */
-  confirm: '7' | '30' | null
+/**
+ * What this browser kept from before the server stored settings: the phone address, as a seed. A kept
+ * 「보관 기간」 (removed in #116) is dropped.
+ */
+export function legacySettings(stored: Partial<Settings>): SettingsPatch | null {
+  return typeof stored.phone === 'string' ? { phone: stored.phone, seed: true } : null
 }
 
-/** What this browser kept from before the server stored settings */
-export function legacySettings(stored: Partial<Settings>): LegacySettings {
-  const patch: SettingsPatch = {}
-  if (stored.retention === 'forever')
-    patch.retention = stored.retention
-  if (typeof stored.phone === 'string')
-    patch.phone = stored.phone
-  return {
-    seed: Object.keys(patch).length ? { ...patch, seed: true } : null,
-    confirm: stored.retention === '7' || stored.retention === '30' ? stored.retention : null,
-  }
-}
-
-/** Keeps only the server address, and the retention still waiting for its confirm */
-function keepLocal(server: string | undefined, retention: Retention | null) {
+/** Keeps only the server address */
+function keepLocal(server: string | undefined) {
   try {
-    if (server || retention)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...(server ? { server } : {}), ...(retention ? { retention } : {}) }))
+    if (server)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ server }))
     else
       localStorage.removeItem(STORAGE_KEY)
   }
@@ -112,30 +87,21 @@ function keepLocal(server: string | undefined, retention: Retention | null) {
 }
 
 /**
- * Moves this browser's phone address and retention to the server, once. The server writes only keys it
- * has no value for, so a stale device never overwrites another's choice. Kept locally if the server refuses.
- * Returns a retention that deletes and waits for the user's confirm, or null.
+ * Moves this browser's phone address to the server, once. The server writes only keys it has no value
+ * for, so a stale device never overwrites another's choice. Kept locally if the server refuses.
  */
-export async function migrateLocalSettings(current: ServerSettings, fetcher: typeof fetch = fetch): Promise<'7' | '30' | null> {
+export async function migrateLocalSettings(fetcher: typeof fetch = fetch): Promise<void> {
   const stored = readStored()
-  const { seed, confirm } = legacySettings(stored)
+  const seed = legacySettings(stored)
   if (seed) {
     try {
       await putServerSettings(seed, fetcher)
     }
     catch {
-      return null
+      return
     }
   }
-  // The server already has a window from another device: this one's old choice is moot
-  const pending = current.retention ? null : confirm
-  keepLocal(stored.server, pending)
-  return pending
-}
-
-/** The confirm for a legacy retention was answered: it never asks again */
-export function forgetLegacyRetention() {
-  keepLocal(readStored().server, null)
+  keepLocal(stored.server)
 }
 
 /** Changes a server-side setting; throws Error with the message to show */

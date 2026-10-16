@@ -106,12 +106,11 @@ describe('toTimeline', () => {
     expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'f-1', 'm-2'])
   })
 
-  it('keeps bubbles and lines outside a run of history out until their messages load', () => {
+  it('keeps bubbles and lines before a run with older messages out until those load', () => {
     const bubble = (key: string, when: number) => ({ key, at: when, sessionId: 'a', text: key, state: 'delivered' as const })
-    const mine = [bubble('before', at(10, 8)), bubble('between', at(10, 10)), bubble('today', at(14, 20))]
-    const items = toTimeline([msg(1, 'a', at(10, 9)), msg(2, 'a', at(10, 11))], [], [], at(14, 20), mine, { since: at(10, 9), until: at(10, 11) })
-    expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'between', 'm-2'])
-    expect(items[0]).toMatchObject({ type: 'date', day: new Date(at(10, 9)).setHours(0, 0, 0, 0) })
+    const mine = [bubble('before', at(14, 8)), bubble('between', at(14, 10)), bubble('after', at(14, 12))]
+    const items = toTimeline([msg(1, 'a', at(14, 9)), msg(2, 'a', at(14, 11))], [], [], at(14, 20), mine, at(14, 9))
+    expect(items.map(i => i.key)).toEqual([expect.stringMatching(/^d-/), 'm-1', 'between', 'm-2', 'after'])
   })
 
   it('gives a start its own row type with the session and its full name', () => {
