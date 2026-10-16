@@ -1,0 +1,88 @@
+web/src/components/overlay/overlay.test.ts
+  s_b7f30c572db9a8::t_de874a64c3e1c4 2,20-21,29-30,33-37
+web/src/components/overlay/SettingsSheet.gallery.vue
+  s_b7f30c572db9a8::t_fa1fd8e5238231 13
+web/src/components/shell/StreamPanel.vue
+  s_b7f30c572db9a8::t_0e087553ceba9d 7,40,43,45,82,165,172,174,268-270
+web/src/history.test.ts
+  s_b7f30c572db9a8::t_67831a3e65ee66 5,8,12-16,21,23-24,39,43,45,53
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_d8705fcc42fd4e 249,251
+  s_b7f30c572db9a8::t_96801eb6b3b6c3 220-223,228-231,233,236-238,243-248,250,252-269,274,297,300,326-328,397,399,401-402,404-406,415,418,421
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_de874a64c3e1c4 245,331
+web/src/App.vue
+  s_b7f30c572db9a8::t_f460a6c5ea9b20 2,27,31,69,72-74,113-114,205,222-223,226,230,270,275,277-278
+web/src/settings.ts
+  s_b7f30c572db9a8::t_b6b0a6a8e7eb18 5,20,23,25,70-75,78-79,81-82,90-91,93,95,101,104
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_b135097a3d12e1 2
+  s_b7f30c572db9a8::t_c1025149de4c5b 68-69,71-80,104,110,113-114
+src/server/migrations.test.ts
+  s_b7f30c572db9a8::t_43fe174bc56e4c 106-118
+docs/ROADMAP.md
+  s_b7f30c572db9a8::t_9b5aee1b30e4a3 22-27
+  s_b7f30c572db9a8::t_171665182ed78a 15,28,108-110
+src/server/migrations.ts
+  s_b7f30c572db9a8::t_e468933af2ce1d 112-115
+web/src/useStream.ts
+  s_b7f30c572db9a8::t_365074382c81a0 7,89,114-116,182,184,186,188-192,195,218
+  s_b7f30c572db9a8::t_9a0964720f46be 3
+README.md
+  s_b7f30c572db9a8::t_5bb16598e35411 44-47,65
+README.ko.md
+  s_b7f30c572db9a8::t_5bb16598e35411 44-47,65
+DESIGN.md
+  s_b7f30c572db9a8::t_8d340a10476bf9 305,324,329,331,373,405
+  s_b7f30c572db9a8::t_9b5aee1b30e4a3 394-404,406-409
+web/src/components/banner/NewPill.vue
+  s_b7f30c572db9a8::t_0e087553ceba9d 10-11
+web/src/components/stream/StreamFooter.vue
+  s_b7f30c572db9a8::t_0e087553ceba9d 6,8
+src/server/index.ts
+  s_b7f30c572db9a8::t_e468933af2ce1d 4-5,15,21,43-46,132,139-140,144,297,299,355-356,358-359,362,365,367
+  s_b7f30c572db9a8::t_f8a0338c27aab7 311-314
+web/src/history.ts
+  s_b7f30c572db9a8::t_8575fe65dd151f 1-2,4,8,16,21,23-24,26,30-31,33,49-51,54,61
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_ba6ecb311a760c 101
+web/src/components/overlay/ConfirmDialog.gallery.vue
+  s_b7f30c572db9a8::t_c3997d29097340 7,12,19,24-25,27-28,34-39
+web/src/components/banner/NewPill.gallery.vue
+  s_b7f30c572db9a8::t_92ea19fa3da2e1 30,34,38
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_22519b73df9815 67,82,162-163,165,300,311-312,316,328,334,347,365,373,399,464-465
+src/server/store.ts
+  s_b7f30c572db9a8::t_5bc6888cecc57f 3,17,136,175-178,180-188,208
+  s_b7f30c572db9a8::t_31d8c52bb0fd0a 329-332,334,341-342
+  s_b7f30c572db9a8::t_9a0964720f46be 336
+  s_b7f30c572db9a8::t_1d8e823a573040 335,337
+src/shared/types.ts
+  s_b7f30c572db9a8::t_31d8c52bb0fd0a 217,238
+src/server/expiry.ts
+  s_b7f30c572db9a8::t_1b3aab031d909c 1-16
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_175ee611d2ed0f 81,83-85
+docs/E2E.md
+  s_b7f30c572db9a8::t_9b5aee1b30e4a3 121-141
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_175ee611d2ed0f 123,143-145,147,155,172
+AGENTS.md
+  s_b7f30c572db9a8::t_659c22af39a70c 80,84,86,88-91,93-97,101,103,107-110,112,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d109b5ef07b2c1e600af450a7d166ba125aefd4",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
