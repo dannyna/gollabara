@@ -1,0 +1,46 @@
+web/src/components/chat/QuestionCard.gallery.vue
+  s_b7f30c572db9a8::t_6b9cf5dfd54c7e 6
+  s_b7f30c572db9a8::t_a2865c7054b225 35,37
+  s_b7f30c572db9a8::t_6e66fa0d1233af 86
+web/src/components/chat/QuestionStepper.gallery.vue
+  s_b7f30c572db9a8::t_11845929d25bd4 1-12,14-47,49-55
+  s_b7f30c572db9a8::t_fe7428e08211dc 13
+  s_b7f30c572db9a8::t_69a1a356003d1b 48
+web/src/components/chat/QuestionCard.vue
+  s_b7f30c572db9a8::t_59fd52c7a85f1f 27-28
+  s_b7f30c572db9a8::t_15fd188cbf86b6 52-53
+  s_b7f30c572db9a8::t_58606eeef190b7 383
+  s_b7f30c572db9a8::t_da46b46a6bab54 145-150
+web/src/components/chat/QuestionStepper.vue
+  s_b7f30c572db9a8::t_5a4b603fbd6c6e 1-223
+web/src/components/shell/ChatPanel.vue
+  s_b7f30c572db9a8::t_e562d3faf8bb31 27
+  s_b7f30c572db9a8::t_33ac407d01f553 517-519
+DESIGN.md
+  s_b7f30c572db9a8::t_25361a71e191f6 347-348
+web/src/gallery/fixtures.ts
+  s_b7f30c572db9a8::t_6747ebd3195189 69-91
+web/src/gallery/FeedPreview.vue
+  s_b7f30c572db9a8::t_7333a5f6dfc2e5 8
+  s_b7f30c572db9a8::t_a9381613a30a51 69
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_7f8b52b5390bee 35-44
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_d1c50c9782cb97 4,31-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de8a331c5e139a77ac083994954972ac5a4599d0",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
