@@ -62,6 +62,17 @@ const result = computed(() => draftAnswers(props.questions, drafts.value))
 const countdown = computed(() => live.value && props.until != null && props.now != null ? holdNote(props.until, props.now) : undefined)
 
 const root = ref<HTMLElement>()
+const summaryEl = ref<HTMLElement>()
+// 「n개 답 보내기」 swaps the pages for the summary, and a failure swaps them back, which would drop focus to
+// the page: the new card takes it instead, if it was inside the old one
+watch(() => props.state, async () => {
+  if (!(root.value ?? summaryEl.value)?.contains(document.activeElement))
+    return
+  await nextTick()
+  const card = root.value ?? summaryEl.value
+  if (card && !card.contains(document.activeElement))
+    card.focus({ preventScroll: true })
+}, { flush: 'pre' })
 /** An arrow that turns disabled (on the first or last question) hands focus to the other one, if it had focus */
 async function go(to: number, event: MouseEvent) {
   const pressed = event.currentTarget as HTMLButtonElement
@@ -116,7 +127,7 @@ const SUMMARY_HEAD: Partial<Record<QuestionState, string>> = { terminal: '터미
     :inert="inert" :answered-at="answeredAt" :until="until" :now="now" :failure="failure" :retry="retry"
     @send="emit('send', { [questions[0]!.question]: $event })" @retry="emit('retry')"
   />
-  <div v-else-if="state === 'terminal' || state === 'done' || state === 'sending'" class="stepper summary" :class="state">
+  <div v-else-if="state === 'terminal' || state === 'done' || state === 'sending'" ref="summaryEl" class="stepper summary" :class="state" tabindex="-1">
     <div class="summary-head">
       <template v-if="state === 'sending'">
         <span class="spin" aria-hidden="true" />답 {{ questions.length }}개 보내는 중
@@ -134,7 +145,7 @@ const SUMMARY_HEAD: Partial<Record<QuestionState, string>> = { terminal: '터미
       </template>
     </dl>
   </div>
-  <div v-else ref="root" class="pages" :class="{ live }" role="group" :aria-label="`질문 ${questions.length}개`">
+  <div v-else ref="root" class="pages" :class="{ live }" role="group" :aria-label="`질문 ${questions.length}개`" tabindex="-1">
     <div class="page">
       <div class="head">
         <ChatIcon name="question" /><b>{{ current.header || '세션에서 물었어요' }}</b>

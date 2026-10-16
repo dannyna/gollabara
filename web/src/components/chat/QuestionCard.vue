@@ -58,6 +58,17 @@ watch(() => props.picks.join(), () => chosen.value = [...props.picks])
 const text = ref(props.typed ?? '')
 watch(() => props.typed, t => text.value = t ?? '')
 const field = ref<HTMLTextAreaElement>()
+const root = ref<HTMLElement>()
+// Sending disables or replaces the control that sent (a pick, 「보내기」, 「다시 보내기」), which would drop
+// focus to the page: the card takes it instead, if it was inside the card
+watch(locked, async (on, before) => {
+  if (!on || before || !root.value?.contains(document.activeElement))
+    return
+  await nextTick()
+  const active = document.activeElement as HTMLButtonElement | null
+  if (!root.value?.contains(active) || active?.disabled)
+    root.value?.focus({ preventScroll: true })
+}, { flush: 'pre' })
 // A hold that runs out mid-answer leaves the read-only card, not a disabled draft
 watch(() => props.inert, (inert) => {
   if (inert && props.state === 'open') {
@@ -97,7 +108,7 @@ const countdown = computed(() => props.until != null && props.now != null && !pr
 </script>
 
 <template>
-  <div class="question" :class="{ closed, offline: view === 'offline', inert }">
+  <div ref="root" class="question" :class="{ closed, offline: view === 'offline', inert }" tabindex="-1">
     <div class="eyebrow">
       <ChatIcon name="question" /><b>{{ question.header || '세션에서 물었어요' }}</b>
       <template v-if="multi">
