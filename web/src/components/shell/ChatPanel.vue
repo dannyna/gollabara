@@ -440,7 +440,7 @@ defineExpose({ reveal })
             :scoped="scope === item.message.sessionId" :ended="ended.has(item.message.sessionId)"
             :replyable="replyTargets.has(item.message.id)"
             @scope="toggleScope(item.message.sessionId)" @mute="emit('mute', item.message.sessionId)"
-            @delete="emit('delete', item.message.sessionId)" @reply="setTarget(replyTargets.get(item.message.id)!)"
+            @delete="emit('delete', item.message.sessionId)" @reply="setTarget({ ...replyTargets.get(item.message.id)! })"
           >
             <template v-for="part in viewOf.get(item.message.id)?.parts" :key="part.type === 'line' ? part.line.index : part.key">
               <RecapLine
