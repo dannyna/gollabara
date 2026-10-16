@@ -23,7 +23,7 @@ A guide for agents (and people) working in this repository: product invariants, 
 | `src/shared/`   | Types and config shared by the server, the hook, and the UI                                                                           |
 | `web/`          | Viewer UI (Vue 3 + Vite)                                                                                                              |
 | `plugin/`       | Claude Code plugin. `bin/hook.js` is a build output, but it is committed; Codex runs it too                                           |
-| `docs/`         | Architecture SVGs (from the Open Design `gollabara-architecture` project) and `ROADMAP.md`                                            |
+| `docs/`         | Architecture SVGs (from the Open Design `gollabara-architecture` project), `ROADMAP.md` and `E2E.md` (end-to-end scenarios)           |
 | `spike/`        | Early hook-input capture experiments, reference only                                                                                  |
 
 ## Commands
