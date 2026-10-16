@@ -103,6 +103,19 @@ describe('migrations', () => {
     after.close()
   })
 
+  test('migration 8 drops the stored 「보관 기간」 and keeps the other settings', () => {
+    openStore()
+    const db = open()
+    db.run('PRAGMA user_version = 7')
+    db.run(`INSERT INTO settings VALUES ('retention', '7'), ('phone', 'https://mac.ts.net')`)
+    db.close()
+    expect(openStore().settings()).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
+    const after = open()
+    expect(after.query(`SELECT value FROM settings WHERE key = 'retention'`).get()).toBeNull()
+    expect(version(after)).toBe(SCHEMA_VERSION)
+    after.close()
+  })
+
   test('reopening an upgraded database runs nothing again', () => {
     openStore()
     const db = open()

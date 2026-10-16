@@ -1,8 +1,8 @@
 // `golla serve` — receives artifacts, stores them, and streams them to every open view.
 
 import type { Server, ServerWebSocket } from 'bun'
-import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, HistoryDay, HistoryPage, IncomingEvent, Retention, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
-import type { HistoryCursor, Purged } from './store'
+import type { Feedback, FeedbackClaim, FeedbackRequest, FeedbackVia, Harness, Health, HistoryPage, IncomingEvent, ServerFrame, Session, SettingsPatch, TriageEngine } from '../shared/types'
+import type { Purged } from './store'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -12,13 +12,13 @@ import { packageRoot } from '../shared/package-root'
 import { routesFor } from '../shared/routes'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { CHANNEL_GRACE_MS, ChannelLiveness } from './channel'
+import { EXPIRE_EVERY_MS, expiryCutoffs } from './expiry'
 import { allowRequest, listenHosts } from './listen'
 import { goneSessions, SWEEP_MS, systemProbe } from './liveness'
 import { SCHEMA_VERSION } from './migrations'
 import { allowedHosts, refuseRequest } from './origin'
 import { loadVapidKeys, Pusher, sendPush, toSubscription } from './push'
-import { PRUNE_EVERY_MS, pruneBefore } from './retention'
-import { FeedbackError, RETENTIONS, Store, TRIAGE_ENGINES } from './store'
+import { FeedbackError, Store, TRIAGE_ENGINES } from './store'
 import { Triager } from './triage'
 import { isTrustedSource } from './trusted'
 
@@ -40,14 +40,10 @@ function clampInt(raw: string | null, min: number, max: number, fallback: number
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback
 }
 
-/** One cursor from `before`, `after` or `from`, in that order; none asks for the latest page */
-function historyCursor(params: URLSearchParams): HistoryCursor {
-  for (const key of ['before', 'after', 'from'] as const) {
-    const n = clampInt(params.get(key), 0, Number.MAX_SAFE_INTEGER, -1)
-    if (n >= 0)
-      return { [key]: n }
-  }
-  return {}
+/** The `before` cursor: a message id, or undefined for the latest page */
+function historyBefore(params: URLSearchParams): number | undefined {
+  const n = clampInt(params.get('before'), 0, Number.MAX_SAFE_INTEGER, -1)
+  return n >= 0 ? n : undefined
 }
 
 export function startServer() {
@@ -133,24 +129,22 @@ export function startServer() {
         if (req.method === 'GET')
           return Response.json(store.settings())
         if (req.method === 'PUT') {
-          // Turning triage on makes this machine run a CLI, and retention deletes: loopback and tailnet only, like feedback
+          // Turning triage on makes this machine run a CLI: loopback and tailnet only, like feedback
           if (!isTrustedSource(srv.requestIP(req)?.address))
             return new Response('forbidden', { status: 403 })
           const body = await req.json().catch(() => null) as SettingsPatch | null
           const invalid = settingsError(body)
           if (invalid)
             return new Response(invalid, { status: 400 })
-          const { triage: engine, retention, phone, seed } = body!
+          // A key from an older client (`retention`, #116) is ignored, never an error
+          const { triage: engine, phone, seed } = body!
           const previous = store.settings().triage
           if (engine && engine !== 'off' && engine !== previous && !Bun.which(engine))
             return new Response(`${engine} is not installed`, { status: 409 })
-          const settings = store.saveSettings({ triage: engine, retention, phone: phone?.trim() }, seed === true)
+          const settings = store.saveSettings({ triage: engine, phone: phone?.trim() }, seed === true)
           if (settings.triage !== previous)
             triager.onSettings(settings.triage)
           publish({ type: 'settings', settings })
-          // A shorter window deletes now, not at the next hourly pass
-          if (retention)
-            prune()
           return Response.json(settings)
         }
       }
@@ -300,11 +294,9 @@ export function startServer() {
       if (url.pathname === '/api/messages')
         return Response.json(store.recent())
 
-      // History beyond what the hello sent (#77): pages of messages, and the days that hold any
+      // Older messages than the hello sent (#77), for scrolling up within the loaded run
       if (url.pathname === '/api/history')
-        return Response.json(store.history(historyCursor(url.searchParams), clampInt(url.searchParams.get('limit'), 1, HISTORY_MAX, HISTORY_PAGE)) satisfies HistoryPage)
-      if (url.pathname === '/api/history/days')
-        return Response.json(store.days(clampInt(url.searchParams.get('tz'), -14 * 60, 14 * 60, 0), url.searchParams.get('session') || undefined) satisfies HistoryDay[])
+        return Response.json(store.history(historyBefore(url.searchParams), clampInt(url.searchParams.get('limit'), 1, HISTORY_MAX, HISTORY_PAGE)) satisfies HistoryPage)
 
       if (url.pathname === '/api/sessions')
         return Response.json(store.sessions().map(withChannel))
@@ -315,6 +307,10 @@ export function startServer() {
           ? new Response(file, { headers: { 'cache-control': 'public, max-age=31536000, immutable' } })
           : new Response('not found', { status: 404 })
       }
+
+      // An API path nothing answered (a removed route such as /api/history/days) is not the app's page
+      if (url.pathname.startsWith('/api/'))
+        return new Response('not found', { status: 404 })
 
       return serveWeb(url.pathname)
     },
@@ -356,20 +352,19 @@ export function startServer() {
     if (messageIds.length || feedbackIds.length || sessionIds.length)
       publish({ type: 'deleted', messageIds, feedbackIds, sessionIds })
   }
-  function prune() {
-    const before = pruneBefore(store.settings().retention, Date.now())
-    if (before === null)
-      return
+  // Ended sessions expire an hour after they end (#116)
+  function expire() {
     try {
-      publishPurged(store.prune(before))
+      const { endedBefore, cacheBefore } = expiryCutoffs(Date.now())
+      publishPurged(store.expire(endedBefore, cacheBefore))
     }
     catch (error) {
-      console.warn(`gollabara could not prune: ${error instanceof Error ? error.message : error}`)
+      console.warn(`gollabara could not expire sessions: ${error instanceof Error ? error.message : error}`)
     }
   }
-  prune()
+  expire()
   // unref: the timer alone never keeps the process (or a test run) alive
-  setInterval(prune, PRUNE_EVERY_MS).unref()
+  setInterval(expire, EXPIRE_EVERY_MS).unref()
   function publishSession(id: string) {
     const session = store.session(id)
     if (session)
@@ -400,8 +395,6 @@ function settingsError(body: SettingsPatch | null): string | null {
     return 'a settings object is required'
   if (body.triage !== undefined && !TRIAGE_ENGINES.includes(body.triage as TriageEngine))
     return 'triage must be off, claude or codex'
-  if (body.retention !== undefined && !RETENTIONS.includes(body.retention as Retention))
-    return 'retention must be 7, 30 or forever'
   if (body.phone !== undefined) {
     if (typeof body.phone !== 'string' || body.phone.length > PHONE_MAX)
       return 'phone must be a string'

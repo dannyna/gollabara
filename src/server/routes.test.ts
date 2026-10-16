@@ -1,5 +1,5 @@
 import type { Server } from 'bun'
-import type { HistoryDay, HistoryPage, Session } from '../shared/types'
+import type { HistoryPage, Session } from '../shared/types'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -65,11 +65,19 @@ const json = { 'content-type': 'application/json' }
 describe('settings', () => {
   test('a PUT changes only the keys it names; a seed never overwrites a stored value', async () => {
     const put = async (body: unknown) => fetch(`${url}/api/settings`, { method: 'PUT', headers: json, body: JSON.stringify(body) })
-    expect(await (await put({ retention: '7' })).json()).toMatchObject({ triage: 'off', retention: '7' })
-    expect(await (await put({ retention: '30', phone: 'https://mac.ts.net', seed: true })).json()).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
+    expect(await (await put({ phone: 'https://mac.ts.net' })).json()).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
+    expect(await (await put({ phone: 'https://other.ts.net', seed: true })).json()).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
     expect((await put({ phone: 'http://mac.local' })).status).toBe(400)
-    expect((await put({ retention: '1' })).status).toBe(400)
-    expect(await (await fetch(`${url}/api/settings`)).json()).toEqual({ triage: 'off', retention: '7', phone: 'https://mac.ts.net' })
+    expect(await (await fetch(`${url}/api/settings`)).json()).toEqual({ triage: 'off', phone: 'https://mac.ts.net' })
+  })
+
+  test('a stale client\'s retention is accepted and ignored (#116)', async () => {
+    const put = async (body: unknown) => fetch(`${url}/api/settings`, { method: 'PUT', headers: json, body: JSON.stringify(body) })
+    const res = await put({ retention: '7', seed: true })
+    expect(res.status).toBe(200)
+    expect(await res.json()).not.toHaveProperty('retention')
+    expect((await put({ retention: '1' })).status).toBe(200)
+    expect(await (await fetch(`${url}/api/settings`)).json()).not.toHaveProperty('retention')
   })
 })
 
@@ -93,17 +101,17 @@ describe('deleting a session', () => {
 })
 
 describe('history', () => {
-  test('pages and days answer with their cursor; a bad parameter falls back instead of failing', async () => {
+  test('pages answer before their cursor; a bad parameter falls back instead of failing', async () => {
     const say = (text: string) => fetch(`${url}/api/events`, { method: 'POST', headers: json, body: JSON.stringify({ kind: 'recap', session: { id: 'hist', name: 'hist', harness: 'claude-code', cwd: '/a' }, text }) })
     const ids = [] as number[]
     for (const text of ['one', 'two', 'three']) ids.push((await (await say(text)).json() as { id: number }).id)
     const latest = await (await fetch(`${url}/api/history?limit=2`)).json() as HistoryPage
     expect(latest.messages.map(m => m.id)).toEqual(ids.slice(1))
-    expect([latest.older, latest.newer]).toEqual([true, false])
+    expect(latest.older).toBe(true)
     const older = await (await fetch(`${url}/api/history?before=${ids[1]}&limit=nope`)).json() as HistoryPage
     expect(older.messages.at(-1)!.id).toBe(ids[0])
-    const days = await (await fetch(`${url}/api/history/days?tz=540&session=hist`)).json() as HistoryDay[]
-    expect(days).toEqual([{ start: expect.any(Number), count: 3 }])
+    // The day list is gone (#116), and an API path nothing answers is not the app's page
+    expect((await fetch(`${url}/api/history/days?tz=540`)).status).toBe(404)
   })
 })
 

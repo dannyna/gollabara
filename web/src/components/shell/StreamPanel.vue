@@ -5,9 +5,7 @@
 // stops following altogether: arrivals only raise the pill, wherever the rail sits.
 // Moving the rail sideways (wheel, arrows, a swipe) lets go of the pin.
 // References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
-// History (#77): reaching the start loads older cells, and a run the reader jumped to loads newer
-// ones at its end; either keeps the view in place. Such a run never follows: arrivals wait on the
-// server's side, the pill counts them, and it leads back to the latest.
+// History (#77): reaching the start loads older cells, and the view stays in place.
 
 import type { Artifact } from '../../artifacts'
 import type { Guide } from '../../firstrun'
@@ -40,13 +38,12 @@ const props = defineProps<{
   preview?: { unseen: number }
   /** Connected harnesses and the next step, for the empty view; null until the server's health answered */
   guide?: Guide | null
-  /** The run of messages in view (useStream); without it the rail is live with nothing older */
+  /** The run of messages in view (useStream); without it the rail has nothing older */
   history?: HistoryState
 }>()
-const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [], older: [], newer: [], latest: [] }>()
+const emit = defineEmits<{ select: [key: string], open: [key: string], pin: [key: string | null], sessions: [], older: [] }>()
 
-const live = computed(() => props.history?.live ?? true)
-/** How close to either end of the rail a page starts loading, in px */
+/** How close to the start of the rail a page starts loading, in px */
 const PAGE_EDGE = 400
 
 const folds = computed(() => referenceFolds(props.artifacts, props.references ?? []))
@@ -109,7 +106,7 @@ function onTouchMove(e: TouchEvent) {
 }
 /** More than two widths back from the latest: 「최신으로 →」 shows even with nothing new */
 const far = ref(false)
-/** Loads a page when the reader is at an end; only on their own scroll, so a rail of few cells never pulls in all history */
+/** Loads a page when the reader is at the start; only on their own scroll, so a rail of few cells never pulls in all history */
 function maybeLoad() {
   const el = track.value
   const h = props.history
@@ -117,8 +114,6 @@ function maybeLoad() {
     return
   if (h.older && el.scrollLeft < PAGE_EDGE)
     emit('older')
-  else if (!h.live && el.scrollWidth - el.clientWidth - el.scrollLeft < PAGE_EDGE)
-    emit('newer')
 }
 function onIntent() {
   markUserIntent()
@@ -133,12 +128,6 @@ function onScroll() {
   const el = track.value!
   measureFar()
   maybeLoad()
-  if (!live.value) {
-    // A run that does not reach the latest has nothing to follow
-    if (Date.now() < userIntentUntil)
-      follow.value = 'paused'
-    return
-  }
   if (atLatest(el, rail.value?.latestAlign())) {
     // A pin keeps the rail from following even at the right end
     if (!pin.value)
@@ -155,11 +144,6 @@ function toLatest(behavior: ScrollBehavior) {
   el?.scrollTo({ left: latestLeft(el.scrollWidth - el.clientWidth, rail.value?.latestAlign()), behavior })
 }
 function jumpToLatest() {
-  // A run the reader jumped to is replaced by the latest one; App lets go of the pin
-  if (!live.value) {
-    emit('latest')
-    return
-  }
   // The way back to the latest also lets go of the pin, so following resumes
   if (props.pinned)
     emit('pin', null)
@@ -205,41 +189,16 @@ function restoreView(hold: { key: string, offset: number } | null) {
     el.scrollLeft += cell.getBoundingClientRect().left - el.getBoundingClientRect().left - hold!.offset
 }
 
-/** Pages and landings already handled, so the list watch tells them from arrivals */
+/** Pages already handled, so the list watch tells them from arrivals */
 let pagesSeen = props.history?.pages ?? 0
-let landSeen = props.history?.land.epoch ?? 0
-
-/** A jump or 「최신으로」 lands on the day's first cell, or on the latest */
-function land(day: number | null) {
-  unseen.value = 0
-  if (day == null) {
-    follow.value = pin.value ? 'paused' : 'following'
-    toLatest('instant')
-    return
-  }
-  follow.value = 'paused'
-  const cell = props.artifacts.find(a => a.at >= day)
-  if (cell)
-    rail.value?.align(cell.key, 'instant')
-  else
-    toLatest('instant')
-}
-watch(() => props.history?.land, (next) => {
-  if (next && next.epoch !== landSeen) {
-    landSeen = next.epoch
-    land(next.day)
-    // A landing need not fire a scroll event, so the pill would keep the old run's distance
-    requestAnimationFrame(measureFar)
-  }
-}, { flush: 'post' })
 
 watch([() => props.artifacts, () => props.scope], async ([list, scope], [prevList, prevScope]) => {
   // A page renumbers arrivals (they rank the loaded captures): count from here, and keep the view
   const paged = (props.history?.pages ?? 0) !== pagesSeen
   pagesSeen = props.history?.pages ?? 0
-  if (paged || (props.history?.land.epoch ?? 0) !== landSeen) {
+  if (paged) {
     seen = lastArrival(list)
-    const hold = paged ? holdView(new Set(), activePin(props.pinned, keysOf(list))) : null
+    const hold = holdView(new Set(), activePin(props.pinned, keysOf(list)))
     await nextTick()
     if (hold)
       restoreView(hold)
@@ -307,10 +266,6 @@ watch(track, (el) => {
     follow.value = 'paused'
     rail.value?.align(pin.value, 'instant')
   }
-  else if (!live.value) {
-    // The first cells of a run the reader jumped to (the scope had none before)
-    land(props.history!.land.day)
-  }
   else {
     toLatest('instant')
   }
@@ -341,12 +296,9 @@ const { setTarget } = useFeedbackTarget()
       @step="onStep" @scroll.passive="onScroll" @wheel.passive="onIntent" @pointerdown="markUserIntent"
       @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @keydown="onIntent"
     />
-    <!-- Arrivals, a run the reader jumped to, or far back in a long one: each way back is the pill -->
-    <NewPill
-      v-if="artifacts.length && (!live || (follow === 'paused' && unseen) || far)" kind="artifact"
-      :count="live ? unseen : history!.behind.artifacts" @click="jumpToLatest"
-    />
-    <StreamFooter :follow="follow" :pinned="!!pin" :history="!live" />
+    <!-- Arrivals, or far back in a long run: either way back is the pill -->
+    <NewPill v-if="artifacts.length && ((follow === 'paused' && unseen) || far)" kind="artifact" :count="unseen" @click="jumpToLatest" />
+    <StreamFooter :follow="follow" :pinned="!!pin" />
   </section>
 </template>
 
