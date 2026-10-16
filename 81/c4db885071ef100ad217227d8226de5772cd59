@@ -1,0 +1,50 @@
+web/src/components/overlay/SessionPopover.vue
+  s_b7f30c572db9a8::t_509e27d4c192ea 2,5-6,25-26,44,48-55,57,64,75-79,84,91-95,100-119,122-125,131-132,145,157,165,168,177,196-202,204-210,213-245,247,249,254-257,259-261,263-277,280,284-287,291,295-297,300-305,309-311,313-314,316-328,330-341,343-346,348-364,366,368,370,372-377,379,394-401,411
+  s_b7f30c572db9a8::t_e1b7371673fd53 56
+web/src/sessions.ts
+  s_b7f30c572db9a8::t_23cb3d1e9f3dcf 4,20-49,60-61,84-85
+web/src/sessions.test.ts
+  s_b7f30c572db9a8::t_2bd8619af85077 24,26,30-33
+  s_b7f30c572db9a8::t_5fe5ca5d9b4208 34,68-90
+  s_b7f30c572db9a8::t_904c29c5faf704 3,35
+src/server/channel.test.ts
+  s_b7f30c572db9a8::t_96ec68bba27ae1 102-132
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_58e0c0d0aab12d 65-92
+src/shared/types.ts
+  s_b7f30c572db9a8::t_c74a1d0791e124 48-49,52-56
+  s_b7f30c572db9a8::t_9bb246a36dfc07 57
+web/src/components/overlay/gallery-samples.ts
+  s_b7f30c572db9a8::t_cb9d886560e6b2 29-32,34-36
+web/src/components/overlay/SessionPopover.gallery.vue
+  s_b7f30c572db9a8::t_c1d8fd76dd7400 13-15
+  s_b7f30c572db9a8::t_6ee5a52e063a34 2,7,12,16-37,60-61,64,69-71,73,78-79,82,87,89,91,96-97,100,105-107,109,118,124,127,132-133,136,141-142
+DESIGN.md
+  s_b7f30c572db9a8::t_1679d511f62545 329
+  s_b7f30c572db9a8::t_7f9654ffa22c70 305
+  s_b7f30c572db9a8::t_b1fec9e797e6e6 300
+src/server/channel.ts
+  s_b7f30c572db9a8::t_c74a1d0791e124 3,39-40,57-61,63-65,67,70-71,77-82,84,88
+src/server/index.ts
+  s_b7f30c572db9a8::t_c74a1d0791e124 58,227-229,263-264
+AGENTS.md
+  s_b7f30c572db9a8::t_f015cc6563777f 181-188,190
+  s_b7f30c572db9a8::t_5ff5a267c12d32 175
+  s_b7f30c572db9a8::t_8f645ee435a434 189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81c4db885071ef100ad217227d8226de5772cd59",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
