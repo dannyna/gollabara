@@ -54,6 +54,7 @@ Covers MVP 4, the Claude Code capture table.
 | C9  | Open Design       | `OD_PROJECT_ID=e2e-od claude -p …`                                                     | The session is tagged `open-design` and named `e2e-od`                                                    | auto | pass        |
 | C10 | #97, invariant 2  | Time `claude -p "say hi"` with the plugin                                              | Exits in under 15 s; no `hook.js wait` process is left                                                    | auto | pass        |
 | C11 | invariant 2       | Run `claude -p` with the server stopped, then with a server that never answers         | The run is unaffected and prints no hook error; each hook run ends within 2.5 s                           | auto | fail (#104) |
+| C12 | Stop, #122        | Type a prompt while a subagent hand-back or task-notification turn runs                | The reply to that prompt is posted as a recap                                                             | tmux | —           |
 | C12 | #102              | Run C2–C9 with the current bundle                                                      | `GET /api/health` lists `claude-code` at the version in `plugin/.claude-plugin/plugin.json`, not outdated | auto | pass        |
 
 ## Feedback to Claude Code

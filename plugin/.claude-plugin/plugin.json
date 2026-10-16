@@ -1,5 +1,5 @@
 {
   "name": "gollabara",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 }

@@ -13,16 +13,19 @@ const WAKE_UP_TURN_ORIGINS = new Set(['task_notification', 'peer', 'system', 'sc
  * Classifies the turn from the tail of a Claude Code transcript (JSONL). Only the entry that
  * opens a turn carries `turnOrigin`, so the last one in the tail is the current turn's.
  * Feedback gollabara delivered after that opener makes the turn the user's: they wait on the reply. So does a wake-up
- * (a `task_notification` turn whose system reminder carries the feedback), told apart as `rewake`.
+ * (a `task_notification` turn whose system reminder carries the feedback), told apart as `rewake`. A prompt the user
+ * typed while a wake-up turn ran arrives queued inside that turn, not as a new opener, so it makes the turn the user's too.
  * The first line of a tail is usually cut off and is skipped like any unparsable line.
  */
 export function turnOpener(tail: string): TurnOpener {
   const lines = tail.split('\n')
+  let typed = false
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i]
     // Cheap filter first: screenshot turns carry multi-MB base64 lines
     const opens = line.includes('"turnOrigin"')
-    if (!opens && !line.includes(FEEDBACK_PREFIX))
+    const queued = line.includes('"queued_command"')
+    if (!opens && !queued && !line.includes(FEEDBACK_PREFIX))
       continue
     let entry: any
     try {
@@ -35,11 +38,17 @@ export function turnOpener(tail: string): TurnOpener {
       continue
     if (isFeedbackDelivery(entry))
       return 'human'
+    if (queued && isHumanQueuedPrompt(entry))
+      typed = true
     if (!opens || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
       continue
     if (isRewakeFeedback(entry))
       return 'rewake'
-    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? 'human' : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? 'system' : 'unknown'
+    if (HUMAN_TURN_ORIGINS.has(entry.turnOrigin))
+      return 'human'
+    if (WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin))
+      return typed ? 'human' : 'system'
+    return 'unknown'
   }
   return 'unknown'
 }
@@ -84,6 +93,12 @@ function isFeedbackDelivery(entry: any): boolean {
   return attachment?.type === 'hook_additional_context'
     && Array.isArray(attachment.content)
     && attachment.content.some((c: unknown) => typeof c === 'string' && c.startsWith(FEEDBACK_PREFIX))
+}
+
+/** A prompt the user typed mid-turn; queued task notifications carry another `origin.kind` */
+function isHumanQueuedPrompt(entry: any): boolean {
+  const attachment = entry?.type === 'attachment' ? entry.attachment : undefined
+  return attachment?.type === 'queued_command' && attachment.origin?.kind === 'human'
 }
 
 /** A turn gollabara's wake-up Stop hook opened: its stderr, the feedback, lands in the system reminder */

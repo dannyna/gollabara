@@ -24,7 +24,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.3.3",
+  version: "0.3.4",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -149,10 +149,12 @@ var WAKE_UP_TURN_ORIGINS = new Set(["task_notification", "peer", "system", "sche
 function turnOpener(tail) {
   const lines = tail.split(`
 `);
+  let typed = false;
   for (let i = lines.length - 1;i >= 0; i--) {
     const line = lines[i];
     const opens = line.includes('"turnOrigin"');
-    if (!opens && !line.includes(FEEDBACK_PREFIX))
+    const queued = line.includes('"queued_command"');
+    if (!opens && !queued && !line.includes(FEEDBACK_PREFIX))
       continue;
     let entry;
     try {
@@ -164,11 +166,17 @@ function turnOpener(tail) {
       continue;
     if (isFeedbackDelivery(entry))
       return "human";
+    if (queued && isHumanQueuedPrompt(entry))
+      typed = true;
     if (!opens || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
       continue;
     if (isRewakeFeedback(entry))
       return "rewake";
-    return HUMAN_TURN_ORIGINS.has(entry.turnOrigin) ? "human" : WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin) ? "system" : "unknown";
+    if (HUMAN_TURN_ORIGINS.has(entry.turnOrigin))
+      return "human";
+    if (WAKE_UP_TURN_ORIGINS.has(entry.turnOrigin))
+      return typed ? "human" : "system";
+    return "unknown";
   }
   return "unknown";
 }
@@ -201,6 +209,10 @@ function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
 function isFeedbackDelivery(entry) {
   const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
   return attachment?.type === "hook_additional_context" && Array.isArray(attachment.content) && attachment.content.some((c) => typeof c === "string" && c.startsWith(FEEDBACK_PREFIX));
+}
+function isHumanQueuedPrompt(entry) {
+  const attachment = entry?.type === "attachment" ? entry.attachment : undefined;
+  return attachment?.type === "queued_command" && attachment.origin?.kind === "human";
 }
 function isRewakeFeedback(entry) {
   return entry?.origin?.kind === "task-notification" && carriesFeedback(entry);
