@@ -1,0 +1,41 @@
+web/src/components/chat/icons.ts
+  s_b7f30c572db9a8::t_6e23193dc42d24 24,26
+DESIGN.md
+  s_b7f30c572db9a8::t_0fadb57720e124 348
+web/src/components/chat/chat.test.ts
+  s_b7f30c572db9a8::t_a381b0aeef310b 51-53,56,61,66-70
+web/src/components/chat/chat.ts
+  s_b7f30c572db9a8::t_210884cd8c4146 40,48,50-51,54,61-63
+web/src/components/chat/QuestionStepper.vue
+  s_b7f30c572db9a8::t_0b3688574ddd6a 5,10-15,31,34-37,39,43-44,69-92,94-95,97,99-102,104-111,116-117,119-120,125-143,146-149,152-154,156-157,162,164,183-185,188,191-192,197-199,201-210,214-217,220,226-229,233,238-239,243-245,247-248,250,256-259,272-305
+  s_6013583401a349::t_e92c5dc8fa0f47 306
+web/src/components/chat/QuestionStepper.gallery.vue
+  s_b7f30c572db9a8::t_9b284102076982 28
+  s_b7f30c572db9a8::t_41050b548cfcc8 14
+  s_b7f30c572db9a8::t_f07032004ec96d 49
+  s_b7f30c572db9a8::t_51621e36ddf24d 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d880810ad7c03c299e572ffcf3d884c685154500",
+  "prompts": {},
+  "sessions": {
+    "s_6013583401a349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "766c258e-f714-47e5-8527-9be69c02c561",
+        "model": "unknown"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    },
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
