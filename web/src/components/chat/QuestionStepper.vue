@@ -2,14 +2,14 @@
 import type { Question } from '../../../../src/shared/types'
 import type { QuestionState } from './QuestionCard.vue'
 import { computed, nextTick, ref } from 'vue'
-import { answerLabel, clampStep, stepNav, toChoice } from './chat'
+import { answerLabel, clampStep, stepName, stepNav, toChoice } from './chat'
 import ChatIcon from './ChatIcon.vue'
 import QuestionCard from './QuestionCard.vue'
 
 // A session's AskUserQuestion set in one card, one question at a time (OD guide:
-// question-card-v3.html, 5). The current question is a page in front; the next one peeks out on
-// its right edge as one button that brings it forward, and 「앞 문항」 under the options steps
-// back. The options are read-only rows: answering is not built, so only stepping can be pressed.
+// question-card-v3.html, 5). The current question fills the card, and an indicator at its foot steps
+// through the set: ‹, one dot per question, ›. The options are read-only rows: answering is not
+// built, so only stepping can be pressed.
 // Stepping is view state only, never sent or stored. ←/→ belong to the stream rail and the
 // viewer, so the card handles no keys: Tab reaches the buttons, Enter or Space presses them.
 // One question is today's card, without steps.
@@ -31,17 +31,14 @@ const current = computed(() => props.questions[nav.value.step]!)
 const panes = computed(() => props.questions.map(q => ({ question: q, options: q.options.map(toChoice) })))
 
 const root = ref<HTMLElement>()
-/**
- * A pressed button that goes away (the peek on the last question) or turns disabled (앞 문항 on
- * the first) hands focus to the other control, but only if it had focus
- */
+/** An arrow that turns disabled (on the first or last question) hands focus to the other one, if it had focus */
 async function go(to: number, event: MouseEvent) {
   const pressed = event.currentTarget as HTMLButtonElement
   const focused = document.activeElement === pressed
   step.value = clampStep(to, props.questions.length)
   await nextTick()
-  if (focused && (!pressed.isConnected || pressed.disabled))
-    root.value?.querySelector<HTMLElement>('.peek, .back:not(:disabled)')?.focus()
+  if (focused && pressed.disabled)
+    root.value?.querySelector<HTMLElement>('.arrow:not(:disabled)')?.focus()
 }
 
 // Answered in the terminal: each header with the picked answer, or the card's own copy when unknown
@@ -90,25 +87,30 @@ const summary = computed(() => props.questions.map((q, i) => ({
           </ul>
         </div>
       </div>
-      <button
-        class="back" type="button" :disabled="nav.previous === undefined"
-        @click="nav.previous !== undefined && go(nav.previous, $event)"
-      >
-        <ChatIcon name="previous" />앞 문항
-      </button>
-      <p class="notice">
-        앱에서 답하기는 준비 중이에요 · 터미널에서 답해 주세요
-      </p>
       <span class="sr-only" role="status" aria-live="polite">{{ nav.step + 1 }}번째 질문 · {{ current.header || '세션에서 물었어요' }}</span>
+      <div class="indicator">
+        <button
+          class="arrow" type="button" :disabled="!nav.previous"
+          :aria-label="nav.previous ? `앞 질문 보기 · ${nav.previous.label}` : '앞 질문 없음'"
+          @click="nav.previous && go(nav.previous.step, $event)"
+        >
+          <ChatIcon name="previous" />
+        </button>
+        <button
+          v-for="(q, i) in questions" :key="i" class="dot" :class="{ current: i === nav.step }" type="button"
+          :aria-label="stepName(i, q)" :aria-current="i === nav.step ? 'step' : undefined" @click="go(i, $event)"
+        >
+          <span />
+        </button>
+        <button
+          class="arrow" type="button" :disabled="!nav.next"
+          :aria-label="nav.next ? `다음 질문 보기 · ${nav.next.label}` : '다음 질문 없음'"
+          @click="nav.next && go(nav.next.step, $event)"
+        >
+          <ChatIcon name="next" />
+        </button>
+      </div>
     </div>
-    <button
-      v-if="nav.next" class="peek" type="button" :aria-label="`다음 질문 보기 · ${nav.next.label}`"
-      @click="go(nav.next.step, $event)"
-    >
-      <span class="number">{{ nav.next.number }}</span>
-      <span class="title">다음 질문</span>
-      <ChatIcon name="next" />
-    </button>
   </div>
 </template>
 
@@ -123,21 +125,13 @@ const summary = computed(() => props.questions.map((q, i) => ({
   background: var(--bg);
 }
 
-/* The current page in front; the right gutter stays on every step, so the page's width (and so
-   its height) never changes, even on the last question where nothing peeks */
-.pages {
-  position: relative;
-  isolation: isolate;
-  padding-right: 45px;
-}
+/* The current question fills the card, with the indicator at its foot */
 .page {
   position: relative;
-  z-index: 1;
   min-width: 0;
   padding: 14px;
   border-radius: 16px;
   background: var(--bg);
-  box-shadow: 5px 0 10px var(--shade);
   line-height: 1.65;
 }
 .head {
@@ -230,35 +224,6 @@ const summary = computed(() => props.questions.map((q, i) => ({
   color: var(--muted);
 }
 
-.back {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 5px 0 -5px;
-  padding: 0 7px 0 0;
-  border-radius: 7px;
-  font-size: 11px;
-}
-.back .chat-icon {
-  width: 16px;
-  height: 16px;
-}
-.back:disabled {
-  opacity: 0.3;
-}
-.back:hover:not(:disabled) {
-  background: none;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.notice {
-  margin-top: 14px;
-  font-size: 10px;
-  line-height: 1.7;
-  letter-spacing: 0.01em;
-  color: var(--muted);
-}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -269,39 +234,57 @@ const summary = computed(() => props.questions.map((q, i) => ({
   white-space: nowrap;
 }
 
-/* The next question's page behind the current one: its edge is one button */
-.peek {
-  position: absolute;
-  top: 18px;
-  right: 0;
-  bottom: 18px;
-  width: 44px;
+/* At the card's foot: ‹, a dot per question (the current one a longer --fg pill), › */
+.indicator {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 8px 0;
-  border: 1px solid var(--border);
-  border-radius: 0 12px 12px 0;
-  background: var(--bg);
+  gap: 2px;
+  margin: 12px 0 -6px;
 }
-.peek:hover:not(:disabled) {
-  background: var(--bg);
-  border-color: var(--muted);
-}
-.peek .number {
-  font: 11px var(--mono);
+.arrow,
+.dot {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
   color: var(--muted);
 }
-.peek .title {
-  writing-mode: vertical-rl;
-  font-size: 11px;
-  letter-spacing: 0.1em;
+.arrow {
+  width: 28px;
 }
-.peek .chat-icon {
+.arrow:hover:not(:disabled) {
+  color: var(--fg);
+}
+.arrow:disabled {
+  opacity: 0.35;
+}
+.arrow .chat-icon {
   width: 16px;
   height: 16px;
+}
+.dot {
+  width: 18px;
+}
+.dot span {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  transition: width 0.15s;
+}
+.dot:hover span {
+  background: var(--muted);
+}
+.dot.current {
+  width: 26px;
+}
+.dot.current span {
+  width: 16px;
+  background: var(--fg);
 }
 
 /* Answered in the terminal: headers and picks, all muted */

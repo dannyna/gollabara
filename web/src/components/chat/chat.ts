@@ -42,26 +42,23 @@ export function stepName(index: number, question: Question): string {
   return question.header ? `질문 ${index + 1} · ${question.header}` : `질문 ${index + 1}`
 }
 
+/** A question the indicator under the card leads to: its step and its name */
+export interface StepLink { step: number, label: string }
+
 export interface StepNav {
   /** The step actually shown, within the set */
   step: number
-  /** 「앞 문항」's target; none on the first question, where the button is disabled */
-  previous?: number
-  /** The next question's page peeking from the side: target, mono number and name; none on the last */
-  next?: { step: number, number: string, label: string }
+  /** ‹ leads here; none on the first question */
+  previous?: StepLink
+  /** › leads here; none on the last question */
+  next?: StepLink
 }
 
-/** Where a question set's controls lead from one step: 「앞 문항」 and the next question's peek */
+/** Where the indicator's ‹ and › lead from one step */
 export function stepNav(questions: Question[], step: number): StepNav {
   const at = clampStep(step, questions.length)
-  const following = questions[at + 1]
-  return {
-    step: at,
-    previous: at > 0 ? at - 1 : undefined,
-    next: following
-      ? { step: at + 1, number: String(at + 2).padStart(2, '0'), label: stepName(at + 1, following) }
-      : undefined,
-  }
+  const link = (to: number): StepLink | undefined => questions[to] ? { step: to, label: stepName(to, questions[to]!) } : undefined
+  return { step: at, previous: link(at - 1), next: link(at + 1) }
 }
 
 /** Mono line under a thumbnail strip. Turns carry no tool name, so it is shown only when known. */
