@@ -10,7 +10,7 @@ gollabara is a local web app that streams the artifacts of coding and design ses
 ## Must flag
 
 - **Observer, not mediator.** Flag any feature that asks a session for approval, invents questions, or adds `post` / `ask` tools for agents. Only the session's own `AskUserQuestion` is mirrored.
-- **The hook never blocks a session.** Hook code must keep the 1.5 s timeout, swallow every error, and always exit 0. Flag any new throw, retry loop, unbounded wait, or non-zero exit path.
+- **The hook never blocks a session.** Hook code must keep the 1.5 s timeout (750 ms and a 1 s deadline on SessionEnd), swallow every error, and always exit 0. Flag any new throw, retry loop, unbounded wait, or non-zero exit path.
 - **Only artifacts flow.** Flag anything that mirrors full transcripts. The units are images, one-line recaps, and questions.
 - **No rendering, no judging.** Flag running HTML artifacts, server-side screenshots, or image diffing.
 - **Local only.** Flag third-party storage, telemetry, or binding that exposes the server to the public internet.
