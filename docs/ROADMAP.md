@@ -1,6 +1,6 @@
 # Roadmap
 
-Where gollabara stands and what it takes to reach its MVP. Each item below is a GitHub issue; the issue holds the detail and this file holds the order. Update both in the same change.
+Where gollabara stands and what it takes to reach its MVP. Each item below is a GitHub issue; the issue holds the detail and this file holds the order. Update both in the same change. [E2E.md](E2E.md) holds the end-to-end scenarios that check the shipped items together.
 
 ## MVP
 
@@ -19,13 +19,13 @@ The invariants in AGENTS.md hold throughout, with one approved amendment to inva
 
 ## Status (2026-10-16)
 
-| Milestone                 | Shipped                                                                                                                                                                 | Waiting on                                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| M1 · Remote and trust     | Migrations (#88), PWA on desktop (#90), content-free push on desktop Chrome (#92)                                                                                       | Tailscale on: the serve spike (#61) and owner-only remote writes (#62), then the iPhone checks for #63 and #64 |
-| M2 · Engineering baseline | Version handshake and health log (#89), setup/doctor/update/uninstall and the login service (#93), docs sync (#87)                                                      | Publishing to npm (#67), the owner's call                                                                      |
-| M3 · Harness spikes       | Codex spike (#91)                                                                                                                                                       | —                                                                                                              |
-| M4 · Codex adapter        | Delivery routes and the Codex plugin (#94), shared hook core (#102)                                                                                                     | Codex's interactive hook-trust prompt and `request_user_input` are not yet checked live                        |
-| M5 · Daily-use baseline   | Retention and shared settings (#95), ended sessions (#96), first run and tray follow-ups (#99), history (#101), headless runs no longer wait on the wake-up hook (#100) | The MVP release (#80)                                                                                          |
+| Milestone                 | Shipped                                                                                                                                                                 | Waiting on                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 · Remote and trust     | Migrations (#88), PWA on desktop (#90), content-free push on desktop Chrome (#92)                                                                                       | Deferred by the owner (2026-10-16) until Tailscale is on: the serve spike (#61), owner-only remote writes (#62), then the iPhone checks for #63 and #64 |
+| M2 · Engineering baseline | Version handshake and health log (#89), setup/doctor/update/uninstall and the login service (#93), docs sync (#87)                                                      | Publishing to npm (#67), the owner's call                                                                                                               |
+| M3 · Harness spikes       | Codex spike (#91)                                                                                                                                                       | —                                                                                                                                                       |
+| M4 · Codex adapter        | Delivery routes and the Codex plugin (#94), shared hook core (#102)                                                                                                     | Codex's interactive hook-trust prompt and `request_user_input` are not yet checked live                                                                 |
+| M5 · Daily-use baseline   | Retention and shared settings (#95), ended sessions (#96), first run and tray follow-ups (#99), history (#101), headless runs no longer wait on the wake-up hook (#100) | The MVP release (#80)                                                                                                                                   |
 
 ## Done: M0 foundation (Claude Code)
 
