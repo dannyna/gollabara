@@ -28,7 +28,7 @@ export interface Harness {
 const MARKETPLACE = 'gollabara'
 const PLUGIN_ID = 'gollabara@gollabara'
 
-interface InstalledPlugin { id: string, version?: string, enabled?: boolean, readFromFolder?: string }
+interface InstalledPlugin { id: string, version?: string, enabled?: boolean, readFromFolder?: string, folderVersion?: string }
 interface Marketplace { name: string, path?: string }
 
 async function listJson<T>(ctx: Context, args: string[]): Promise<T[]> {
@@ -80,7 +80,10 @@ export const claudeCode: Harness = {
       if (!plugin)
         return { label, text: `plugin ${PLUGIN_ID} not installed (golla setup)`, broken: true }
       const from = plugin.readFromFolder ? ` from ${plugin.readFromFolder}` : ''
-      return { label, text: `plugin ${plugin.version ?? '?'} ${plugin.enabled === false ? 'disabled' : 'enabled'}${from}` }
+      // A directory marketplace's plugin runs from the folder, so its version is the folder's, not the
+      // one recorded at first install
+      const version = plugin.folderVersion ?? plugin.version ?? '?'
+      return { label, text: `plugin ${version} ${plugin.enabled === false ? 'disabled' : 'enabled'}${from}` }
     }
     catch (error) {
       return { label, text: error instanceof Error ? error.message : String(error), broken: true }

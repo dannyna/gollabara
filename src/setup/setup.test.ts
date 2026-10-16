@@ -7,6 +7,7 @@ import { afterAll, afterEach, describe, expect, test } from 'bun:test'
 import { doctor } from '../doctor'
 import { parseSleep, sleepCheck, tailscaleCheck } from './checks'
 import { currentDir, plistPath, readRecord } from './context'
+import { claudeCode } from './harness'
 import { APP_FILES, setup, uninstall, update } from './index'
 import { parsePrint, plist } from './launchd'
 
@@ -249,6 +250,14 @@ describe('doctor checks', () => {
     expect(parseSleep(pmset(0))).toEqual({ ac: 0, battery: null })
     expect(sleepCheck(pmset(1, 5)).text).toBe('sleeps after 1 min idle on power, which stops remote viewing (sudo pmset -c sleep 0 keeps it awake); sleeps after 5 min idle on battery')
     expect(sleepCheck(pmset(0))).toEqual({ label: 'sleep', text: 'never sleeps on power' })
+  })
+
+  test('claude plugin: the version of the folder it runs from, over the one recorded at install', async () => {
+    const s = scratch()
+    const listed = (plugin: object) => context(s, fakeExec(cmd => cmd.join(' ').endsWith('plugin list --json') ? ok(JSON.stringify([plugin])) : undefined).exec)
+    const plugin = { id: 'gollabara@gollabara', version: '0.1.0', enabled: true, readFromFolder: '/app/current/plugin' }
+    expect((await claudeCode.status(listed({ ...plugin, folderVersion: '0.3.3' }))).text).toBe('plugin 0.3.3 enabled from /app/current/plugin')
+    expect((await claudeCode.status(listed(plugin))).text).toBe('plugin 0.1.0 enabled from /app/current/plugin')
   })
 
   test('tailscale: not running, running without serve, running with serve', () => {
