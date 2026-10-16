@@ -32,7 +32,7 @@ const ASK = '시안 3개 올렸어. 하나 골라 줘.'
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="04 · 질문이 여러 개">
-    <ChatFrame note="한 카드에서 한 장씩 넘긴다 (chat/QuestionStepper). 마지막 문항에 답할 때 한꺼번에 보낸다.">
+    <ChatFrame note="한 카드에서 한 장씩 넘긴다 (chat/QuestionStepper). 선택지는 읽기 전용 줄로 보이고, 터미널에서 답한다.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
         {{ ASK }}<QuestionStepper :questions="[HERO_ROWS, E2E_MULTI]" />
       </SessionMessage>
