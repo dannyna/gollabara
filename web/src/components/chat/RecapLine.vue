@@ -33,7 +33,7 @@ const LABEL: Record<Exclude<Tone, 'default'>, string> = { success: '성공', war
   padding: 5px 10px 5px var(--indent, 31px);
   border: 1px solid transparent;
   border-radius: 10px;
-  color: var(--fg);
+  color: inherit;
   font-size: 12px;
   line-height: 1.8;
 }
