@@ -1,7 +1,7 @@
 import type { Session, StreamMessage } from '../../../../src/shared/types'
 import type { FeedItem } from './chat'
 import { describe, expect, it } from 'bun:test'
-import { answerLabel, choiceLayout, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
+import { answerLabel, choiceLayout, clampStep, dayLabel, outputLabel, sessionMenuItems, START_GROUP_MS, stepName, toChoice, toFeed, toTimeline, turnThumbs } from './chat'
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime()
 const msg = (id: number, sessionId: string, when: number): StreamMessage => ({ id, at: when, sessionId, sessionName: sessionId, kind: 'turn' })
@@ -25,6 +25,21 @@ describe('question choices', () => {
     const options = ['A · 좌우 분할', 'B · 풀블리드', 'C'].map(label => toChoice({ label }))
     expect(answerLabel(options, [1])).toBe('B')
     expect(answerLabel(options, [0, 2])).toBe('A, C')
+  })
+})
+
+describe('question steps', () => {
+  it('keeps the step within the set', () => {
+    expect(clampStep(0, 3)).toBe(0)
+    expect(clampStep(2, 3)).toBe(2)
+    expect(clampStep(-1, 3)).toBe(0)
+    expect(clampStep(3, 3)).toBe(2)
+    expect(clampStep(Number.NaN, 3)).toBe(0)
+  })
+
+  it('names each step by its number and header', () => {
+    expect(stepName(1, { question: 'q', header: '대화 표시', options: [] })).toBe('질문 2 · 대화 표시')
+    expect(stepName(0, { question: 'q', options: [] })).toBe('질문 1')
   })
 })
 

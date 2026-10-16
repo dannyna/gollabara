@@ -32,6 +32,16 @@ export function answerLabel(options: ChoiceOption[], picks: number[]): string {
   return picks.map(i => options[i]?.label.split(' · ')[0]).filter(Boolean).join(', ')
 }
 
+/** The step a question set shows: stays within its questions, whatever was asked for */
+export function clampStep(step: number, count: number): number {
+  return Math.max(0, Math.min(count - 1, Math.trunc(step) || 0))
+}
+
+/** Accessible name of a step segment: 「질문 2 · 대화 표시」, or 「질문 2」 without a header */
+export function stepName(index: number, question: Question): string {
+  return question.header ? `질문 ${index + 1} · ${question.header}` : `질문 ${index + 1}`
+}
+
 /** Mono line under a thumbnail strip. Turns carry no tool name, so it is shown only when known. */
 export function outputLabel(count: number, toolName?: string): string {
   const tool = toolName?.split('__').at(-1)

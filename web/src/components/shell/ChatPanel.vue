@@ -24,7 +24,7 @@ import ChatIcon from '../chat/ChatIcon.vue'
 import DateLabel from '../chat/DateLabel.vue'
 import HiddenRow from '../chat/HiddenRow.vue'
 import MyMessage from '../chat/MyMessage.vue'
-import QuestionCard from '../chat/QuestionCard.vue'
+import QuestionStepper from '../chat/QuestionStepper.vue'
 import QueueTray from '../chat/QueueTray.vue'
 import RecapLine from '../chat/RecapLine.vue'
 import SessionMenuButton from '../chat/SessionMenuButton.vue'
@@ -514,11 +514,10 @@ defineExpose({ reveal, daysButton })
             >
               <ArtifactThumbs reference :thumbs="thumbsOf.get(item.message.id)!.references" @open-image="openImage" />
             </HiddenRow>
-            <!-- Answering is not built yet; with several questions every card shows at once -->
-            <QuestionCard
-              v-for="(q, qi) in item.message.questions" :key="`q${qi}`" :question="q" inert
+            <!-- Answering is not built yet; several questions step in one card -->
+            <QuestionStepper
+              v-if="item.message.questions?.length" :questions="item.message.questions" inert
               :state="offline ? 'offline' : 'open'"
-              :count="item.message.questions!.length > 1 ? `${qi + 1} / ${item.message.questions!.length}` : undefined"
             />
           </SessionMessage>
         </template>

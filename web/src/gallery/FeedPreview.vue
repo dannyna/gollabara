@@ -5,7 +5,7 @@ import ArtifactThumbs from '../components/chat/ArtifactThumbs.vue'
 import { toFeed, toTimeline } from '../components/chat/chat'
 import DateLabel from '../components/chat/DateLabel.vue'
 import HiddenRow from '../components/chat/HiddenRow.vue'
-import QuestionCard from '../components/chat/QuestionCard.vue'
+import QuestionStepper from '../components/chat/QuestionStepper.vue'
 import RecapLine from '../components/chat/RecapLine.vue'
 import SessionMessage from '../components/chat/SessionMessage.vue'
 import SessionStarts from '../components/chat/SessionStarts.vue'
@@ -66,7 +66,7 @@ const thumbs = (m: StreamMessage) => (m.images ?? []).map((img, i) => ({ key: `$
         <HiddenRow v-else inset :lines="part.lines" :model-value="openRows.has(part.key)" @update:model-value="toggle(part.key, $event)" />
       </template>
       <ArtifactThumbs v-if="item.message.images?.length" :thumbs="thumbs(item.message)" :tool-name="item.message.toolName" />
-      <QuestionCard v-for="(q, qi) in item.message.questions" :key="qi" :question="q" inert />
+      <QuestionStepper v-if="item.message.questions?.length" :questions="item.message.questions" inert />
     </SessionMessage>
   </template>
 </template>
