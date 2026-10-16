@@ -37,7 +37,7 @@ export function clampStep(step: number, count: number): number {
   return Math.max(0, Math.min(count - 1, Math.trunc(step) || 0))
 }
 
-/** Accessible name of a progress dot: 「질문 2 · 대화 표시」, or 「질문 2」 without a header */
+/** A question's name for screen readers: 「질문 2 · 대화 표시」, or 「질문 2」 without a header */
 export function stepName(index: number, question: Question): string {
   return question.header ? `질문 ${index + 1} · ${question.header}` : `질문 ${index + 1}`
 }
@@ -45,22 +45,22 @@ export function stepName(index: number, question: Question): string {
 export interface StepNav {
   /** The step actually shown, within the set */
   step: number
-  dots: { step: number, label: string, current: boolean }[]
-  /** 「이전 질문」's target; none on the first question, which reads 「첫 질문」 */
+  /** 「앞 문항」's target; none on the first question, where the button is disabled */
   previous?: number
-  /** 「다음 · header」's target; none on the last question, which reads 「마지막 질문이에요」 */
-  next?: { step: number, header: string }
+  /** The next question's page peeking from the side: target, mono number and name; none on the last */
+  next?: { step: number, number: string, label: string }
 }
 
-/** Where a question set's controls lead from one step: the dots, 이전 질문 and the next-question row */
+/** Where a question set's controls lead from one step: 「앞 문항」 and the next question's peek */
 export function stepNav(questions: Question[], step: number): StepNav {
   const at = clampStep(step, questions.length)
   const following = questions[at + 1]
   return {
     step: at,
-    dots: questions.map((q, i) => ({ step: i, label: stepName(i, q), current: i === at })),
     previous: at > 0 ? at - 1 : undefined,
-    next: following ? { step: at + 1, header: following.header || `질문 ${at + 2}` } : undefined,
+    next: following
+      ? { step: at + 1, number: String(at + 2).padStart(2, '0'), label: stepName(at + 1, following) }
+      : undefined,
   }
 }
 

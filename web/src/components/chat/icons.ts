@@ -21,8 +21,9 @@ export const ICONS = {
   danger: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
   eyeoff: '<path d="M3 3l18 18M10.6 6.1A9.6 9.6 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-2.6 3.2M6.6 6.6C4.3 8.1 3 12 3 12s4 6 9 6c1.4 0 2.7-.4 3.9-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
-  // The question stepper's next-question row
+  // The question stepper's peek and 「앞 문항」
   next: '<path d="m10 6 6 6-6 6"/>',
+  previous: '<path d="m14 6-6 6 6 6"/>',
   // Avatar menu (OD session-chat-components.html 07)
   scope: '<circle cx="12" cy="12" r="3"/><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',

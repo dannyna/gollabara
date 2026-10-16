@@ -48,27 +48,26 @@ describe('question steps', () => {
     { question: 'c', options: [] },
   ]
 
-  it('labels the next-question row with the next header, or its number without one', () => {
-    expect(stepNav(set, 0).next).toEqual({ step: 1, header: '대화 표시' })
-    expect(stepNav(set, 1).next).toEqual({ step: 2, header: '질문 3' })
+  it('names the next question in the peek: its mono number and header', () => {
+    expect(stepNav(set, 0).next).toEqual({ step: 1, number: '02', label: '질문 2 · 대화 표시' })
+    expect(stepNav(set, 1).next).toEqual({ step: 2, number: '03', label: '질문 3' })
   })
 
-  it('has no next row on the last question, where the card reads 마지막 질문이에요', () => {
+  it('has no peek on the last question', () => {
     expect(stepNav(set, 2).next).toBeUndefined()
     expect(stepNav(set, 9).next).toBeUndefined()
   })
 
-  it('has no 이전 질문 on the first question, and steps back one otherwise', () => {
+  it('has no 앞 문항 target on the first question, and steps back one otherwise', () => {
     expect(stepNav(set, 0).previous).toBeUndefined()
     expect(stepNav(set, 2).previous).toBe(1)
   })
 
-  it('gives one dot per question that jumps to it, the current one marked', () => {
-    const { dots } = stepNav(set, 1)
-    expect(dots.map(d => d.step)).toEqual([0, 1, 2])
-    expect(dots.map(d => d.label)).toEqual(['질문 1 · 끝난 세션', '질문 2 · 대화 표시', '질문 3'])
-    expect(dots.map(d => d.current)).toEqual([false, true, false])
-    expect(stepNav(set, dots[2]!.step).step).toBe(2)
+  it('lands on the question the peek and 앞 문항 point to', () => {
+    const second = stepNav(set, stepNav(set, 0).next!.step)
+    expect(second.step).toBe(1)
+    expect(stepNav(set, second.next!.step).step).toBe(2)
+    expect(stepNav(set, stepNav(set, 2).previous!).step).toBe(1)
   })
 })
 
