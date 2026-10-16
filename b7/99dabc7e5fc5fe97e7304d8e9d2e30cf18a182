@@ -1,0 +1,21 @@
+web/src/components/overlay/SettingsSheet.vue
+  s_b7f30c572db9a8::t_840c84877999cd 332
+web/src/components/chat/QuestionCard.vue
+  s_b7f30c572db9a8::t_18ac410fec5518 61-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b799dabc7e5fc5fe97e7304d8e9d2e30cf18a182",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
