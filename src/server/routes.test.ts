@@ -159,6 +159,20 @@ describe('ended sessions', () => {
     await start('gone', 'claude-code')
     expect((await post('/api/feedback', { sessionId: 'gone', text: 'hello' })).status).toBe(200)
   })
+
+  test('a late pid link from any event retires the old session\'s waiter (a /clear whose SessionStart was lost)', async () => {
+    const post = (body: unknown) => fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    const info = (id: string) => ({ id, name: id, harness: 'claude-code', cwd: '/a' })
+    await post({ kind: 'session', session: info('late-1'), pid: 990001, reason: 'startup' })
+    const waiting = fetch(`${url}/api/channel/wait?session=late-1&pid=990001&waiter=1`)
+    // Let the poll register before the relink, so the relink has to wake it
+    await Bun.sleep(50)
+    await post({ kind: 'recap', session: info('late-2'), text: 'after clear', pid: 990001 })
+    const waited = await waiting
+    expect([waited.status, await waited.text()]).toEqual([410, 'moved'])
+    const sessions = await (await fetch(`${url}/api/sessions`)).json() as Session[]
+    expect(sessions.find(s => s.id === 'late-1')).toMatchObject({ endedAt: expect.any(Number) })
+  })
 })
 
 describe('quote-reply', () => {

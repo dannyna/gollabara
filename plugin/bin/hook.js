@@ -25,7 +25,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.4.0",
+  version: "0.4.1",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -481,7 +481,7 @@ async function runHook(adapter = "claude-code") {
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
     const opener = input.hook_event_name === "Stop" ? ADAPTERS[adapter].stopOpener(input.transcript_path) : "unknown";
     const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter));
-    if (event?.kind === "session")
+    if (event)
       event.pid = process2.ppid;
     const via = feedbackVia(input.hook_event_name, input, adapter);
     const signal = AbortSignal.timeout(ending ? SESSION_END_POST_TIMEOUT_MS : POST_TIMEOUT_MS);

@@ -134,8 +134,8 @@ describe('feedback', () => {
     expect(store.sessionForPid(4242)).toBeNull()
     store.ingest({ kind: 'session', session: cc, pid: 4242 }, 600)
     expect(store.sessionForPid(4242)).toBe('cc-1')
-    // Other events neither set nor clear it
-    store.ingest(image(cc), 700)
+    // Other events from the same process leave it as it is
+    store.ingest({ ...image(cc), pid: 4242 }, 700)
     expect(store.sessionForPid(4242)).toBe('cc-1')
     const cleared: SessionInfo = { ...cc, id: 'cc-2' }
     store.ingest({ kind: 'session', session: cleared, pid: 4242 }, 800)
@@ -413,6 +413,43 @@ describe('ended sessions', () => {
     expect(store.session('cc-1')?.endedAt).toBe(800)
     expect(store.session('cc-2')).not.toHaveProperty('endedAt')
     expect(store.pidLinks()).toEqual([{ id: 'cc-2', pid: 4242, at: 800 }])
+  })
+
+  test('any event links a session whose SessionStart was lost', () => {
+    store.ingest({ kind: 'recap', session: cc, text: 'done', pid: 4242 }, 500)
+    expect(store.pidLinks()).toEqual([{ id: 'cc-1', pid: 4242, at: 500 }])
+    store.ingest({ kind: 'question', session: od, questions: [], pid: 5151 }, 600)
+    store.ingest({ ...image(od), pid: 5151 }, 700)
+    expect(store.pidLinks()).toContainEqual({ id: 'od-1', pid: 5151, at: 600 })
+  })
+
+  test('a late link takes the pid from the session that held it (a /clear whose SessionStart was lost)', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 500)
+    store.ingest({ kind: 'recap', session: { ...cc, id: 'cc-2' }, text: 'after clear', pid: 4242 }, 800)
+    expect(store.session('cc-1')).toMatchObject({ endedAt: 800 })
+    expect(store.sessionForPid(4242)).toBe('cc-2')
+    expect(store.pidLinks()).toEqual([{ id: 'cc-2', pid: 4242, at: 800 }])
+  })
+
+  test('an event from the linked process keeps the link\'s time, so the pid-reuse check still holds', () => {
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 500)
+    store.ingest({ kind: 'recap', session: cc, text: 'done', pid: 4242 }, 900)
+    expect(store.pidLinks()).toEqual([{ id: 'cc-1', pid: 4242, at: 500 }])
+  })
+
+  test('a session end with a pid still drops the link', () => {
+    store.ingest({ kind: 'recap', session: cc, text: 'done', pid: 4242 }, 500)
+    store.ingest({ kind: 'session-end', session: cc, pid: 4242 }, 900)
+    expect(store.sessionForPid(4242)).toBeNull()
+    expect(store.pidLinks()).toEqual([])
+  })
+
+  test('an event without a pid (an older hook) leaves the link as it is', () => {
+    store.ingest({ kind: 'recap', session: cc, text: 'done' }, 500)
+    expect(store.pidLinks()).toEqual([])
+    store.ingest({ kind: 'session', session: cc, pid: 4242 }, 600)
+    store.ingest({ kind: 'recap', session: cc, text: 'again' }, 700)
+    expect(store.pidLinks()).toEqual([{ id: 'cc-1', pid: 4242, at: 600 }])
   })
 })
 
