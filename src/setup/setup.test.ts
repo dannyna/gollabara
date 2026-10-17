@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
 import { doctor } from '../doctor'
-import { parseSleep, sleepCheck, tailscaleCheck } from './checks'
+import { parseSleep, serviceCheck, sleepCheck, tailscaleCheck } from './checks'
 import { currentDir, plistPath, readRecord } from './context'
 import { claudeCode } from './harness'
 import { APP_FILES, setup, uninstall, update } from './index'
-import { parsePrint, plist } from './launchd'
+import { parseBtm, parsePrint, plist } from './launchd'
 
 const root = mkdtempSync(join(tmpdir(), 'gollabara-setup-'))
 afterAll(() => rmSync(root, { recursive: true, force: true }))
@@ -57,6 +57,53 @@ function context(s: ReturnType<typeof scratch>, exec: Exec, over: Partial<Contex
     ...over,
   }
 }
+
+/** `sfltool dumpbtm` with an unrelated record, the service's record with `disposition`, and a longer label */
+function btm(disposition: string, label = 'dev.gollabara.test') {
+  return ` ========================
+ Records for UID 501 : 00000000-0000-0000-0000-000000000000
+ ========================
+
+ ServiceManagement migrated: true
+ SharedFileList migrated: true
+
+ Items:
+
+ #1:
+                 UUID: 11111111-1111-1111-1111-111111111111
+                 Name: (null)
+       Developer Name: (null)
+                 Type: curated (0x20)
+          Disposition: [enabled, allowed, notified] (0xb)
+                  URL: (null)
+           Generation: 0
+
+ #25:
+                 UUID: 00000000-0000-0000-0000-000000000000
+                 Name: bun
+       Developer Name: Jarred Sumner
+      Team Identifier: 7FRXF46ZSN
+                 Type: legacy agent (0x10008)
+                Flags: [ legacy ] (0x1)
+          Disposition: ${disposition}
+           Identifier: 8.${label}
+                  URL: /Users/501/Library/LaunchAgents/${label}.plist
+      Executable Path: /Users/501/.bun/bin/bun
+           Generation: 45
+
+ #26:
+                 UUID: 22222222-2222-2222-2222-222222222222
+                 Name: other
+       Developer Name: Someone
+                 Type: legacy agent (0x10008)
+          Disposition: [enabled, allowed, notified] (0xb)
+           Identifier: 8.${label}.other
+                  URL: /Users/501/Library/LaunchAgents/${label}.other.plist
+           Generation: 3
+`
+}
+const DISALLOWED = '[enabled, disallowed, notified] (0x9)'
+const ALLOWED = '[enabled, allowed, notified] (0xb)'
 
 const claudeCalls = (calls: { cmd: string[] }[], claude: string) => calls.filter(c => c.cmd[0] === claude).map(c => c.cmd.slice(1).join(' '))
 
@@ -134,6 +181,26 @@ describe('golla setup', () => {
         `bootstrap gui/501 ${plistPath(ctx)}`,
       ])
       expect(report.lines.join('\n')).toContain('service   dev.gollabara.test running at login')
+      expect(report.lines.join('\n')).not.toContain('Login Items')
+    })
+
+    test('a login item macOS disallows: setup still succeeds, with advice on where to allow it', async () => {
+      const s = scratch()
+      let loaded = false
+      server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => loaded ? Response.json({ version: '0.1.0', hooks: [] }) : new Response(null, { status: 503 }) })
+      const { exec } = fakeExec((cmd) => {
+        if (cmd[0] === 'sfltool')
+          return ok(btm(DISALLOWED))
+        if (cmd[0] === 'launchctl' && cmd[1] === 'print')
+          return loaded ? ok('\tstate = running\n\tpid = 42\n') : { code: 113, stdout: '', stderr: 'not found' }
+        if (cmd[0] === 'launchctl' && cmd[1] === 'bootstrap')
+          loaded = true
+        return undefined
+      })
+      const report = await setup(context(s, exec, { platform: 'darwin', port: server.port! }))
+      expect(report.ok).toBe(true)
+      expect(report.lines.join('\n')).toContain('service   dev.gollabara.test running now, but macOS blocks it at login: allow bun under System Settings → General → Login Items & Extensions; logs in ')
+      expect(report.lines.join('\n')).not.toContain('running at login')
     })
 
     test('another server already on the port: the plist is written but not loaded, and setup fails', async () => {
@@ -234,6 +301,15 @@ describe('launchd', () => {
     expect(xml).toContain('<key>StandardErrorPath</key>\n  <string>/d/server.log</string>')
   })
 
+  test('sfltool dumpbtm: the record whose identifier is <n>.<label>, not a longer label', () => {
+    expect(parseBtm(btm(DISALLOWED), 'dev.gollabara.test')).toEqual({ allowed: false, enabled: true, name: 'bun' })
+    expect(parseBtm(btm(ALLOWED), 'dev.gollabara.test')).toEqual({ allowed: true, enabled: true, name: 'bun' })
+    expect(parseBtm(btm('[disabled, allowed] (0x2)'), 'dev.gollabara.test')).toEqual({ allowed: true, enabled: false, name: 'bun' })
+    expect(parseBtm(btm(DISALLOWED, 'dev.gollabara.server.x'), 'dev.gollabara.test')).toBeNull()
+    expect(parseBtm(btm(DISALLOWED), 'gollabara.test')).toBeNull()
+    expect(parseBtm('', 'dev.gollabara.test')).toBeNull()
+  })
+
   test('launchctl print: running with a pid, or loaded and waiting', () => {
     const running = 'gui/501/dev.gollabara.test = {\n\tactive count = 1\n\tstate = running\n\n\tprogram = /bun\n\tpid = 735\n\tenvironment = {\n\t\tstate = nested\n\t}\n}'
     expect(parsePrint(running)).toEqual({ running: true, pid: 735 })
@@ -258,6 +334,43 @@ describe('doctor checks', () => {
     const plugin = { id: 'gollabara@gollabara', version: '0.1.0', enabled: true, readFromFolder: '/app/current/plugin' }
     expect((await claudeCode.status(listed({ ...plugin, folderVersion: '0.3.3' }))).text).toBe('plugin 0.3.3 enabled from /app/current/plugin')
     expect((await claudeCode.status(listed(plugin))).text).toBe('plugin 0.1.0 enabled from /app/current/plugin')
+  })
+
+  describe('service', () => {
+    /** The plist on disk, `launchctl print` answering `print` (null: not loaded) and `sfltool dumpbtm` answering `dump` */
+    function installed(print: string | null, dump: ExecResult) {
+      const s = scratch()
+      const ctx = context(s, fakeExec((cmd) => {
+        if (cmd[0] === 'sfltool')
+          return dump
+        if (cmd[0] === 'launchctl' && cmd[1] === 'print')
+          return print === null ? { code: 113, stdout: '', stderr: 'not found' } : ok(print)
+        return undefined
+      }).exec, { platform: 'darwin' })
+      mkdirSync(ctx.launchAgents, { recursive: true })
+      writeFileSync(plistPath(ctx), 'plist')
+      return ctx
+    }
+    const running = '\tstate = running\n\tpid = 42\n'
+    const fix = 'macOS blocks it at login: allow bun under System Settings → General → Login Items & Extensions'
+
+    test('not loaded and disallowed at login: broken, pointing at Login Items', async () => {
+      const ctx = installed(null, ok(btm(DISALLOWED)))
+      expect(await serviceCheck(ctx)).toEqual({ label: 'service', text: `${plistPath(ctx)} is there, but ${fix}, then run golla setup`, broken: true })
+    })
+
+    test('running but disallowed at login: advice, not broken', async () => {
+      expect(await serviceCheck(installed(running, ok(btm(DISALLOWED))))).toEqual({ label: 'service', text: `dev.gollabara.test running, pid 42, but ${fix}` })
+    })
+
+    test('allowed, or no Login Items answer: the plain texts', async () => {
+      const failed = { code: 1, stdout: '', stderr: 'sfltool: command not found' }
+      for (const dump of [ok(btm(ALLOWED)), failed, ok('garbage')]) {
+        const ctx = installed(null, dump)
+        expect(await serviceCheck(ctx)).toEqual({ label: 'service', text: `${plistPath(ctx)} is there but not loaded (golla setup)`, broken: true })
+        expect(await serviceCheck(installed(running, dump))).toEqual({ label: 'service', text: 'dev.gollabara.test running, pid 42' })
+      }
+    })
   })
 
   test('tailscale: not running, running without serve, running with serve', () => {

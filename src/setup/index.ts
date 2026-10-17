@@ -10,7 +10,7 @@ import process from 'node:process'
 import { DEFAULT_PORT } from '../shared/config'
 import { appDir, currentDir, plistPath, readRecord, recordPath, serverLog } from './context'
 import { HARNESSES } from './harness'
-import { plist, serviceState, startService, stopService } from './launchd'
+import { blockedAtLogin, loginItemState, plist, serviceState, startService, stopService } from './launchd'
 
 /** What the installed app is made of: the bundled CLI, the built web UI, the plugin and its marketplace */
 export const APP_FILES = ['package.json', 'dist/golla.js', 'web/dist/index.html', 'plugin/bin/hook.js', '.claude-plugin/marketplace.json']
@@ -127,14 +127,23 @@ export async function setup(ctx: Context, { service = true } = {}): Promise<Repo
     mkdirSync(ctx.launchAgents, { recursive: true })
     writeFileSync(plistPath(ctx), servicePlist(ctx))
     const error = taken ? null : await startService(ctx, plistPath(ctx))
-    if (taken)
+    if (taken) {
       row('service', `another server already answers on port ${ctx.port}, so ${ctx.label} was not started; stop it and run golla setup again, or pass --port`, true)
-    else if (error)
+    }
+    else if (error) {
       row('service', `${plistPath(ctx)} did not load: ${error}`, true)
-    else if (await waitHealthy(ctx.port, HEALTH_WAIT_MS))
-      row('service', `${ctx.label} running at login, logs in ${serverLog(ctx)}`)
-    else
+    }
+    else if (await waitHealthy(ctx.port, HEALTH_WAIT_MS)) {
+      // bootstrap runs it even when Login Items disallows it, so it would not come back after a reboot
+      const item = await loginItemState(ctx)
+      if (item && !item.allowed)
+        row('service', `${ctx.label} running now, but ${blockedAtLogin(item)}; logs in ${serverLog(ctx)}`)
+      else
+        row('service', `${ctx.label} running at login, logs in ${serverLog(ctx)}`)
+    }
+    else {
       row('service', `${ctx.label} loaded, but the server did not answer within ${HEALTH_WAIT_MS / 1000} s; see ${serverLog(ctx)}`, true)
+    }
   }
 
   let connected = 0

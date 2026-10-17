@@ -6,7 +6,7 @@ import type { Check } from './harness'
 import { existsSync, readlinkSync } from 'node:fs'
 import { currentDir, plistPath, readRecord, serverLog } from './context'
 import { HARNESSES } from './harness'
-import { serviceState } from './launchd'
+import { blockedAtLogin, loginItemState, serviceState } from './launchd'
 
 const TAILSCALE_APP = '/Applications/Tailscale.app/Contents/MacOS/Tailscale'
 
@@ -72,7 +72,7 @@ function installCheck(ctx: Context): Check {
   return { label, text: `${version} at ${currentDir(ctx)}, from ${from}` }
 }
 
-async function serviceCheck(ctx: Context): Promise<Check> {
+export async function serviceCheck(ctx: Context): Promise<Check> {
   const label = 'service'
   if (ctx.platform !== 'darwin')
     return { label, text: 'the login service is macOS-only for now; run golla serve yourself' }
@@ -80,10 +80,19 @@ async function serviceCheck(ctx: Context): Promise<Check> {
   if (!existsSync(file))
     return { label, text: `${ctx.label} not installed (golla setup)` }
   const state = await serviceState(ctx)
-  if (!state.loaded)
+  if (!state.loaded) {
+    // A disallowed login item never starts at login, and golla setup alone won't change that
+    const item = await loginItemState(ctx)
+    if (item && !item.allowed)
+      return { label, text: `${file} is there, but ${blockedAtLogin(item)}, then run golla setup`, broken: true }
     return { label, text: `${file} is there but not loaded (golla setup)`, broken: true }
+  }
   if (!state.running)
     return { label, text: `${ctx.label} loaded but not running; see ${serverLog(ctx)}`, broken: true }
+  // Running now, but it won't come back after a reboot; advice only, like sleep
+  const item = await loginItemState(ctx)
+  if (item && !item.allowed)
+    return { label, text: `${ctx.label} running, pid ${state.pid}, but ${blockedAtLogin(item)}` }
   return { label, text: `${ctx.label} running, pid ${state.pid}` }
 }
 
