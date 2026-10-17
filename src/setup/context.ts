@@ -15,18 +15,30 @@ export interface ExecResult {
   stderr: string
 }
 
-/** Runs a command. `inherit` streams its output to the terminal instead of capturing it. A missing binary is code 127. */
-export type Exec = (cmd: string[], options?: { cwd?: string, inherit?: boolean }) => Promise<ExecResult>
+/**
+ * Runs a command. `inherit` streams its output to the terminal instead of capturing it. A missing binary is code 127.
+ * `timeoutMs` kills a captured command that runs past it (code 124, like timeout(1)), for tools that can hang.
+ */
+export type Exec = (cmd: string[], options?: { cwd?: string, inherit?: boolean, timeoutMs?: number }) => Promise<ExecResult>
 
-export const exec: Exec = async (cmd, { cwd, inherit = false } = {}) => {
+export const exec: Exec = async (cmd, { cwd, inherit = false, timeoutMs } = {}) => {
   try {
     if (inherit) {
       const proc = Bun.spawn(cmd, { cwd, stdio: ['inherit', 'inherit', 'inherit'] })
       return { code: await proc.exited, stdout: '', stderr: '' }
     }
     const proc = Bun.spawn(cmd, { cwd, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' })
+    let timedOut = false
+    const timer = timeoutMs
+      ? setTimeout(() => {
+          timedOut = true
+          proc.kill()
+        }, timeoutMs)
+      : null
     const [stdout, stderr, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited])
-    return { code, stdout, stderr }
+    if (timer)
+      clearTimeout(timer)
+    return { code: timedOut ? 124 : code, stdout, stderr }
   }
   catch (error) {
     return { code: 127, stdout: '', stderr: error instanceof Error ? error.message : String(error) }

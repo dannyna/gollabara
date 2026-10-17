@@ -6,10 +6,10 @@ import { dirname, join } from 'node:path'
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
 import { doctor } from '../doctor'
 import { parseSleep, serviceCheck, sleepCheck, tailscaleCheck } from './checks'
-import { currentDir, plistPath, readRecord } from './context'
+import { currentDir, plistPath, readRecord, exec as realExec } from './context'
 import { claudeCode } from './harness'
 import { APP_FILES, setup, uninstall, update } from './index'
-import { parseBtm, parsePrint, plist } from './launchd'
+import { BTM_TIMEOUT_MS, loginItemState, parseBtm, parsePrint, plist } from './launchd'
 
 const root = mkdtempSync(join(tmpdir(), 'gollabara-setup-'))
 afterAll(() => rmSync(root, { recursive: true, force: true }))
@@ -32,9 +32,9 @@ const ok = (stdout = ''): ExecResult => ({ code: 0, stdout, stderr: '' })
 
 /** Records every command; `answer` returns canned output for the ones a test cares about */
 function fakeExec(answer: (cmd: string[]) => ExecResult | undefined = () => undefined) {
-  const calls: { cmd: string[], cwd?: string }[] = []
+  const calls: { cmd: string[], cwd?: string, timeoutMs?: number }[] = []
   const exec: Exec = async (cmd, options) => {
-    calls.push({ cmd, cwd: options?.cwd })
+    calls.push({ cmd, cwd: options?.cwd, timeoutMs: options?.timeoutMs })
     return answer(cmd) ?? ok()
   }
   return { exec, calls }
@@ -308,6 +308,20 @@ describe('launchd', () => {
     expect(parseBtm(btm(DISALLOWED, 'dev.gollabara.server.x'), 'dev.gollabara.test')).toBeNull()
     expect(parseBtm(btm(DISALLOWED), 'gollabara.test')).toBeNull()
     expect(parseBtm('', 'dev.gollabara.test')).toBeNull()
+  })
+
+  test('sfltool dumpbtm gets a timeout, and a hung one reads as unknown', async () => {
+    const { exec, calls } = fakeExec(cmd => cmd[0] === 'sfltool' ? { code: 124, stdout: '', stderr: '' } : undefined)
+    expect(await loginItemState({ platform: 'darwin', label: 'dev.gollabara.test', exec })).toBeNull()
+    expect(calls).toEqual([{ cmd: ['sfltool', 'dumpbtm'], cwd: undefined, timeoutMs: BTM_TIMEOUT_MS }])
+  })
+
+  test('exec kills a command that runs past timeoutMs and answers 124', async () => {
+    const started = Date.now()
+    const res = await realExec(['sleep', '30'], { timeoutMs: 100 })
+    expect(res.code).toBe(124)
+    expect(Date.now() - started).toBeLessThan(5000)
+    expect((await realExec(['true'], { timeoutMs: 1000 })).code).toBe(0)
   })
 
   test('launchctl print: running with a pid, or loaded and waiting', () => {
