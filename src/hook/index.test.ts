@@ -173,6 +173,12 @@ describe('GOLLABARA_HOOK=off', () => {
     const { events } = await runEntry({ GOLLABARA_HOOK: '' }, { ...postReadImage, tool_input: { file_path: mock }, transcript_path: transcript })
     expect(events).toMatchObject([{ kind: 'image', images: [{ source: mock, role: 'reference' }] }])
   })
+
+  test('every event carries the harness pid, so a session whose SessionStart was lost still gets linked', async () => {
+    // The hook runs as the harness's direct child; here the test process is its parent
+    const { events } = await runEntry({ GOLLABARA_HOOK: '' })
+    expect(events).toMatchObject([{ kind: 'recap', pid: process.pid }])
+  })
 })
 
 describe('version handshake and health log', () => {

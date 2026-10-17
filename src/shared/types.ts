@@ -5,8 +5,7 @@ export type Harness = 'claude-code' | 'open-design' | 'codex' | 'claude-design'
 
 /** Event the hook sends to the server */
 export type IncomingEvent
-  // `pid`: the harness process the session runs in, so a wake-up waiter can tell when it moved to another session
-  = | { kind: 'session', session: SessionInfo, pid?: number, reason?: SessionStartReason }
+  = ({ kind: 'session', session: SessionInfo, reason?: SessionStartReason }
     | { kind: 'image', session: SessionInfo, toolName: string, images: IncomingImage[] }
     // `continuation`: the turn went on after another stop hook, so this recap joins the previous turn
     | { kind: 'recap', session: SessionInfo, text: string, continuation?: boolean }
@@ -15,7 +14,10 @@ export type IncomingEvent
     // The user answered the session's question (in its terminal or in the app); `answers` is keyed by question text
     | { kind: 'answer', session: SessionInfo, questionId: string, answers: Record<string, string> }
     // The session closed (the user quit, or its conversation was cleared): feedback to it is refused until it comes back
-    | { kind: 'session-end', session: SessionInfo }
+    | { kind: 'session-end', session: SessionInfo })
+  // `pid`: the harness process the session runs in, so a wake-up waiter can tell when it moved to another session,
+  // and the server when the session's process went away. Every event carries it, so a lost SessionStart costs no link
+  & { pid?: number }
 
 /**
  * Why a session (re)started: a fresh launch, a resumed or cleared conversation, or a context

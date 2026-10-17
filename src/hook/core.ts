@@ -62,8 +62,9 @@ export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
     const opener = input.hook_event_name === 'Stop' ? ADAPTERS[adapter].stopOpener(input.transcript_path) : 'unknown'
     const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter))
     // Claude Code and Codex run the hook command as their direct child (a one-command `sh -c` execs it), so every
-    // hook, the wake-up waiter included, sees the harness pid as its parent
-    if (event?.kind === 'session')
+    // hook, the wake-up waiter included, sees the harness pid as its parent. Every event carries it, so a session
+    // whose SessionStart was lost (server down) is still linked by its next event
+    if (event)
       event.pid = process.ppid
     const via = feedbackVia(input.hook_event_name, input, adapter)
     // Event and claim share one budget and run side by side; most tool calls only claim

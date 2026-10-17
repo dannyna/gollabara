@@ -113,7 +113,8 @@ export function startServer() {
 
       if (url.pathname === '/api/events' && req.method === 'POST') {
         const event = await req.json() as IncomingEvent
-        const relinked = event.kind === 'session' && event.pid ? store.sessionForPid(event.pid) : null
+        // Any event but session-end can link the pid (store.ingest), a late one too when the SessionStart was lost
+        const relinked = event.kind !== 'session-end' && event.pid ? store.sessionForPid(event.pid) : null
         const { session, message, created } = store.ingest(event)
         seeHook(req, session.harness)
         // The process moved to a new session (/clear, resume): its wake-up waiter's open poll returns and retires

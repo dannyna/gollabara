@@ -277,13 +277,15 @@ export class Store {
     const base = { at: now, sessionId: session.id, sessionName: session.name }
     let result: Ingested = { session, message: null, created: false }
 
-    if (event.kind === 'session' && event.pid) {
-      // /clear and resume start a new session in the same process: the latest SessionStart owns the pid
+    // /clear and resume start a new session in the same process: the latest SessionStart owns the pid. Any other
+    // event links it too when the session's SessionStart was lost (server down); an unchanged link keeps its pid_at,
+    // which the pid-reuse check reads
+    if (event.kind !== 'session-end' && event.pid && (event.kind === 'session' || event.pid !== prev?.pid)) {
       // The session that held it no longer runs there, so it ended, even when its own session-end never came
       this.db.run('UPDATE sessions SET pid = NULL, ended_at = coalesce(ended_at, ?) WHERE pid = ? AND id != ?', [now, event.pid, session.id])
       this.db.run('UPDATE sessions SET pid = ?, pid_at = ? WHERE id = ?', [event.pid, now, session.id])
     }
-    else if (event.kind === 'session-end') {
+    if (event.kind === 'session-end') {
       // The process is leaving, and a later process may get its pid; a turn left open closes
       this.db.run('UPDATE sessions SET pid = NULL WHERE id = ?', [session.id])
       openTurn = null
