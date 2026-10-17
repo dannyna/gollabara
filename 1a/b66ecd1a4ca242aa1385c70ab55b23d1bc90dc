@@ -1,0 +1,41 @@
+plugin/.claude-plugin/plugin.json
+  s_b7f30c572db9a8::t_b7f8807567ab7d 3
+src/server/store.test.ts
+  s_b7f30c572db9a8::t_9a43c9a95070fb 137-138,417-453
+src/server/routes.test.ts
+  s_b7f30c572db9a8::t_54d4ae336fe691 162-175
+src/server/index.ts
+  s_b7f30c572db9a8::t_a5c310ea26139e 116-117
+AGENTS.md
+  s_b7f30c572db9a8::t_7f68739b6c00ed 160,175-176
+  s_b7f30c572db9a8::t_b30f89d7a0cf78 173
+src/shared/types.ts
+  s_b7f30c572db9a8::t_a5c310ea26139e 17-20
+  s_b7f30c572db9a8::t_e8b789e4892ce5 8
+src/server/store.ts
+  s_b7f30c572db9a8::t_a5c310ea26139e 280-283,288
+src/hook/core.ts
+  s_b7f30c572db9a8::t_a5c310ea26139e 65-67
+plugin/bin/hook.js
+  s_b7f30c572db9a8::t_7bfb139000afa5 28,484
+src/hook/index.test.ts
+  s_b7f30c572db9a8::t_9a43c9a95070fb 176-181
+package.json
+  s_b7f30c572db9a8::t_b7f8807567ab7d 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ab66ecd1a4ca242aa1385c70ab55b23d1bc90dc",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
