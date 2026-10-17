@@ -87,12 +87,16 @@ export function parseBtm(dump: string, label: string): LoginItem | null {
   return found
 }
 
-/** The service's Login Items record; null off macOS, or when `sfltool` is missing, fails or lists no record */
+/** How long `sfltool dumpbtm` gets before it counts as unknown (it answers in about a second when it answers) */
+export const BTM_TIMEOUT_MS = 4000
+
+/** The service's Login Items record; null off macOS, or when `sfltool` is missing, hangs, fails or lists no record */
 export async function loginItemState(ctx: Pick<Context, 'platform' | 'label' | 'exec'>): Promise<LoginItem | null> {
   if (ctx.platform !== 'darwin')
     return null
   try {
-    const res = await ctx.exec(['sfltool', 'dumpbtm'])
+    // dumpbtm has been seen to hang for minutes when the BTM daemon is busy; doctor and setup must not wait on it
+    const res = await ctx.exec(['sfltool', 'dumpbtm'], { timeoutMs: BTM_TIMEOUT_MS })
     return res.code === 0 ? parseBtm(res.stdout, ctx.label) : null
   }
   catch {
