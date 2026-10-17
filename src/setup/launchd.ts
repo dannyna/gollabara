@@ -1,5 +1,6 @@
 // The macOS login service: a LaunchAgent that runs `golla serve` from the stable install path at login and
-// restarts it when it exits. `plist` and `parsePrint` are pure; the rest drives `launchctl` through `ctx.exec`.
+// restarts it when it exits. `plist`, `parsePrint` and `parseBtm` are pure; the rest drives `launchctl` and
+// `sfltool` through `ctx.exec`.
 
 import type { Context } from './context'
 
@@ -56,6 +57,52 @@ export function parsePrint(text: string): Pick<ServiceState, 'running' | 'pid'> 
   const state = /^\tstate = (\S+)/m.exec(text)?.[1]
   const pid = /^\tpid = (\d+)/m.exec(text)?.[1]
   return { running: state === 'running', pid: pid ? Number(pid) : null }
+}
+
+export interface LoginItem {
+  /** Background Task Management lets it start at login; a disallowed agent runs only when bootstrapped by hand */
+  allowed: boolean
+  enabled: boolean
+  /** The executable's name as Login Items lists it ("bun") */
+  name: string | null
+}
+
+/**
+ * Reads `sfltool dumpbtm` for the LaunchAgent's record, the `#N:` block whose `Identifier` is `<n>.<label>`.
+ * The URL can name another home (`/Users/501`), so only the identifier is matched. The last match wins.
+ */
+export function parseBtm(dump: string, label: string): LoginItem | null {
+  let found: LoginItem | null = null
+  for (const block of dump.split(/^\s*#\d+:\s*$/m)) {
+    const id = /^\s*Identifier:\s*\d+\.(\S+)\s*$/m.exec(block)?.[1]
+    if (id !== label)
+      continue
+    const disposition = /^\s*Disposition:\s*\[([^\]]*)\]/m.exec(block)?.[1]
+    if (disposition === undefined)
+      continue
+    const flags = disposition.split(',').map(f => f.trim())
+    const name = /^\s*Name:(.*)$/m.exec(block)?.[1].trim() || null
+    found = { allowed: flags.includes('allowed'), enabled: flags.includes('enabled'), name: name === '(null)' ? null : name }
+  }
+  return found
+}
+
+/** The service's Login Items record; null off macOS, or when `sfltool` is missing, fails or lists no record */
+export async function loginItemState(ctx: Pick<Context, 'platform' | 'label' | 'exec'>): Promise<LoginItem | null> {
+  if (ctx.platform !== 'darwin')
+    return null
+  try {
+    const res = await ctx.exec(['sfltool', 'dumpbtm'])
+    return res.code === 0 ? parseBtm(res.stdout, ctx.label) : null
+  }
+  catch {
+    return null
+  }
+}
+
+/** Where to fix a disallowed login item; doctor and setup share the wording */
+export function blockedAtLogin(item: LoginItem) {
+  return `macOS blocks it at login: allow ${item.name || 'bun'} under System Settings → General → Login Items & Extensions`
 }
 
 const domain = (ctx: Pick<Context, 'uid'>) => `gui/${ctx.uid}`
