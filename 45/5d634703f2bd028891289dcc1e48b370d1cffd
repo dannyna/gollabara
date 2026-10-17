@@ -1,0 +1,36 @@
+src/setup/launchd.ts
+  s_b7f30c572db9a8::t_a7299670ca5f7e 104-106
+  s_b7f30c572db9a8::t_9f7b26287fbdbd 77-78
+  s_b7f30c572db9a8::t_e79b9909f884af 84
+  s_b7f30c572db9a8::t_f788c7a04bd8f3 2-3,62-76,79-83,85-103
+  s_b7f30c572db9a8::t_283ce598cfa06a 107
+src/setup/setup.test.ts
+  s_b7f30c572db9a8::t_c7d976a5003b32 8,12,61-107,184-201,304-312,339-373
+  s_b7f30c572db9a8::t_0b8f48f0b6cbfd 202-203
+  s_b7f30c572db9a8::t_9f72e0f0d92246 374-375
+AGENTS.md
+  s_b7f30c572db9a8::t_0b8f48f0b6cbfd 120
+  s_b7f30c572db9a8::t_c45f610fca70d3 125
+src/setup/index.ts
+  s_b7f30c572db9a8::t_e56e30fd70c13c 140-142
+  s_b7f30c572db9a8::t_a7299670ca5f7e 130,132-133,135,144,146
+  s_b7f30c572db9a8::t_f788c7a04bd8f3 13,136-139,143
+src/setup/checks.ts
+  s_b7f30c572db9a8::t_f788c7a04bd8f3 9,75,83-87,89,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "455d634703f2bd028891289dcc1e48b370d1cffd",
+  "prompts": {},
+  "sessions": {
+    "s_b7f30c572db9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06191568-f927-4085-a68c-ddcd4242a23b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
