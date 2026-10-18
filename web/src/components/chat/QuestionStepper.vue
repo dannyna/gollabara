@@ -128,16 +128,11 @@ const SUMMARY_HEAD: Partial<Record<QuestionState, string>> = { terminal: '터미
     @send="emit('send', { [questions[0]!.question]: $event })" @retry="emit('retry')"
   />
   <div v-else-if="state === 'terminal' || state === 'done' || state === 'sending'" ref="summaryEl" class="stepper summary" :class="state" tabindex="-1">
-    <div class="summary-head">
-      <template v-if="state === 'sending'">
-        <span class="spin" aria-hidden="true" />답 {{ questions.length }}개 보내는 중
-      </template>
-      <template v-else>
-        <ChatIcon :name="state === 'done' ? 'check' : 'term'" />{{ SUMMARY_HEAD[state] }}<template v-if="state === 'done' && answeredAt">
-          · <time>{{ clock(answeredAt) }}</time>
-        </template>
-      </template>
+    <div v-if="state === 'sending'" class="summary-head">
+      <span class="spin" aria-hidden="true" />답 {{ questions.length }}개 보내는 중
     </div>
+    <!-- Answered: no head line; the answers' color says by whom (fg: this app, muted: the terminal) -->
+    <span v-else class="sr-only">{{ SUMMARY_HEAD[state] }}<template v-if="state === 'done' && answeredAt"> · {{ clock(answeredAt) }}</template></span>
     <dl>
       <template v-for="(row, i) in summary" :key="i">
         <dt>{{ row.header }}</dt>
@@ -587,11 +582,9 @@ const SUMMARY_HEAD: Partial<Record<QuestionState, string>> = { terminal: '터미
 .dot.answered.current span {
   background: var(--fg);
 }
-.summary.done .summary-head {
+/* Answered in this app: the answers keep fg; the terminal's stay muted */
+.summary.done dd {
   color: var(--fg);
-}
-.summary time {
-  font-size: inherit;
 }
 .spin {
   width: 11px;

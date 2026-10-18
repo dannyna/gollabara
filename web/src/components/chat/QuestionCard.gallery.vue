@@ -49,28 +49,28 @@ const UNTIL = NOW + 52_000
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="06 · 앱에서 답함">
-    <ChatFrame note="완료 줄에 고른 답과 시각. 체크 아이콘은 fg.">
+    <ChatFrame note="안내 줄 없이 고른 답의 체크만 남는다. 앱에서 답했으니 fg.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
         {{ ASK }}<QuestionCard :question="HERO_ROWS" state="done" :picks="[1]" :answered-at="time(14, 36)" inert />
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="07 · 앱에서 직접 답함">
-    <ChatFrame note="라벨이 아닌 답은 그 글을 그대로 보여 준다.">
+    <ChatFrame note="안내 줄 없이 체크로 답한 걸 보여 준다. 앱에서 답했으면 fg. 라벨이 아닌 답은 체크된 행으로, 그 글 그대로.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
         {{ ASK }}<QuestionCard :question="HERO_ROWS" state="done" answer-text="B로 가되, 카피는 한 줄로" :answered-at="time(14, 36)" inert />
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="08 · 터미널에서 먼저 답함">
-    <ChatFrame note="터미널 응답이 기록되면 앱 선택지를 닫아 중복 응답을 막는다. 고른 답을 알 수 있으면 표시.">
+    <ChatFrame note="터미널 응답이 기록되면 앱 선택지를 닫아 중복 응답을 막는다. 고른 답을 알면 같은 체크를 muted로 그려 앱 답과 구분한다.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
         {{ ASK }}<QuestionCard :question="HERO_ROWS" state="terminal" :picks="[0]" inert />
       </SessionMessage>
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="09 · 터미널에서 직접 답함">
-    <ChatFrame note="터미널에서 라벨이 아닌 글로 답했으면 그 글이 답이다.">
+    <ChatFrame note="터미널에서 라벨이 아닌 글로 답했으면 그 글이 muted 체크 행으로 남는다.">
       <SessionMessage :name="S.od" :at="time(14, 35)">
         {{ ASK }}<QuestionCard :question="HERO_ROWS" state="terminal" answer-text="둘 다 보여 줘" inert />
       </SessionMessage>
