@@ -331,7 +331,17 @@ const { setTarget } = useFeedbackTarget()
   --stream-inset: 52px;
   border-radius: 24px;
   background: var(--bg);
+}
+/* The ring (DESIGN.md: a ring, not a lift) is drawn above the rail: cells scrolled under
+   the rail's padding would otherwise paint over an inset box-shadow and break the edge */
+.stream-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-pill);
+  border-radius: inherit;
   box-shadow: inset 0 0 0 1px var(--border);
+  pointer-events: none;
 }
 .heading {
   display: flex;
