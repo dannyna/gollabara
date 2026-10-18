@@ -1,0 +1,19 @@
+web/src/components/shell/StreamPanel.vue
+  s_b6346b50124ff3::t_584539cae042bd 334-342,344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbb5bc690536d645541f424581234c8e74fd9d29",
+  "prompts": {},
+  "sessions": {
+    "s_b6346b50124ff3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6df7bb8b-6626-4f18-bcdb-47df597cffef",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
