@@ -77,6 +77,21 @@ export const holdKey = (pin: string | null, moved: ReadonlySet<string>) => pin &
  */
 export type ListMove = { move: 'reveal', key: string } | { move: 'latest' | 'hold' | 'none' }
 
+/**
+ * What the rail does after the panel was resized (#134): every cell changed width, so the
+ * scroll position no longer points where it did.
+ * - `reveal`: put the pin back on the anchor
+ * - `latest`: back to the latest cell
+ * - `hold`: keep the first cell in view where it was, scaled with its new width
+ */
+export type ResizeMove = { move: 'reveal', key: string } | { move: 'latest' | 'hold' }
+
+export function resizeMove(c: { follow: Follow, pin: string | null }): ResizeMove {
+  if (c.pin)
+    return { move: 'reveal', key: c.pin }
+  return c.follow === 'paused' ? { move: 'hold' } : { move: 'latest' }
+}
+
 export function listMove(c: {
   scopeChanged: boolean
   reshuffled: boolean

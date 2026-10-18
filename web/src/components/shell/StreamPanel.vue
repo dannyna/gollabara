@@ -4,6 +4,7 @@
 // its place once the reader scrolls back, raising 「새 산출물 n →」 instead. A pinned cell
 // stops following altogether: arrivals only raise the pill, wherever the rail sits.
 // Moving the rail sideways (wheel, arrows, a swipe) lets go of the pin.
+// A resize changes every cell's width, so it realigns: the latest, the pin, or the cell in view (#134).
 // References fold into 「참고 이미지 n」 between the cells and never count as arrivals.
 // History (#77): reaching the start loads older cells, and the view stays in place.
 
@@ -11,12 +12,12 @@ import type { Artifact } from '../../artifacts'
 import type { Guide } from '../../firstrun'
 import type { HistoryState } from '../../history'
 import type { Follow } from '../stream/follow'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { referenceFolds } from '../../artifacts'
 import NewPill from '../banner/NewPill.vue'
 import StateView from '../banner/StateView.vue'
 import { feedbackTargetOf, useFeedbackTarget } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove } from '../stream/follow'
+import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove, resizeMove } from '../stream/follow'
 import StreamFooter from '../stream/StreamFooter.vue'
 import StreamRail from '../stream/StreamRail.vue'
 import HarnessGuide from './HarnessGuide.vue'
@@ -140,6 +141,7 @@ function onScroll() {
   const el = track.value!
   measureFar()
   maybeLoad()
+  recordView()
   if (atLatest(el, rail.value?.latestAlign())) {
     // A pin keeps the rail from following even at the right end
     if (!pin.value)
@@ -188,12 +190,14 @@ function holdView(moved: Set<string>, prefer: string | null) {
     return null
   const left = el.getBoundingClientRect().left
   const pinned = prefer && el.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(prefer)}"]`)
-  if (pinned)
-    return { key: prefer, offset: pinned.getBoundingClientRect().left - left }
+  if (pinned) {
+    const box = pinned.getBoundingClientRect()
+    return { key: prefer, offset: box.left - left, width: box.width }
+  }
   for (const cell of el.querySelectorAll<HTMLElement>(':scope > [data-key]')) {
     const box = cell.getBoundingClientRect()
     if (box.right > left && !moved.has(cell.dataset.key!))
-      return { key: cell.dataset.key!, offset: box.left - left }
+      return { key: cell.dataset.key!, offset: box.left - left, width: box.width }
   }
   return null
 }
@@ -203,6 +207,65 @@ function restoreView(hold: { key: string, offset: number } | null) {
   if (el && cell)
     el.scrollLeft += cell.getBoundingClientRect().left - el.getBoundingClientRect().left - hold!.offset
 }
+
+/**
+ * The first cell in view and how far its left edge sits from the anchor, as a share of
+ * its width. A resize changes every cell's width (they size from the panel height), so
+ * the share, not the pixel offset, keeps the reader's place: a cell on the anchor stays
+ * there, a cell cut by a third stays cut by a third (#134). Read on every scroll.
+ */
+let viewHold: { key: string, frac: number } | null = null
+const anchorOf = (el: HTMLElement) => Number.parseFloat(getComputedStyle(el).paddingLeft) || 0
+const panel = ref<HTMLElement>()
+/** The panel size the last resize callback saw, so a scroll from a resize not handled yet is told apart */
+let seenSize: { w: number, h: number } | null = null
+const panelSize = () => panel.value ? { w: panel.value.clientWidth, h: panel.value.clientHeight } : null
+function recordView() {
+  // A shrink clamps the scroll position and fires a scroll before the resize callback
+  // runs: that position is the resize's, not the reader's, so the record stands
+  const size = panelSize()
+  if (seenSize && size && (size.w !== seenSize.w || size.h !== seenSize.h))
+    return
+  const el = track.value
+  const hold = el ? holdView(new Set(), null) : null
+  viewHold = el && hold?.width ? { key: hold.key, frac: (hold.offset - anchorOf(el)) / hold.width } : null
+}
+/** After a resize the scroll position points elsewhere: back to the latest, the pin, or the held cell */
+function onResize() {
+  seenSize = panelSize()
+  const el = track.value
+  // Hidden (the mobile layout) or empty: nothing to align, and the next size change aligns again
+  if (!el || !el.clientWidth)
+    return
+  const next = resizeMove({ follow: follow.value, pin: pin.value })
+  if (next.move === 'reveal') {
+    rail.value?.align(next.key, 'instant')
+  }
+  else if (next.move === 'latest') {
+    toLatest('instant')
+  }
+  else if (viewHold) {
+    const cell = el.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(viewHold.key)}"]`)
+    if (cell) {
+      const box = cell.getBoundingClientRect()
+      el.scrollLeft += box.left - el.getBoundingClientRect().left - anchorOf(el) - viewHold.frac * box.width
+    }
+  }
+}
+let observer: ResizeObserver | undefined
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined' || !panel.value)
+    return
+  // The first callback only reports the initial size; the mount watch below aligns that
+  observer = new ResizeObserver(() => {
+    if (seenSize)
+      onResize()
+    else
+      seenSize = panelSize()
+  })
+  observer.observe(panel.value)
+})
+onBeforeUnmount(() => observer?.disconnect())
 
 /** Pages already handled, so the list watch tells them from arrivals */
 let pagesSeen = props.history?.pages ?? 0
@@ -290,7 +353,7 @@ const { setTarget } = useFeedbackTarget()
 </script>
 
 <template>
-  <section class="stream-panel" aria-label="산출물 스트림">
+  <section ref="panel" class="stream-panel" aria-label="산출물 스트림">
     <div class="heading">
       <h2 class="title">
         산출물 스트림

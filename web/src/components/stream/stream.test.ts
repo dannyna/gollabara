@@ -2,7 +2,7 @@ import type { Artifact } from '../../artifacts'
 import type { Wheel } from './step'
 import { describe, expect, it } from 'bun:test'
 import { feedbackTargetOf } from '../overlay/useFeedbackTarget'
-import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove, PINNED_TEXT } from './follow'
+import { activePin, arrivedSince, atLatest, clickCell, holdKey, lastArrival, latestLeft, listMove, PINNED_TEXT, resizeMove } from './follow'
 import { alignTarget, stepTarget, wheelDelta, wheelInput, wheelSettled } from './step'
 
 function cell(seq: number, extra: Partial<Artifact> = {}): Artifact {
@@ -96,6 +96,15 @@ describe('pin', () => {
   it('tells how to let go in the footer: Esc with a keyboard, a tap on touch', () => {
     expect(`${PINNED_TEXT.lead} · ${PINNED_TEXT.key}`).toBe('고정한 산출물 · Esc로 풀기')
     expect(`${PINNED_TEXT.lead} · ${PINNED_TEXT.touch}`).toBe('고정한 산출물 · 다시 눌러 풀기')
+  })
+})
+
+describe('resizeMove', () => {
+  it('goes back to the latest while following, holds the view while paused, and puts the pin back first', () => {
+    expect(resizeMove({ follow: 'following', pin: null })).toEqual({ move: 'latest' })
+    expect(resizeMove({ follow: 'start', pin: null })).toEqual({ move: 'latest' })
+    expect(resizeMove({ follow: 'paused', pin: null })).toEqual({ move: 'hold' })
+    expect(resizeMove({ follow: 'paused', pin: '2-0' })).toEqual({ move: 'reveal', key: '2-0' })
   })
 })
 
