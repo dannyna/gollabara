@@ -108,7 +108,7 @@ const countdown = computed(() => props.until != null && props.now != null && !pr
 </script>
 
 <template>
-  <div ref="root" class="question" :class="{ closed, offline: view === 'offline', inert }" tabindex="-1">
+  <div ref="root" class="question" :class="{ closed, offline: view === 'offline', inert, terminal: view === 'terminal' }" tabindex="-1">
     <div class="eyebrow">
       <ChatIcon name="question" /><b>{{ question.header || '세션에서 물었어요' }}</b>
       <template v-if="multi">
@@ -181,14 +181,19 @@ const countdown = computed(() => props.until != null && props.now != null && !pr
     <div v-else-if="view === 'sending'" class="q-state">
       <span class="spin" aria-hidden="true" />{{ picked }}로 답하는 중
     </div>
-    <div v-else-if="view === 'done'" class="q-state strong">
-      <ChatIcon name="check" />{{ picked }}로 답했어요<template v-if="answeredAt">
-        · <time>{{ clock(answeredAt) }}</time>
-      </template>
-    </div>
-    <div v-else-if="view === 'terminal'" class="q-state strong">
-      <ChatIcon name="term" />{{ picked ? `터미널에서 ${picked}로 먼저 답했어요` : '터미널에서 먼저 답했어요' }}
-    </div>
+    <!-- Answered: the pick's check says so, and its color says by whom (fg: this app, muted: the
+         terminal or anywhere else), with no line under the options. A typed answer is a checked row -->
+    <template v-else-if="view === 'done' || view === 'terminal'">
+      <div v-if="answerText" class="opt on typed-answer" aria-hidden="true">
+        <span class="mark"><ChatIcon name="check" /></span>
+        <span class="t">{{ answerText }}</span>
+      </div>
+      <!-- The terminal's pick can be unknown: then the line is all there is -->
+      <div v-else-if="!picked" class="q-state">
+        <ChatIcon name="term" />터미널에서 답했어요
+      </div>
+      <span v-if="picked" class="sr-only">{{ view === 'done' ? '앱에서' : '터미널에서' }} {{ picked }}로 답했어요<template v-if="answeredAt"> · {{ clock(answeredAt) }}</template></span>
+    </template>
     <!-- Only a question still held can be answered after reconnecting -->
     <div v-else-if="view === 'offline' && !inert" class="q-state">
       <ChatIcon name="plug" />다시 연결되면 답할 수 있어요
@@ -345,6 +350,31 @@ const countdown = computed(() => props.until != null && props.now != null && !pr
 .closed .opt:not(.on) .mark,
 .offline .opt .mark {
   border-color: var(--border);
+}
+/* Answered in the terminal, or anywhere but this app: the same check, in muted instead of fg */
+.terminal .opt.on {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+.terminal .opt.on .mark,
+.terminal .choice.chosen,
+.terminal .choice.chosen:hover {
+  border-color: var(--muted);
+  background: var(--muted);
+  color: var(--surface);
+}
+/* A typed answer, drawn as the row it would have been */
+.typed-answer {
+  margin-top: 6px;
+  pointer-events: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* Drawn but not answerable yet: options keep full contrast so the question stays readable */
 .inert .choice:disabled {

@@ -35,7 +35,7 @@ const UNTIL = NOW + 41_000
     </ChatFrame>
   </GalleryCase>
   <GalleryCase title="04 · 터미널에서 모두 답함">
-    <ChatFrame note="header와 고른 답만 muted로 남긴다. 라벨이 아닌 답은 그 글 그대로. 고른 답을 모르는 질문은 「터미널에서 답했어요」.">
+    <ChatFrame note="안내 줄 없이 header와 고른 답만 남긴다. 터미널 답은 muted, 앱 답은 fg. 라벨이 아닌 답은 그 글 그대로. 고른 답을 모르는 질문은 「터미널에서 답했어요」.">
       <SessionMessage :name="NAME" :at="time(14, 35)">
         {{ ASK }}<QuestionStepper :questions="ENDED_SET" state="terminal" :picks="[[0], [], []]" :texts="[undefined, '지난 메시지는 그대로 두고 흐리게만', undefined]" />
       </SessionMessage>
