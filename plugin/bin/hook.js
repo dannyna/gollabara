@@ -25,7 +25,7 @@ function dataDir() {
 // plugin/.claude-plugin/plugin.json
 var plugin_default = {
   name: "gollabara",
-  version: "0.4.1",
+  version: "0.4.2",
   description: "Streams the screenshots, recaps, and questions a session produces to the gollabara stream"
 };
 
@@ -187,26 +187,6 @@ function turnOpener(tail) {
   }
   return "unknown";
 }
-function turnStartedAt(tail) {
-  const lines = tail.split(`
-`);
-  for (let i = lines.length - 1;i >= 0; i--) {
-    const line = lines[i];
-    if (!line.includes('"turnOrigin"'))
-      continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (entry?.isSidechain || entry?.type !== "user" || typeof entry.turnOrigin !== "string")
-      continue;
-    const at = Date.parse(entry.timestamp);
-    return Number.isFinite(at) ? at : undefined;
-  }
-  return;
-}
 function stopTurnOpener(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS) {
   return fromTail(transcriptPath, (text) => {
     const opener = turnOpener(text);
@@ -232,38 +212,16 @@ function carriesFeedback(entry) {
 var claudeCode = {
   project: (env) => env.OD_PROJECT_ID,
   stopOpener: (transcriptPath) => stopTurnOpener(transcriptPath),
-  turnStartedAt,
   claims: () => true,
   output: (hookEventName, text) => ({ hookSpecificOutput: { hookEventName, additionalContext: text } })
 };
 
 // src/hook/codex.ts
-function codexTurnStartedAt(tail) {
-  const lines = tail.split(`
-`);
-  for (let i = lines.length - 1;i >= 0; i--) {
-    const line = lines[i];
-    if (!line.includes('"task_started"'))
-      continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (entry?.type !== "event_msg" || entry.payload?.type !== "task_started")
-      continue;
-    const at = Date.parse(entry.timestamp);
-    return Number.isFinite(at) ? at : undefined;
-  }
-  return;
-}
 var codex = {
   project: () => {
     return;
   },
   stopOpener: () => "unknown",
-  turnStartedAt: codexTurnStartedAt,
   claims: (hookEventName, input) => !(hookEventName === "Stop" && input?.stop_hook_active),
   output: (hookEventName, text) => hookEventName === "Stop" ? { decision: "block", reason: text } : { hookSpecificOutput: { hookEventName, additionalContext: text } }
 };
@@ -480,7 +438,7 @@ async function runHook(adapter = "claude-code") {
     const session = sessionInfo(input, { OD_PROJECT_ID: process2.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter);
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 };
     const opener = input.hook_event_name === "Stop" ? ADAPTERS[adapter].stopOpener(input.transcript_path) : "unknown";
-    const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter));
+    const event = mapHook(input, session, opener, (path) => readFileRole(path, input.transcript_path));
     if (event)
       event.pid = process2.ppid;
     const via = feedbackVia(input.hook_event_name, input, adapter);
@@ -516,16 +474,13 @@ async function runHook(adapter = "claude-code") {
   if (health)
     logHealth(dataDir(), { at: Date.now(), ...health, ok: !health.error });
 }
-function turnStart(transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, adapter = "claude-code") {
-  const opened = fromTail(transcriptPath, ADAPTERS[adapter].turnStartedAt, windows);
-  if (opened !== undefined || !transcriptPath)
-    return opened;
-  const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES);
+function sessionStart(transcriptPath) {
+  const head = transcriptPath ? readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES) : undefined;
   return head === undefined ? undefined : sessionStartedAt(head);
 }
-function readFileRole(path, transcriptPath, windows = TRANSCRIPT_TAIL_WINDOWS, adapter = "claude-code") {
+function readFileRole(path, transcriptPath) {
   try {
-    return imageRole(statSync2(path).mtimeMs, turnStart(transcriptPath, windows, adapter));
+    return imageRole(statSync2(path).mtimeMs, sessionStart(transcriptPath));
   } catch {
     return "artifact";
   }

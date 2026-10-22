@@ -13,7 +13,7 @@ import { dataDir, serverUrl } from '../shared/config'
 import { HOOK_HARNESS_HEADER, HOOK_VERSION_HEADER, PLUGIN_VERSION } from '../shared/version'
 import { errorClass, HttpError, logHealth } from './health'
 import { ADAPTERS, feedbackOutput, feedbackVia, imageRole, mapHook, sessionInfo, sessionStartedAt } from './map'
-import { fromTail, readHead, TRANSCRIPT_HEAD_BYTES, TRANSCRIPT_TAIL_WINDOWS } from './transcript'
+import { readHead, TRANSCRIPT_HEAD_BYTES } from './transcript'
 
 /**
  * A hard deadline for every mode except `wait` and `session-end`: past the 1.5 s request budget, whatever still runs (a slow
@@ -38,9 +38,9 @@ export function exitAt(ms: number): void {
 }
 
 /**
- * `adapter` comes from the hook command (`hook.js codex`), never from env. Codex differs in three ways:
- * no turn opener to read (every Stop posts its recap), turn starts from its rollout, and feedback at
- * Stop goes out as `decision: block`, never while the turn is already continuing.
+ * `adapter` comes from the hook command (`hook.js codex`), never from env. Codex differs in two ways:
+ * no turn opener to read (every Stop posts its recap), and feedback at Stop goes out as
+ * `decision: block`, never while the turn is already continuing.
  */
 export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
   // Set by gollabara's own background model calls so they never stream themselves
@@ -60,7 +60,7 @@ export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
     const session = sessionInfo(input, { OD_PROJECT_ID: process.env.OD_PROJECT_ID }, { projectRoot, readBranch }, adapter)
     health = { event: input.hook_event_name, harness: session.harness, ms: 0 }
     const opener = input.hook_event_name === 'Stop' ? ADAPTERS[adapter].stopOpener(input.transcript_path) : 'unknown'
-    const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path, TRANSCRIPT_TAIL_WINDOWS, adapter))
+    const event = mapHook(input, session, opener, path => readFileRole(path, input.transcript_path))
     // Claude Code and Codex run the hook command as their direct child (a one-command `sh -c` execs it), so every
     // hook, the wake-up waiter included, sees the harness pid as its parent. Every event carries it, so a session
     // whose SessionStart was lost (server down) is still linked by its next event
@@ -109,24 +109,22 @@ export async function runHook(adapter: Adapter = 'claude-code'): Promise<void> {
 }
 
 /**
- * When the current turn started, from its opener in the transcript's tail, else when the session
- * started (the transcript's head); undefined when neither can be read
+ * When the session started: the first timestamp at the head of its transcript (Claude Code) or rollout (Codex);
+ * undefined when it can't be read
  */
-export function turnStart(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS, adapter: Adapter = 'claude-code'): number | undefined {
-  const opened = fromTail(transcriptPath, ADAPTERS[adapter].turnStartedAt, windows)
-  if (opened !== undefined || !transcriptPath)
-    return opened
-  const head = readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES)
+export function sessionStart(transcriptPath?: string): number | undefined {
+  const head = transcriptPath ? readHead(transcriptPath, TRANSCRIPT_HEAD_BYTES) : undefined
   return head === undefined ? undefined : sessionStartedAt(head)
 }
 
 /**
- * The role of images read from `path`: an artifact when the file changed after the turn started.
- * Only image reads get here, so other tool calls never stat. Any error makes it an artifact.
+ * The role of images read from `path`: an artifact when the file changed after the session started.
+ * Not the turn: a background job or worker launched in an earlier turn writes screenshots the session
+ * reads later. Only image reads get here, so other tool calls never stat. Any error makes it an artifact.
  */
-export function readFileRole(path: string, transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS, adapter: Adapter = 'claude-code'): ImageRole {
+export function readFileRole(path: string, transcriptPath?: string): ImageRole {
   try {
-    return imageRole(statSync(path).mtimeMs, turnStart(transcriptPath, windows, adapter))
+    return imageRole(statSync(path).mtimeMs, sessionStart(transcriptPath))
   }
   catch {
     return 'artifact'

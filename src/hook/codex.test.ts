@@ -5,7 +5,6 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, test } from 'bun:test'
-import { codexTurnStartedAt } from './codex'
 import { readFileRole } from './core'
 import postBash from './fixtures/codex/post-bash.json'
 import postMcpImage from './fixtures/codex/post-mcp-image.json'
@@ -19,7 +18,7 @@ import sessionStart from './fixtures/codex/session-start.json'
 import stopHookActive from './fixtures/codex/stop-hook-active.json'
 import stop from './fixtures/codex/stop.json'
 import userPromptSubmit from './fixtures/codex/user-prompt-submit.json'
-import { dataUrlImage, feedbackOutput, feedbackVia, mapHook, sessionInfo, sniffImageMime } from './map'
+import { dataUrlImage, feedbackOutput, feedbackVia, mapHook, sessionInfo, sessionStartedAt, sniffImageMime } from './map'
 
 const git = { projectRoot: (cwd: string) => cwd, readBranch: () => 'feat/hero' }
 const codex = (input: object) => sessionInfo(input as HookInput, { OD_PROJECT_ID: 'od-project' }, git, 'codex')
@@ -136,22 +135,22 @@ describe('Codex images and turns', () => {
     '{"timestamp":"2026-10-15T15:20:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"mentions \\"task_started\\" in text"}]}}',
   ].join('\n')
 
-  test('a rollout\'s turn starts at its last task_started event', () => {
-    expect(codexTurnStartedAt(rollout)).toBe(Date.parse('2026-10-15T15:20:00.500Z'))
-    expect(codexTurnStartedAt('{"type":"session_meta"}')).toBeUndefined()
+  test('a rollout\'s session starts at the timestamp of its head', () => {
+    expect(sessionStartedAt(rollout)).toBe(Date.parse('2026-10-15T15:19:16.961Z'))
   })
 
   const dir = mkdtempSync(join(tmpdir(), 'gollabara-codex-'))
   afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-  test('a file view_image read is an artifact when it changed after the turn started (#41)', () => {
+  test('a file view_image read is an artifact when it changed after the session started (#41)', () => {
     const transcript = join(dir, 'rollout.jsonl')
     writeFileSync(transcript, rollout)
     const pic = join(dir, 'pic.png')
     writeFileSync(pic, '')
+    utimesSync(pic, new Date('2026-10-15T15:19:00Z'), new Date('2026-10-15T15:19:00Z'))
+    expect(readFileRole(pic, transcript)).toBe('reference')
+    // Written in an earlier turn than the latest task_started, still after the session started
     utimesSync(pic, new Date('2026-10-15T15:19:30Z'), new Date('2026-10-15T15:19:30Z'))
-    expect(readFileRole(pic, transcript, [1024], 'codex')).toBe('reference')
-    utimesSync(pic, new Date('2026-10-15T15:20:05Z'), new Date('2026-10-15T15:20:05Z'))
-    expect(readFileRole(pic, transcript, [1024], 'codex')).toBe('artifact')
+    expect(readFileRole(pic, transcript)).toBe('artifact')
   })
 })

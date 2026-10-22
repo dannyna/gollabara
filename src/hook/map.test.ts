@@ -3,7 +3,7 @@ import type { HookInput } from './map'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import { turnOpener, turnStartedAt } from './claude-code'
+import { turnOpener } from './claude-code'
 import odEnv from './fixtures/od-env.json'
 import odPostReadImage from './fixtures/od-post-read-image.json'
 import odPostWrite from './fixtures/od-post-write.json'
@@ -261,8 +261,6 @@ describe('turn opener (real transcript tails, redacted)', () => {
 })
 
 describe('image role', () => {
-  const tail = (name: string) => readFileSync(join(import.meta.dir, 'fixtures', name), 'utf8')
-  const openerAt = (text: string) => Date.parse(JSON.parse(text.split('\n').findLast(l => l.includes('"turnOrigin"'))!).timestamp)
   const shot = [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }]
   const post = (tool_name: string, tool_input: object, tool_response: unknown = shot): HookInput =>
     ({ session_id: 's1', cwd: '/x', hook_event_name: 'PostToolUse', tool_name, tool_input, tool_response })
@@ -283,7 +281,7 @@ describe('image role', () => {
       throw new Error('no file to look at')
     }
     expect(roles(mapHook(post('mcp__od__render', {}), session, 'unknown', never))).toEqual(['artifact'])
-    // An MCP tool that renders a file it did not change this turn still made the picture
+    // An MCP tool that renders a file it did not change in this session still made the picture
     expect(roles(mapHook(post('mcp__od__render', { path: '/proj/index.html' }), session, 'unknown', never))).toEqual(['artifact'])
     // A relative screenshot name resolves against a cwd the hook can't know
     expect(roles(mapHook(post('mcp__playwright__browser_take_screenshot', { filename: 'login.png' }), session, 'unknown', never))).toEqual(['artifact'])
@@ -305,7 +303,7 @@ describe('image role', () => {
     expect(readFilePath({})).toBeUndefined()
   })
 
-  test('a file changed after the turn started is an artifact; one from before is a reference', () => {
+  test('a file changed after the session started is an artifact; one from before is a reference', () => {
     expect(imageRole(2000, 1000)).toBe('artifact')
     expect(imageRole(1000, 1000)).toBe('reference')
     expect(imageRole(500, 1000)).toBe('reference')
@@ -314,23 +312,6 @@ describe('image role', () => {
   test('without either time the image is an artifact', () => {
     expect(imageRole(undefined, 1000)).toBe('artifact')
     expect(imageRole(500, undefined)).toBe('artifact')
-  })
-
-  test('the turn starts at its opener\'s timestamp', () => {
-    expect(turnStartedAt(tail('transcript-human.jsonl'))).toBe(Date.parse('2026-10-13T14:54:48.567Z'))
-    expect(turnStartedAt(tail('transcript-task-notification.jsonl'))).toBe(openerAt(tail('transcript-task-notification.jsonl')))
-  })
-
-  test('feedback delivered after the opener does not move the turn start', () => {
-    const text = tail('transcript-monitor-feedback.jsonl')
-    expect(turnOpener(text)).toBe('human')
-    expect(turnStartedAt(text)).toBe(openerAt(text))
-  })
-
-  test('no opener in the tail, or a sidechain opener only, gives no turn start', () => {
-    const lines = tail('transcript-monitor.jsonl').split('\n')
-    expect(turnStartedAt(lines.slice(lines.findLastIndex(l => l.includes('"turnOrigin"')) + 1).join('\n'))).toBeUndefined()
-    expect(turnStartedAt('{"type":"user","isSidechain":true,"turnOrigin":"human","timestamp":"2026-10-13T14:54:48.567Z"}')).toBeUndefined()
   })
 
   test('the session starts at the first timestamp in the transcript', () => {

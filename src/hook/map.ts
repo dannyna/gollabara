@@ -36,8 +36,6 @@ export interface HarnessAdapter {
   project: (env: HookEnv) => string | undefined
   /** Who opened the turn that just stopped; 'unknown' posts the recap */
   stopOpener: (transcriptPath?: string) => TurnOpener
-  /** When the current turn started, from a tail of the session's transcript */
-  turnStartedAt: (tail: string) => number | undefined
   /** Whether this hook may claim feedback, at a hook point where claiming is possible at all */
   claims: (hookEventName: string, input?: Pick<HookInput, 'stop_hook_active'>) => boolean
   /** The hook stdout JSON that hands the feedback text to the session */
@@ -89,7 +87,7 @@ export function sessionInfo(input: HookInput, env: HookEnv, git: GitLookup, adap
   return { id: input.session_id, name: sessionName(root, git.readBranch(root)), harness: adapter, cwd: input.cwd }
 }
 
-/** When the session started, for a turn whose opener is out of reach: the first timestamp at the head of its transcript */
+/** When the session started: the first timestamp at the head of its transcript (Claude Code) or rollout (Codex) */
 export function sessionStartedAt(head: string): number | undefined {
   for (const line of head.split('\n')) {
     let entry: any
@@ -107,7 +105,7 @@ export function sessionStartedAt(head: string): number | undefined {
 }
 
 /**
- * A file the session read is an artifact when it changed after the turn started (the session
+ * A file the session read is an artifact when it changed after the session started (the session
  * made it), and a reference otherwise (a mock, an existing asset, an older screenshot). When
  * either time is unknown the image counts as an artifact, as every image did before roles.
  */

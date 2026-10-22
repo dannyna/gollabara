@@ -1,5 +1,5 @@
 // The Claude Code adapter: what only Claude Code's hooks need on top of the shared core (map.ts, core.ts).
-// Its transcript tells who opened a turn and when, and Open Design runs it under OD_PROJECT_ID.
+// Its transcript tells who opened a turn, and Open Design runs it under OD_PROJECT_ID.
 
 import type { HarnessAdapter, TurnOpener } from './map'
 import { FEEDBACK_PREFIX } from '../shared/feedback'
@@ -53,32 +53,6 @@ export function turnOpener(tail: string): TurnOpener {
   return 'unknown'
 }
 
-/**
- * When the current turn started: the timestamp of the last main-thread entry that opened a turn.
- * Unlike turnOpener, feedback delivered after the opener does not stop the scan: it changes who
- * the turn is for, not when it began. Undefined when the tail holds no opener.
- */
-export function turnStartedAt(tail: string): number | undefined {
-  const lines = tail.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]!
-    if (!line.includes('"turnOrigin"'))
-      continue
-    let entry: any
-    try {
-      entry = JSON.parse(line)
-    }
-    catch {
-      continue
-    }
-    if (entry?.isSidechain || entry?.type !== 'user' || typeof entry.turnOrigin !== 'string')
-      continue
-    const at = Date.parse(entry.timestamp)
-    return Number.isFinite(at) ? at : undefined
-  }
-  return undefined
-}
-
 /** Who opened the turn, from the transcript's tail; 'unknown' (so the recap is posted) when it can't be read */
 export function stopTurnOpener(transcriptPath?: string, windows = TRANSCRIPT_TAIL_WINDOWS): TurnOpener {
   return fromTail(transcriptPath, (text) => {
@@ -116,7 +90,6 @@ export const claudeCode: HarnessAdapter = {
   project: env => env.OD_PROJECT_ID,
   // Every Stop: a wake-up's Stop comes as `stop_hook_active` too, yet opens its own turn
   stopOpener: transcriptPath => stopTurnOpener(transcriptPath),
-  turnStartedAt,
   claims: () => true,
   // On Stop this keeps the turn going without the error notice `decision: block` shows;
   // the claim already emptied the queue, so the re-entered Stop lets it end
