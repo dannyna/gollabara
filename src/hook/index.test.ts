@@ -6,7 +6,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { doctor } from '../doctor'
 import { PLUGIN_VERSION } from '../shared/version'
 import { stopTurnOpener } from './claude-code'
-import { projectRoot, readBranch, readFileRole, turnStart } from './core'
+import { projectRoot, readBranch, readFileRole, sessionStart } from './core'
 import postReadImage from './fixtures/post-read-image.json'
 import stop from './fixtures/stop.json'
 import { readHealth } from './health'
@@ -89,7 +89,8 @@ describe('transcript tail on Stop', () => {
 
 describe('image role from the file\'s mtime', () => {
   const fixture = (name: string) => join(import.meta.dir, 'fixtures', name)
-  // transcript-human.jsonl: the current turn opened at this time
+  // transcript-human.jsonl: its head's first timestamp, and the opener of its latest turn
+  const started = Date.parse('2026-10-13T14:53:58.816Z')
   const opened = Date.parse('2026-10-13T14:54:48.567Z')
   function image(name: string, mtime: number) {
     const path = join(dir('images'), name)
@@ -98,23 +99,28 @@ describe('image role from the file\'s mtime', () => {
     return path
   }
 
-  test('a file from before the turn is a reference, one written during it an artifact', () => {
-    expect(turnStart(fixture('transcript-human.jsonl'))).toBe(opened)
-    expect(readFileRole(image('mock.png', opened - 60_000), fixture('transcript-human.jsonl'))).toBe('reference')
-    expect(readFileRole(image('shot.png', opened + 5_000), fixture('transcript-human.jsonl'))).toBe('artifact')
+  test('the session starts at the first timestamp at the transcript\'s head', () => {
+    expect(sessionStart(fixture('transcript-human.jsonl'))).toBe(started)
   })
 
-  test('without the opener in reach the session start decides', () => {
-    const path = join(dir('tail'), 'no-opener.jsonl')
-    writeFileSync(path, '{"type":"queue-operation","timestamp":"2026-10-13T10:00:00.000Z"}\n{"type":"assistant","timestamp":"2026-10-13T10:05:00.000Z"}\n')
-    const started = Date.parse('2026-10-13T10:00:00.000Z')
-    expect(turnStart(path)).toBe(started)
-    expect(readFileRole(image('older.png', started - 1), path)).toBe('reference')
-    expect(readFileRole(image('newer.png', started + 1), path)).toBe('artifact')
+  test('a file written in an earlier turn of the session is an artifact', () => {
+    // A background job or worker launched before the latest turn wrote it; the session reads it now
+    expect(readFileRole(image('e2e.png', opened - 5_000), fixture('transcript-human.jsonl'))).toBe('artifact')
+  })
+
+  test('a file from before the session is a reference', () => {
+    expect(readFileRole(image('mock.png', started - 60_000), fixture('transcript-human.jsonl'))).toBe('reference')
+  })
+
+  test('a head cut off before any timestamp makes the image an artifact', () => {
+    const path = join(dir('head'), 'cut-off.jsonl')
+    writeFileSync(path, '{"type":"summary"}\n{"type":"user","timestamp":"2026-10-')
+    expect(sessionStart(path)).toBeUndefined()
+    expect(readFileRole(image('cut.png', started - 60_000), path)).toBe('artifact')
   })
 
   test('an unreadable transcript or file makes the image an artifact', () => {
-    const old = image('old.png', opened - 60_000)
+    const old = image('old.png', started - 60_000)
     expect(readFileRole(old, undefined)).toBe('artifact')
     expect(readFileRole(old, join(base, 'missing.jsonl'))).toBe('artifact')
     expect(readFileRole(old, dir('a-directory'))).toBe('artifact')
