@@ -1,0 +1,41 @@
+src/hook/index.test.ts
+  s_ba9b7c6e2b228f::t_dd32be1177d4cc 9,92-93,102-103,106-119,123
+src/hook/codex.test.ts
+  s_ba9b7c6e2b228f::t_dd32be1177d4cc 21,138-139,145,150-152,154
+AGENTS.md
+  s_ba9b7c6e2b228f::t_30b4cc05711999 145,235
+src/hook/core.ts
+  s_ba9b7c6e2b228f::t_09fdf4aa552a7b 16,41-43,63,112-113,115-116,121-123,125,127
+docs/E2E.md
+  s_ba9b7c6e2b228f::t_e0e5c1b4020f03 50,84
+package.json
+  s_ba9b7c6e2b228f::t_57751263fd48c5 4
+src/hook/codex.ts
+  s_ba9b7c6e2b228f::t_3a239a7da71609 2
+src/hook/map.ts
+  s_ba9b7c6e2b228f::t_3a239a7da71609 90,108
+src/hook/claude-code.ts
+  s_ba9b7c6e2b228f::t_3a239a7da71609 2
+src/hook/map.test.ts
+  s_ba9b7c6e2b228f::t_906ed7007120da 6,284,306
+plugin/.claude-plugin/plugin.json
+  s_ba9b7c6e2b228f::t_57751263fd48c5 3
+plugin/bin/hook.js
+  s_ba9b7c6e2b228f::t_57751263fd48c5 28,441,477-478,481,483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45b8ac36cc8a598c05b8e14fc971237cea516618",
+  "prompts": {},
+  "sessions": {
+    "s_ba9b7c6e2b228f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bda46dee-d902-4856-8a27-bc856d7258d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DANNY NA <danny@pusan.ac.kr>"
+    }
+  }
+}
